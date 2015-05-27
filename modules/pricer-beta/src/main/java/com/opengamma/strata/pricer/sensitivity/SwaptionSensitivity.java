@@ -7,34 +7,30 @@ package com.opengamma.strata.pricer.sensitivity;
 
 import java.io.Serializable;
 import java.time.ZonedDateTime;
-
-import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
-import org.joda.beans.ImmutableBean;
-import org.joda.beans.PropertyDefinition;
-
-import com.google.common.collect.ComparisonChain;
-import com.opengamma.strata.basics.currency.Currency;
-import com.opengamma.strata.basics.index.IborIndex;
-import com.opengamma.strata.pricer.sensitivity.MutablePointSensitivities;
-import com.opengamma.strata.pricer.sensitivity.PointSensitivity;
-import com.opengamma.strata.pricer.sensitivity.PointSensitivityBuilder;
-
-import java.util.Set;
-
-import org.joda.beans.Property;
-
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.DoubleUnaryOperator;
 
 import org.joda.beans.Bean;
+import org.joda.beans.BeanBuilder;
+import org.joda.beans.BeanDefinition;
+import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
 import org.joda.beans.MetaProperty;
+import org.joda.beans.Property;
+import org.joda.beans.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+
+import com.google.common.collect.ComparisonChain;
+import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.index.IborIndex;
+import com.opengamma.strata.market.sensitivity.MutablePointSensitivities;
+import com.opengamma.strata.market.sensitivity.PointSensitivity;
+import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 
 /**
  * Point sensitivity to a swaption implied parameter point.
@@ -42,57 +38,73 @@ import org.joda.beans.impl.direct.DirectMetaPropertyMap;
  * Holds the sensitivity to the swaption grid point.
  */
 @BeanDefinition(builderScope = "private")
-public class SwaptionSensitivity 
-    implements PointSensitivity, PointSensitivityBuilder, ImmutableBean, Serializable  {
-  
-  /** The index on which the underlying swap is based. TODO: should be replace by the swap template*/
+public final class SwaptionSensitivity
+    implements PointSensitivity, PointSensitivityBuilder, ImmutableBean, Serializable {
+  // TODO: replace index by the swap template?
+  // TODO why not the Tenor object?
+
+  /**
+   * The index on which the underlying swap is based.
+   */
   @PropertyDefinition(validate = "notNull")
   private final IborIndex index;
-  /** The expiry date/time of the option.*/
+  /**
+   * The expiry date/time of the option.
+   */
   @PropertyDefinition(validate = "notNull")
   private final ZonedDateTime expiry;
-  /** The underlying swap tenor. */
+  /**
+   * The underlying swap tenor.
+   */
   @PropertyDefinition
   private final double tenor;
-  /** The swaption strike rate */
+  /**
+   * The swaption strike rate.
+   */
   @PropertyDefinition
   private final double strike;
-  /** The underlying swap forward rate */
+  /**
+   * The underlying swap forward rate.
+   */
   @PropertyDefinition
-  private final double forward; 
-  /** The currency of the curve for which the sensitivity is computed. */
+  private final double forward;
+  /**
+   * The currency for which the sensitivity is computed.
+   */
   @PropertyDefinition(validate = "notNull", overrideGet = true)
   private final Currency currency;
-  /** The value of the sensitivity. */
+  /**
+   * The value of the sensitivity.
+   */
   @PropertyDefinition(overrideGet = true)
   private final double sensitivity;
-  
+
+  //-------------------------------------------------------------------------
   /**
-   * Create a new key.
+   * Obtains a {@code SwaptionSensitivity} from the specified elements.
+   * 
    * @param index  the index on which the underlying swap is based
    * @param expiry  the expiry date/time of the option
    * @param tenor  the underlying swap tenor
    * @param strike  the swaption strike rate
    * @param forward  the underlying swap forward rate
-   * @return the key
+   * @param currency  the currency of the sensitivity
+   * @param sensitivity  the value of the sensitivity
+   * @return the point sensitivity object
    */
-  public static SwaptionSensitivity of(IborIndex index, ZonedDateTime expiry, double tenor, double strike, double forward,
-      Currency currency, double sensitivity) {
+  public static SwaptionSensitivity of(
+      IborIndex index,
+      ZonedDateTime expiry,
+      double tenor,
+      double strike,
+      double forward,
+      Currency currency,
+      double sensitivity) {
+
     return new SwaptionSensitivity(index, expiry, tenor, strike, forward, currency, sensitivity);
   }
 
-  // private constructor
-  private SwaptionSensitivity(IborIndex index, ZonedDateTime expiry, double tenor, double strike, double forward,
-      Currency currency, double sensitivity) {
-    this.index = index;
-    this.expiry = expiry;
-    this.tenor = tenor;
-    this.strike = strike;
-    this.forward = forward;
-    this.currency = currency;
-    this.sensitivity = sensitivity;
-  }
-
+  //-------------------------------------------------------------------------
   @Override
   public SwaptionSensitivity withCurrency(Currency ccy) {
     return new SwaptionSensitivity(index, expiry, tenor, strike, forward, ccy, sensitivity);
@@ -125,10 +137,20 @@ public class SwaptionSensitivity
   }
 
   @Override
+  public SwaptionSensitivity normalize() {
+    return this;
+  }
+
+  @Override
   public MutablePointSensitivities buildInto(MutablePointSensitivities combination) {
     return combination.add(this);
   }
-  
+
+  @Override
+  public SwaptionSensitivity cloned() {
+    return this;
+  }
+
   //------------------------- AUTOGENERATED START -------------------------
   ///CLOVER:OFF
   /**
@@ -148,21 +170,24 @@ public class SwaptionSensitivity
    */
   private static final long serialVersionUID = 1L;
 
-  /**
-   * Restricted constructor.
-   * @param builder  the builder to copy from, not null
-   */
-  protected SwaptionSensitivity(SwaptionSensitivity.Builder builder) {
-    JodaBeanUtils.notNull(builder.index, "index");
-    JodaBeanUtils.notNull(builder.expiry, "expiry");
-    JodaBeanUtils.notNull(builder.currency, "currency");
-    this.index = builder.index;
-    this.expiry = builder.expiry;
-    this.tenor = builder.tenor;
-    this.strike = builder.strike;
-    this.forward = builder.forward;
-    this.currency = builder.currency;
-    this.sensitivity = builder.sensitivity;
+  private SwaptionSensitivity(
+      IborIndex index,
+      ZonedDateTime expiry,
+      double tenor,
+      double strike,
+      double forward,
+      Currency currency,
+      double sensitivity) {
+    JodaBeanUtils.notNull(index, "index");
+    JodaBeanUtils.notNull(expiry, "expiry");
+    JodaBeanUtils.notNull(currency, "currency");
+    this.index = index;
+    this.expiry = expiry;
+    this.tenor = tenor;
+    this.strike = strike;
+    this.forward = forward;
+    this.currency = currency;
+    this.sensitivity = sensitivity;
   }
 
   @Override
@@ -182,7 +207,7 @@ public class SwaptionSensitivity
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the index on which the underlying swap is based. TODO: should be replace by the swap template
+   * Gets the index on which the underlying swap is based.
    * @return the value of the property, not null
    */
   public IborIndex getIndex() {
@@ -209,7 +234,7 @@ public class SwaptionSensitivity
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the swaption strike rate
+   * Gets the swaption strike rate.
    * @return the value of the property
    */
   public double getStrike() {
@@ -218,7 +243,7 @@ public class SwaptionSensitivity
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the underlying swap forward rate
+   * Gets the underlying swap forward rate.
    * @return the value of the property
    */
   public double getForward() {
@@ -227,7 +252,7 @@ public class SwaptionSensitivity
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the currency of the curve for which the sensitivity is computed.
+   * Gets the currency for which the sensitivity is computed.
    * @return the value of the property, not null
    */
   @Override
@@ -281,30 +306,22 @@ public class SwaptionSensitivity
   public String toString() {
     StringBuilder buf = new StringBuilder(256);
     buf.append("SwaptionSensitivity{");
-    int len = buf.length();
-    toString(buf);
-    if (buf.length() > len) {
-      buf.setLength(buf.length() - 2);
-    }
+    buf.append("index").append('=').append(getIndex()).append(',').append(' ');
+    buf.append("expiry").append('=').append(getExpiry()).append(',').append(' ');
+    buf.append("tenor").append('=').append(getTenor()).append(',').append(' ');
+    buf.append("strike").append('=').append(getStrike()).append(',').append(' ');
+    buf.append("forward").append('=').append(getForward()).append(',').append(' ');
+    buf.append("currency").append('=').append(getCurrency()).append(',').append(' ');
+    buf.append("sensitivity").append('=').append(JodaBeanUtils.toString(getSensitivity()));
     buf.append('}');
     return buf.toString();
-  }
-
-  protected void toString(StringBuilder buf) {
-    buf.append("index").append('=').append(JodaBeanUtils.toString(getIndex())).append(',').append(' ');
-    buf.append("expiry").append('=').append(JodaBeanUtils.toString(getExpiry())).append(',').append(' ');
-    buf.append("tenor").append('=').append(JodaBeanUtils.toString(getTenor())).append(',').append(' ');
-    buf.append("strike").append('=').append(JodaBeanUtils.toString(getStrike())).append(',').append(' ');
-    buf.append("forward").append('=').append(JodaBeanUtils.toString(getForward())).append(',').append(' ');
-    buf.append("currency").append('=').append(JodaBeanUtils.toString(getCurrency())).append(',').append(' ');
-    buf.append("sensitivity").append('=').append(JodaBeanUtils.toString(getSensitivity())).append(',').append(' ');
   }
 
   //-----------------------------------------------------------------------
   /**
    * The meta-bean for {@code SwaptionSensitivity}.
    */
-  public static class Meta extends DirectMetaBean {
+  public static final class Meta extends DirectMetaBean {
     /**
      * The singleton instance of the meta-bean.
      */
@@ -361,7 +378,7 @@ public class SwaptionSensitivity
     /**
      * Restricted constructor.
      */
-    protected Meta() {
+    private Meta() {
     }
 
     @Override
@@ -405,7 +422,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code index} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<IborIndex> index() {
+    public MetaProperty<IborIndex> index() {
       return index;
     }
 
@@ -413,7 +430,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code expiry} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<ZonedDateTime> expiry() {
+    public MetaProperty<ZonedDateTime> expiry() {
       return expiry;
     }
 
@@ -421,7 +438,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code tenor} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<Double> tenor() {
+    public MetaProperty<Double> tenor() {
       return tenor;
     }
 
@@ -429,7 +446,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code strike} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<Double> strike() {
+    public MetaProperty<Double> strike() {
       return strike;
     }
 
@@ -437,7 +454,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code forward} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<Double> forward() {
+    public MetaProperty<Double> forward() {
       return forward;
     }
 
@@ -445,7 +462,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code currency} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<Currency> currency() {
+    public MetaProperty<Currency> currency() {
       return currency;
     }
 
@@ -453,7 +470,7 @@ public class SwaptionSensitivity
      * The meta-property for the {@code sensitivity} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<Double> sensitivity() {
+    public MetaProperty<Double> sensitivity() {
       return sensitivity;
     }
 
@@ -494,7 +511,7 @@ public class SwaptionSensitivity
   /**
    * The bean-builder for {@code SwaptionSensitivity}.
    */
-  private static class Builder extends DirectFieldsBeanBuilder<SwaptionSensitivity> {
+  private static final class Builder extends DirectFieldsBeanBuilder<SwaptionSensitivity> {
 
     private IborIndex index;
     private ZonedDateTime expiry;
@@ -507,7 +524,7 @@ public class SwaptionSensitivity
     /**
      * Restricted constructor.
      */
-    protected Builder() {
+    private Builder() {
     }
 
     //-----------------------------------------------------------------------
@@ -589,7 +606,14 @@ public class SwaptionSensitivity
 
     @Override
     public SwaptionSensitivity build() {
-      return new SwaptionSensitivity(this);
+      return new SwaptionSensitivity(
+          index,
+          expiry,
+          tenor,
+          strike,
+          forward,
+          currency,
+          sensitivity);
     }
 
     //-----------------------------------------------------------------------
@@ -597,23 +621,15 @@ public class SwaptionSensitivity
     public String toString() {
       StringBuilder buf = new StringBuilder(256);
       buf.append("SwaptionSensitivity.Builder{");
-      int len = buf.length();
-      toString(buf);
-      if (buf.length() > len) {
-        buf.setLength(buf.length() - 2);
-      }
-      buf.append('}');
-      return buf.toString();
-    }
-
-    protected void toString(StringBuilder buf) {
       buf.append("index").append('=').append(JodaBeanUtils.toString(index)).append(',').append(' ');
       buf.append("expiry").append('=').append(JodaBeanUtils.toString(expiry)).append(',').append(' ');
       buf.append("tenor").append('=').append(JodaBeanUtils.toString(tenor)).append(',').append(' ');
       buf.append("strike").append('=').append(JodaBeanUtils.toString(strike)).append(',').append(' ');
       buf.append("forward").append('=').append(JodaBeanUtils.toString(forward)).append(',').append(' ');
       buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
-      buf.append("sensitivity").append('=').append(JodaBeanUtils.toString(sensitivity)).append(',').append(' ');
+      buf.append("sensitivity").append('=').append(JodaBeanUtils.toString(sensitivity));
+      buf.append('}');
+      return buf.toString();
     }
 
   }

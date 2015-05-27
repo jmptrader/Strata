@@ -7,20 +7,20 @@ package com.opengamma.strata.function;
 
 import java.time.LocalDate;
 
-import com.opengamma.strata.engine.calculations.CalculationRequirements;
-import com.opengamma.strata.engine.calculations.function.EngineSingleFunction;
+import com.opengamma.strata.engine.calculations.function.CalculationSingleFunction;
 import com.opengamma.strata.engine.marketdata.CalculationMarketData;
+import com.opengamma.strata.engine.marketdata.CalculationRequirements;
 import com.opengamma.strata.finance.Trade;
 
 /**
  * Returns the trade date of a trade.
  */
 public class TradeDateFunction
-    implements EngineSingleFunction<Trade, LocalDate> {
+    implements CalculationSingleFunction<Trade, LocalDate> {
 
   @Override
   public CalculationRequirements requirements(Trade target) {
-    return CalculationRequirements.EMPTY;
+    return CalculationRequirements.empty();
   }
 
   @Override

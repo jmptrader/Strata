@@ -1,8 +1,10 @@
+description = "Function and Integration logic between the engine and pricing"
+
 dependencies {
 	compile project(":engine")
-	compile project(":market-data")
+	compile project(":market")
 	compile project(":basics")
-	compile "com.opengamma.analytics:og-analytics:${ogAnalyticsVersion}"
+	compile ogAnalytics()
 
 	testCompile project(":pricer")
 	testCompile project(":pricer-testutils")

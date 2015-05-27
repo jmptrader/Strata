@@ -19,7 +19,7 @@ import static com.opengamma.strata.basics.schedule.RollConventions.NONE;
 import static com.opengamma.strata.basics.schedule.RollConventions.SFE;
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
+import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static com.opengamma.strata.collect.TestHelper.date;
@@ -65,12 +65,12 @@ public class RollConventionTest {
 
   @Test(dataProvider = "types")
   public void test_null(RollConvention type) {
-    assertThrows(() -> type.adjust(null), IllegalArgumentException.class);
-    assertThrows(() -> type.matches(null), IllegalArgumentException.class);
-    assertThrows(() -> type.next(date(2014, JULY, 1), null), IllegalArgumentException.class);
-    assertThrows(() -> type.next(null, P3M), IllegalArgumentException.class);
-    assertThrows(() -> type.previous(date(2014, JULY, 1), null), IllegalArgumentException.class);
-    assertThrows(() -> type.previous(null, P3M), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> type.adjust(null));
+    assertThrowsIllegalArg(() -> type.matches(null));
+    assertThrowsIllegalArg(() -> type.next(date(2014, JULY, 1), null));
+    assertThrowsIllegalArg(() -> type.next(null, P3M));
+    assertThrowsIllegalArg(() -> type.previous(date(2014, JULY, 1), null));
+    assertThrowsIllegalArg(() -> type.previous(null, P3M));
   }
 
   //-------------------------------------------------------------------------
@@ -89,7 +89,7 @@ public class RollConventionTest {
         {EOM, date(2014, SEPTEMBER, 1), date(2014, SEPTEMBER, 30)},
         {EOM, date(2014, SEPTEMBER, 30), date(2014, SEPTEMBER, 30)},
         {EOM, date(2014, FEBRUARY, 1), date(2014, FEBRUARY, 28)},
-        
+
         {IMM, date(2014, AUGUST, 1), date(2014, AUGUST, 20)},
         {IMM, date(2014, AUGUST, 6), date(2014, AUGUST, 20)},
         {IMM, date(2014, AUGUST, 19), date(2014, AUGUST, 20)},
@@ -97,7 +97,7 @@ public class RollConventionTest {
         {IMM, date(2014, AUGUST, 21), date(2014, AUGUST, 20)},
         {IMM, date(2014, AUGUST, 31), date(2014, AUGUST, 20)},
         {IMM, date(2014, SEPTEMBER, 1), date(2014, SEPTEMBER, 17)},
-        
+
         {IMMAUD, date(2014, AUGUST, 1), date(2014, AUGUST, 7)},
         {IMMAUD, date(2014, AUGUST, 6), date(2014, AUGUST, 7)},
         {IMMAUD, date(2014, AUGUST, 7), date(2014, AUGUST, 7)},
@@ -106,7 +106,7 @@ public class RollConventionTest {
         {IMMAUD, date(2014, SEPTEMBER, 1), date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, OCTOBER, 1), date(2014, OCTOBER, 9)},
         {IMMAUD, date(2014, NOVEMBER, 1), date(2014, NOVEMBER, 13)},
-        
+
         {IMMNZD, date(2014, AUGUST, 1), date(2014, AUGUST, 13)},
         {IMMNZD, date(2014, AUGUST, 6), date(2014, AUGUST, 13)},
         {IMMNZD, date(2014, AUGUST, 12), date(2014, AUGUST, 13)},
@@ -116,7 +116,7 @@ public class RollConventionTest {
         {IMMNZD, date(2014, SEPTEMBER, 1), date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, OCTOBER, 1), date(2014, OCTOBER, 15)},
         {IMMNZD, date(2014, NOVEMBER, 1), date(2014, NOVEMBER, 12)},
-        
+
         {SFE, date(2014, AUGUST, 1), date(2014, AUGUST, 8)},
         {SFE, date(2014, AUGUST, 6), date(2014, AUGUST, 8)},
         {SFE, date(2014, AUGUST, 7), date(2014, AUGUST, 8)},
@@ -142,19 +142,19 @@ public class RollConventionTest {
         {EOM, date(2014, AUGUST, 31), true},
         {EOM, date(2014, SEPTEMBER, 1), false},
         {EOM, date(2014, SEPTEMBER, 30), true},
-        
+
         {IMM, date(2014, SEPTEMBER, 16), false},
         {IMM, date(2014, SEPTEMBER, 17), true},
         {IMM, date(2014, SEPTEMBER, 18), false},
-        
+
         {IMMAUD, date(2014, SEPTEMBER, 10), false},
         {IMMAUD, date(2014, SEPTEMBER, 11), true},
         {IMMAUD, date(2014, SEPTEMBER, 12), false},
-        
+
         {IMMNZD, date(2014, SEPTEMBER, 9), false},
         {IMMNZD, date(2014, SEPTEMBER, 10), true},
         {IMMNZD, date(2014, SEPTEMBER, 11), false},
-        
+
         {SFE, date(2014, SEPTEMBER, 11), false},
         {SFE, date(2014, SEPTEMBER, 12), true},
         {SFE, date(2014, SEPTEMBER, 13), false},
@@ -184,7 +184,7 @@ public class RollConventionTest {
         {EOM, date(2014, JANUARY, 1), P1D, date(2014, JANUARY, 31)},
         {EOM, date(2014, JANUARY, 31), P1D, date(2014, FEBRUARY, 28)},
         {EOM, date(2014, FEBRUARY, 1), P1D, date(2014, FEBRUARY, 28)},
-        
+
         {IMM, date(2014, AUGUST, 1), P1M, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, AUGUST, 31), P1M, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, SEPTEMBER, 1), P1M, date(2014, OCTOBER, 15)},
@@ -197,7 +197,7 @@ public class RollConventionTest {
         {IMM, date(2014, SEPTEMBER, 16), P1D, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, SEPTEMBER, 17), P1D, date(2014, OCTOBER, 15)},
         {IMM, date(2014, SEPTEMBER, 30), P1D, date(2014, OCTOBER, 15)},
-        
+
         {IMMAUD, date(2014, AUGUST, 1), P1M, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, AUGUST, 31), P1M, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, SEPTEMBER, 1), P1M, date(2014, OCTOBER, 9)},
@@ -210,7 +210,7 @@ public class RollConventionTest {
         {IMMAUD, date(2014, SEPTEMBER, 10), P1D, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, SEPTEMBER, 11), P1D, date(2014, OCTOBER, 9)},
         {IMMAUD, date(2014, SEPTEMBER, 30), P1D, date(2014, OCTOBER, 9)},
-        
+
         {IMMNZD, date(2014, AUGUST, 1), P1M, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, AUGUST, 31), P1M, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, SEPTEMBER, 1), P1M, date(2014, OCTOBER, 15)},
@@ -223,7 +223,7 @@ public class RollConventionTest {
         {IMMNZD, date(2014, SEPTEMBER, 9), P1D, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, SEPTEMBER, 10), P1D, date(2014, OCTOBER, 15)},
         {IMMNZD, date(2014, SEPTEMBER, 30), P1D, date(2014, OCTOBER, 15)},
-        
+
         {SFE, date(2014, AUGUST, 1), P1M, date(2014, SEPTEMBER, 12)},
         {SFE, date(2014, AUGUST, 31), P1M, date(2014, SEPTEMBER, 12)},
         {SFE, date(2014, SEPTEMBER, 1), P1M, date(2014, OCTOBER, 10)},
@@ -257,7 +257,7 @@ public class RollConventionTest {
         {EOM, date(2014, NOVEMBER, 1), P3M, date(2014, AUGUST, 31)},
         {EOM, date(2014, OCTOBER, 1), P1D, date(2014, SEPTEMBER, 30)},
         {EOM, date(2014, OCTOBER, 30), P1D, date(2014, SEPTEMBER, 30)},
-        
+
         {IMM, date(2014, OCTOBER, 1), P1M, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, OCTOBER, 31), P1M, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, NOVEMBER, 1), P1M, date(2014, OCTOBER, 15)},
@@ -270,7 +270,7 @@ public class RollConventionTest {
         {IMM, date(2014, SEPTEMBER, 17), P1D, date(2014, AUGUST, 20)},
         {IMM, date(2014, SEPTEMBER, 18), P1D, date(2014, SEPTEMBER, 17)},
         {IMM, date(2014, SEPTEMBER, 30), P1D, date(2014, SEPTEMBER, 17)},
-        
+
         {IMMAUD, date(2014, OCTOBER, 1), P1M, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, OCTOBER, 31), P1M, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, NOVEMBER, 1), P1M, date(2014, OCTOBER, 9)},
@@ -283,7 +283,7 @@ public class RollConventionTest {
         {IMMAUD, date(2014, OCTOBER, 9), P1D, date(2014, SEPTEMBER, 11)},
         {IMMAUD, date(2014, OCTOBER, 10), P1D, date(2014, OCTOBER, 9)},
         {IMMAUD, date(2014, OCTOBER, 30), P1D, date(2014, OCTOBER, 9)},
-        
+
         {IMMNZD, date(2014, OCTOBER, 1), P1M, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, OCTOBER, 31), P1M, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, NOVEMBER, 1), P1M, date(2014, OCTOBER, 15)},
@@ -296,7 +296,7 @@ public class RollConventionTest {
         {IMMNZD, date(2014, OCTOBER, 15), P1D, date(2014, SEPTEMBER, 10)},
         {IMMNZD, date(2014, OCTOBER, 16), P1D, date(2014, OCTOBER, 15)},
         {IMMNZD, date(2014, OCTOBER, 30), P1D, date(2014, OCTOBER, 15)},
-        
+
         {SFE, date(2014, OCTOBER, 1), P1M, date(2014, SEPTEMBER, 12)},
         {SFE, date(2014, OCTOBER, 31), P1M, date(2014, SEPTEMBER, 12)},
         {SFE, date(2014, NOVEMBER, 1), P1M, date(2014, OCTOBER, 10)},
@@ -366,8 +366,8 @@ public class RollConventionTest {
   }
 
   public void test_ofDayOfMonth_invalid() {
-    assertThrows(() -> RollConvention.ofDayOfMonth(0), IllegalArgumentException.class);
-    assertThrows(() -> RollConvention.ofDayOfMonth(32), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> RollConvention.ofDayOfMonth(0));
+    assertThrowsIllegalArg(() -> RollConvention.ofDayOfMonth(32));
   }
 
   public void test_ofDayOfMonth_adjust() {
@@ -539,11 +539,11 @@ public class RollConventionTest {
   }
 
   public void test_of_lookup_notFound() {
-    assertThrows(() -> RollConvention.of("Rubbish"), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> RollConvention.of("Rubbish"));
   }
 
   public void test_of_lookup_null() {
-    assertThrows(() -> RollConvention.of(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> RollConvention.of(null));
   }
 
   //-------------------------------------------------------------------------
@@ -551,19 +551,19 @@ public class RollConventionTest {
     RollConvention a = RollConventions.EOM;
     RollConvention b = RollConventions.DAY_1;
     RollConvention c = RollConventions.DAY_WED;
-    
+
     assertEquals(a.equals(a), true);
     assertEquals(a.equals(b), false);
     assertEquals(a.equals(c), false);
-    
+
     assertEquals(b.equals(a), false);
     assertEquals(b.equals(b), true);
     assertEquals(b.equals(c), false);
-    
+
     assertEquals(c.equals(a), false);
     assertEquals(c.equals(b), false);
     assertEquals(c.equals(c), true);
-    
+
     assertEquals(a.hashCode(), a.hashCode());
   }
 

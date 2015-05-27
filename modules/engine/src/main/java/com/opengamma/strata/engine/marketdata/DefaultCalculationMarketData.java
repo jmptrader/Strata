@@ -8,13 +8,13 @@ package com.opengamma.strata.engine.marketdata;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.opengamma.strata.basics.market.MarketDataId;
+import com.opengamma.strata.basics.market.MarketDataKey;
+import com.opengamma.strata.basics.market.ObservableId;
+import com.opengamma.strata.basics.market.ObservableKey;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.engine.marketdata.mapping.MarketDataMappings;
-import com.opengamma.strata.marketdata.id.MarketDataId;
-import com.opengamma.strata.marketdata.id.ObservableId;
-import com.opengamma.strata.marketdata.key.MarketDataKey;
-import com.opengamma.strata.marketdata.key.ObservableKey;
 
 /**
  * A source of market data used for a calculation across multiple scenarios.
@@ -28,6 +28,8 @@ public final class DefaultCalculationMarketData implements CalculationMarketData
   private final MarketDataMappings marketDataMappings;
 
   /**
+   * Creates a new set of market data.
+   *
    * @param marketData  the market data
    * @param marketDataMappings  mappings to convert from the market data keys passed to the methods to IDs used
    *   for looking up the market data
@@ -54,7 +56,7 @@ public final class DefaultCalculationMarketData implements CalculationMarketData
   }
 
   @Override
-  public List<LocalDateDoubleTimeSeries> getTimeSeries(ObservableKey key) {
+  public LocalDateDoubleTimeSeries getTimeSeries(ObservableKey key) {
     ObservableId id = marketDataMappings.getIdForObservableKey(key);
     return marketData.getTimeSeries(id);
   }

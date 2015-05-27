@@ -39,7 +39,7 @@
     </dependency>
     <dependency>
       <groupId>com.opengamma.strata</groupId>
-      <artifactId>strata-market-data</artifactId>
+      <artifactId>strata-market</artifactId>
     </dependency>
     <dependency>
       <groupId>com.opengamma.strata</groupId>
@@ -75,7 +75,7 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
-    <!-- TODO This is a temporary dependency on legacy code -->
+    <!-- TODO Temporary dependency on analytics -->
     <dependency>
       <groupId>com.opengamma.analytics</groupId>
       <artifactId>og-analytics</artifactId>

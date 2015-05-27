@@ -18,6 +18,7 @@ import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.currency.FxMatrix.entriesToFxMatrix;
 import static com.opengamma.strata.basics.currency.FxMatrix.pairsToFxMatrix;
 import static com.opengamma.strata.collect.TestHelper.assertThrows;
+import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 
@@ -46,7 +47,7 @@ public class FxMatrixTest {
   public void emptyMatrixCannotDoConversion() {
     FxMatrix matrix = FxMatrix.builder().build();
     assertThat(matrix.getCurrencies()).isEmpty();
-    assertThrows(() -> matrix.fxRate(USD, EUR), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> matrix.fxRate(USD, EUR));
   }
 
   public void singleRateMatrixByOfCurrencyPairFactory() {
@@ -87,7 +88,7 @@ public class FxMatrixTest {
         .addRate(GBP, USD, 1.6)
         .build();
     assertThat(matrix.getCurrencies()).containsOnly(GBP, USD);
-    assertThrows(() -> matrix.fxRate(USD, EUR), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> matrix.fxRate(USD, EUR));
   }
 
   public void matrixCalculatesCrossRates() {
@@ -161,9 +162,9 @@ public class FxMatrixTest {
     Expected data as produced from old analytics FxMatrix
 
     [USD, GBP,    EUR] - {
-USD {1.0 ,0.666, 0.714283},
-GBP {1.5, 1.0,   1.071428},
-EUR {1.4, 0.933, 1.0}}
+    USD {1.0 ,0.666, 0.714283},
+    GBP {1.5, 1.0,   1.071428},
+    EUR {1.4, 0.933, 1.0}}
 
     [USD,     GBP,    EUR] - {
     {1.0,     0.625,  0.66964},
@@ -234,7 +235,6 @@ EUR {1.4, 0.933, 1.0}}
     assertThat(matrix2.fxRate(GBP, USD)).isEqualTo(1.6);
   }
 
-
   public void addSimpleMultipleRates() {
 
     // Use linked to force the order of evaluation
@@ -256,7 +256,7 @@ EUR {1.4, 0.933, 1.0}}
     assertThat(matrix.fxRate(EUR, GBP)).isEqualTo(1.4 / 1.6, TOL);
     assertThat(matrix.fxRate(GBP, EUR)).isEqualTo(1.6 / 1.4, TOL);
   }
-  
+
   public void addMultipleRatesContainingEntryWithNoCommonCurrency() {
 
     LinkedHashMap<CurrencyPair, Double> rates = new LinkedHashMap<>();
@@ -300,7 +300,7 @@ EUR {1.4, 0.933, 1.0}}
   public void streamEntriesToMatrix() {
 
     // If we obtain a stream of rates we can collect to an fx matrix
-    Map<CurrencyPair, Double> rates = 
+    Map<CurrencyPair, Double> rates =
         ImmutableMap.<CurrencyPair, Double>builder()
             .put(CurrencyPair.of(GBP, USD), 1.6)
             .put(CurrencyPair.of(EUR, USD), 1.4)
@@ -470,7 +470,7 @@ EUR {1.4, 0.933, 1.0}}
         .addRate(SEK, AUD, 0.16)
         .build();
 
-    assertThrows(() -> matrix1.merge(matrix2), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> matrix1.merge(matrix2));
   }
 
   public void mergeIgnoresDuplicateCurrencies() {

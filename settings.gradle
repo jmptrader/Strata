@@ -2,6 +2,7 @@ rootProject.name = 'Strata'
 
 List<String> modules = [
         "basics",
+        "basics-testutils",
         "collect",
 		"collect-testutils",
         "curve",
@@ -11,7 +12,7 @@ List<String> modules = [
         "finance-testutils",
         "function",
         "function-beta",
-        "market-data",
+        "market",
         "pricer",
         "pricer-beta",
         "pricer-testutils",
@@ -25,7 +26,20 @@ modules.each { m ->
 
 include "examples"
 
-//if(System.properties['bootstrap']) {
-//        include "analytics"
-//        project(":analytics").projectDir = file "../Analytics"
-//}
+if(System.properties['analytics.ref'])
+{
+        include "analytics"
+        project(":analytics").projectDir = file "modules/analytics"
+
+        String sourceBuildscriptSource = this.class.getResource("/analytics.gradle").text
+        File targetBuildscriptFile = new File(project(":analytics").projectDir, "build.gradle")
+        targetBuildscriptFile.parentFile.mkdirs()
+        targetBuildscriptFile.text = """\
+/**
+ * Modifications to this file will be overwritten
+ * Make changes in \$projectRoot/buildSrc/src/resources/analytics.gradle instead
+ */
+
+${sourceBuildscriptSource}
+"""
+}

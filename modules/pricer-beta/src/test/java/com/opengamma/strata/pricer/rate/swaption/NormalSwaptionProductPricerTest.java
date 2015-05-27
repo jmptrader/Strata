@@ -5,14 +5,14 @@
  */
 package com.opengamma.strata.pricer.rate.swaption;
 
-import static com.opengamma.strata.basics.PayReceive.RECEIVE;
 import static com.opengamma.strata.basics.PayReceive.PAY;
+import static com.opengamma.strata.basics.PayReceive.RECEIVE;
 import static com.opengamma.strata.basics.currency.Currency.USD;
-import static com.opengamma.strata.basics.date.DayCounts.THIRTY_U_360;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.PRECEDING;
-import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
+import static com.opengamma.strata.basics.date.DayCounts.THIRTY_U_360;
 import static com.opengamma.strata.basics.date.HolidayCalendars.USNY;
+import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -45,18 +45,18 @@ import com.opengamma.strata.finance.rate.swap.RateCalculationSwapLeg;
 import com.opengamma.strata.finance.rate.swap.Swap;
 import com.opengamma.strata.finance.rate.swap.SwapLegType;
 import com.opengamma.strata.finance.rate.swaption.Swaption;
+import com.opengamma.strata.market.sensitivity.CurveParameterSensitivity;
+import com.opengamma.strata.market.sensitivity.PointSensitivities;
 import com.opengamma.strata.pricer.datasets.RatesProviderDataSets;
 import com.opengamma.strata.pricer.provider.NormalVolatilityExpiryTenorSwaptionProvider;
 import com.opengamma.strata.pricer.provider.NormalVolatilitySwaptionProvider;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
 import com.opengamma.strata.pricer.rate.swap.DiscountingSwapProductPricer;
-import com.opengamma.strata.pricer.sensitivity.CurveParameterSensitivity;
-import com.opengamma.strata.pricer.sensitivity.PointSensitivities;
 import com.opengamma.strata.pricer.sensitivity.RatesFiniteDifferenceSensitivityCalculator;
 import com.opengamma.strata.pricer.sensitivity.SwaptionSensitivity;
 
 /**
- * Tests {@link NormalSwaptionProductPricer}.
+ * Tests {@link NormalSwaptionProductPricerBeta}.
  */
 public class NormalSwaptionProductPricerTest {
   
@@ -89,7 +89,7 @@ public class NormalSwaptionProductPricerTest {
 
   public static final NormalPriceFunction NORMAL = new NormalPriceFunction();
 
-  private static final NormalSwaptionProductPricer PRICER_SWAPTION_NORMAL = NormalSwaptionProductPricer.DEFAULT;
+  private static final NormalSwaptionProductPricerBeta PRICER_SWAPTION_NORMAL = NormalSwaptionProductPricerBeta.DEFAULT;
   private static final DiscountingSwapProductPricer PRICER_SWAP = DiscountingSwapProductPricer.DEFAULT;
   private static final double FD_SHIFT = 0.5E-8;
   private static final RatesFiniteDifferenceSensitivityCalculator FINITE_DIFFERENCE_CALCULATOR = 
@@ -257,7 +257,7 @@ public class NormalSwaptionProductPricerTest {
             .build())
         .paymentSchedule(PaymentSchedule.builder()
             .paymentFrequency(frequency)
-            .paymentOffset(DaysAdjustment.NONE)
+            .paymentDateOffset(DaysAdjustment.NONE)
             .build())
         .notionalSchedule(notional)
         .calculation(FixedRateCalculation.builder()
@@ -283,13 +283,13 @@ public class NormalSwaptionProductPricerTest {
             .build())
         .paymentSchedule(PaymentSchedule.builder()
             .paymentFrequency(freq)
-            .paymentOffset(DaysAdjustment.NONE)
+            .paymentDateOffset(DaysAdjustment.NONE)
             .build())
         .notionalSchedule(notional)
         .calculation(IborRateCalculation.builder()
             .dayCount(index.getDayCount())
             .index(index)
-            .fixingOffset(DaysAdjustment.ofBusinessDays(-2, index.getFixingCalendar(), BDA_P))
+            .fixingDateOffset(DaysAdjustment.ofBusinessDays(-2, index.getFixingCalendar(), BDA_P))
             .build())
         .build();
   }

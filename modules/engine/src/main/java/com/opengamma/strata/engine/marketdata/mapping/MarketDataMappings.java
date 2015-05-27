@@ -5,10 +5,13 @@
  */
 package com.opengamma.strata.engine.marketdata.mapping;
 
-import com.opengamma.strata.marketdata.id.MarketDataId;
-import com.opengamma.strata.marketdata.id.ObservableId;
-import com.opengamma.strata.marketdata.key.MarketDataKey;
-import com.opengamma.strata.marketdata.key.ObservableKey;
+import java.util.List;
+
+import com.opengamma.strata.basics.market.MarketDataFeed;
+import com.opengamma.strata.basics.market.MarketDataId;
+import com.opengamma.strata.basics.market.MarketDataKey;
+import com.opengamma.strata.basics.market.ObservableId;
+import com.opengamma.strata.basics.market.ObservableKey;
 
 /**
  * Market data mappings specify which market data from the global set of data should be used for a particular
@@ -24,12 +27,19 @@ import com.opengamma.strata.marketdata.key.ObservableKey;
 public interface MarketDataMappings {
 
   /**
-   * Returns a mutable builder for building instances of {@link MarketDataMappings}.
+   * Returns a set of market data mappings with the specified source of observable data and made up
+   * of the specified individual mappings.
    *
-   * @return a mutable builder for building instances of {@link MarketDataMappings}
+   * @param marketDataFeed  the feed that is the source of the market data, for example Bloomberg or Reuters
+   * @param mappings  mappings for converting market data requests from calculations into requests that
+   *   can be used to query the global set of market data
+   * @return a set of mappings containing the specified feed and mapping instances
    */
-  public static MarketDataMappingsBuilder builder() {
-    return new MarketDataMappingsBuilder();
+  public static MarketDataMappings of(
+      MarketDataFeed marketDataFeed,
+      List<? extends MarketDataMapping<?, ?>> mappings) {
+
+    return DefaultMarketDataMappings.of(marketDataFeed, mappings);
   }
 
   /**

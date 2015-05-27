@@ -1,9 +1,11 @@
+description = "Calculation engine"
+
 dependencies {
 	compile project(":collect")
-	compile project(":market-data")
+	compile project(":market")
 	compile project(":pricer")
 
-	compile "com.opengamma.analytics:og-analytics:${ogAnalyticsVersion}"
+	compile ogAnalytics()
 
 	testCompile project(":collect-testutils")
 }

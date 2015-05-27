@@ -9,10 +9,10 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.opengamma.strata.basics.market.MarketDataId;
+import com.opengamma.strata.basics.market.ObservableId;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
-import com.opengamma.strata.marketdata.id.MarketDataId;
-import com.opengamma.strata.marketdata.id.ObservableId;
 
 /**
  * A mutable builder for building up {@link BaseMarketData} instances.
@@ -76,7 +76,7 @@ public final class BaseMarketDataBuilder {
    * @param values  the items of market data, keyed by ID
    * @return this builder
    */
-  public BaseMarketDataBuilder addAllValues(Map<? extends MarketDataId<?>, Object> values) {
+  public BaseMarketDataBuilder addAllValues(Map<? extends MarketDataId<?>, ?> values) {
     ArgChecker.notNull(values, "values");
     this.values.putAll(values);
     return this;

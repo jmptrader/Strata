@@ -6,7 +6,6 @@
 package com.opengamma.strata.basics.currency;
 
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
 import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static org.testng.Assert.assertEquals;
@@ -50,14 +49,14 @@ public class FxRateTest {
   }
 
   public void test_of_CurrencyCurrencyDouble_invalid() {
-    assertThrows(() -> FxRate.of(GBP, USD, -1.5d), IllegalArgumentException.class);
-    assertThrows(() -> FxRate.of(GBP, GBP, 2d), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> FxRate.of(GBP, USD, -1.5d));
+    assertThrowsIllegalArg(() -> FxRate.of(GBP, GBP, 2d));
   }
 
   public void test_of_CurrencyCurrencyDouble_null() {
-    assertThrows(() -> FxRate.of((Currency) null, USD, 1.5d), IllegalArgumentException.class);
-    assertThrows(() -> FxRate.of(USD, (Currency) null, 1.5d), IllegalArgumentException.class);
-    assertThrows(() -> FxRate.of((Currency) null, (Currency) null, 1.5d), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> FxRate.of((Currency) null, USD, 1.5d));
+    assertThrowsIllegalArg(() -> FxRate.of(USD, (Currency) null, 1.5d));
+    assertThrowsIllegalArg(() -> FxRate.of((Currency) null, (Currency) null, 1.5d));
   }
 
   //-------------------------------------------------------------------------
@@ -83,12 +82,12 @@ public class FxRateTest {
   }
 
   public void test_of_CurrencyPairDouble_invalid() {
-    assertThrows(() -> FxRate.of(CurrencyPair.of(GBP, USD), -1.5d), IllegalArgumentException.class);
-    assertThrows(() -> FxRate.of(CurrencyPair.of(USD, USD), 2d), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> FxRate.of(CurrencyPair.of(GBP, USD), -1.5d));
+    assertThrowsIllegalArg(() -> FxRate.of(CurrencyPair.of(USD, USD), 2d));
   }
 
   public void test_of_CurrencyPairDouble_null() {
-    assertThrows(() -> FxRate.of((CurrencyPair) null, 1.5d), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> FxRate.of((CurrencyPair) null, 1.5d));
   }
 
   //-------------------------------------------------------------------------
@@ -170,22 +169,22 @@ public class FxRateTest {
     FxRate a2 = FxRate.of(AUD, GBP, 1.25d);
     FxRate b = FxRate.of(USD, GBP, 1.25d);
     FxRate c = FxRate.of(USD, GBP, 1.35d);
-    
+
     assertEquals(a1.equals(a1), true);
     assertEquals(a1.equals(a2), true);
     assertEquals(a1.equals(b), false);
     assertEquals(a1.equals(c), false);
-    
+
     assertEquals(b.equals(a1), false);
     assertEquals(b.equals(a2), false);
     assertEquals(b.equals(b), true);
     assertEquals(b.equals(c), false);
-    
+
     assertEquals(c.equals(a1), false);
     assertEquals(c.equals(a2), false);
     assertEquals(c.equals(b), false);
     assertEquals(c.equals(c), true);
-    
+
     assertEquals(a1.hashCode(), a2.hashCode());
   }
 

@@ -27,6 +27,7 @@ import static com.opengamma.strata.basics.schedule.Frequency.P6M;
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.assertThrows;
+import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static com.opengamma.strata.collect.TestHelper.date;
@@ -67,14 +68,14 @@ public class DayCountTest {
 
   @Test(dataProvider = "types")
   public void test_null(DayCount type) {
-    assertThrows(() -> type.yearFraction(null, JAN_01), IllegalArgumentException.class);
-    assertThrows(() -> type.yearFraction(JAN_01, null), IllegalArgumentException.class);
-    assertThrows(() -> type.yearFraction(null, null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> type.yearFraction(null, JAN_01));
+    assertThrowsIllegalArg(() -> type.yearFraction(JAN_01, null));
+    assertThrowsIllegalArg(() -> type.yearFraction(null, null));
   }
 
   @Test(dataProvider = "types")
   public void test_wrongOrder(DayCount type) {
-    assertThrows(() -> type.yearFraction(JAN_02, JAN_01), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> type.yearFraction(JAN_02, JAN_01));
   }
 
   @Test(dataProvider = "types")
@@ -118,7 +119,7 @@ public class DayCountTest {
         {ONE_ONE, 2012, 2, 29, 2012, 3, 29, 1d},
         {ONE_ONE, 2012, 2, 29, 2012, 3, 28, 1d},
         {ONE_ONE, 2012, 3, 1, 2012, 3, 28, 1d},
-        
+
         //-------------------------------------------------------
         {ACT_ACT_ISDA, 2011, 12, 28, 2012, 2, 28, (4d / 365d + 58d / 366d)},
         {ACT_ACT_ISDA, 2011, 12, 28, 2012, 2, 29, (4d / 365d + 59d / 366d)},
@@ -129,7 +130,7 @@ public class DayCountTest {
         {ACT_ACT_ISDA, 2012, 2, 29, 2012, 3, 29, 29d / 366d},
         {ACT_ACT_ISDA, 2012, 2, 29, 2012, 3, 28, 28d / 366d},
         {ACT_ACT_ISDA, 2012, 3, 1, 2012, 3, 28, 27d / 366d},
-        
+
         //-------------------------------------------------------
         {ACT_ACT_AFB, 2011, 12, 28, 2012, 2, 28, (62d / 365d)},
         {ACT_ACT_AFB, 2011, 12, 28, 2012, 2, 29, (63d / 365d)},
@@ -140,7 +141,7 @@ public class DayCountTest {
         {ACT_ACT_AFB, 2012, 2, 28, 2012, 3, 28, 29d / 366d},
         {ACT_ACT_AFB, 2012, 2, 29, 2012, 3, 28, 28d / 366d},
         {ACT_ACT_AFB, 2012, 3, 1, 2012, 3, 28, 27d / 365d},
-        
+
         //-------------------------------------------------------
         {ACT_365_ACTUAL, 2011, 12, 28, 2012, 2, 28, (62d / 365d)},
         {ACT_365_ACTUAL, 2011, 12, 28, 2012, 2, 29, (63d / 366d)},
@@ -151,7 +152,7 @@ public class DayCountTest {
         {ACT_365_ACTUAL, 2012, 2, 28, 2012, 3, 28, 29d / 366d},
         {ACT_365_ACTUAL, 2012, 2, 29, 2012, 3, 28, 28d / 365d},
         {ACT_365_ACTUAL, 2012, 3, 1, 2012, 3, 28, 27d / 365d},
-        
+
         //-------------------------------------------------------
         {ACT_360, 2011, 12, 28, 2012, 2, 28, (62d / 360d)},
         {ACT_360, 2011, 12, 28, 2012, 2, 29, (63d / 360d)},
@@ -162,7 +163,7 @@ public class DayCountTest {
         {ACT_360, 2012, 2, 28, 2012, 3, 28, 29d / 360d},
         {ACT_360, 2012, 2, 29, 2012, 3, 28, 28d / 360d},
         {ACT_360, 2012, 3, 1, 2012, 3, 28, 27d / 360d},
-        
+
         //-------------------------------------------------------
         {ACT_364, 2011, 12, 28, 2012, 2, 28, (62d / 364d)},
         {ACT_364, 2011, 12, 28, 2012, 2, 29, (63d / 364d)},
@@ -173,7 +174,7 @@ public class DayCountTest {
         {ACT_364, 2012, 2, 28, 2012, 3, 28, 29d / 364d},
         {ACT_364, 2012, 2, 29, 2012, 3, 28, 28d / 364d},
         {ACT_364, 2012, 3, 1, 2012, 3, 28, 27d / 364d},
-        
+
         //-------------------------------------------------------
         {ACT_365F, 2011, 12, 28, 2012, 2, 28, (62d / 365d)},
         {ACT_365F, 2011, 12, 28, 2012, 2, 29, (63d / 365d)},
@@ -184,7 +185,7 @@ public class DayCountTest {
         {ACT_365F, 2012, 2, 28, 2012, 3, 28, 29d / 365d},
         {ACT_365F, 2012, 2, 29, 2012, 3, 28, 28d / 365d},
         {ACT_365F, 2012, 3, 1, 2012, 3, 28, 27d / 365d},
-        
+
         //-------------------------------------------------------
         {ACT_365_25, 2011, 12, 28, 2012, 2, 28, (62d / 365.25d)},
         {ACT_365_25, 2011, 12, 28, 2012, 2, 29, (63d / 365.25d)},
@@ -195,7 +196,7 @@ public class DayCountTest {
         {ACT_365_25, 2012, 2, 28, 2012, 3, 28, 29d / 365.25d},
         {ACT_365_25, 2012, 2, 29, 2012, 3, 28, 28d / 365.25d},
         {ACT_365_25, 2012, 3, 1, 2012, 3, 28, 27d / 365.25d},
-        
+
         //-------------------------------------------------------
         {NL_365, 2011, 12, 28, 2012, 2, 28, (62d / 365d)},
         {NL_365, 2011, 12, 28, 2012, 2, 29, (62d / 365d)},
@@ -207,7 +208,7 @@ public class DayCountTest {
         {NL_365, 2012, 2, 29, 2012, 3, 28, 28d / 365d},
         {NL_365, 2012, 3, 1, 2012, 3, 28, 27d / 365d},
         {NL_365, 2011, 12, 1, 2012, 12, 1, 365d / 365d},
-        
+
         //-------------------------------------------------------
         {THIRTY_360_ISDA, 2011, 12, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2011, 12, 28, 2012, 2, 29, SIMPLE_30_360},
@@ -215,13 +216,13 @@ public class DayCountTest {
         {THIRTY_360_ISDA, 2011, 12, 28, 2016, 2, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2011, 12, 28, 2016, 2, 29, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2011, 12, 28, 2016, 3, 1, SIMPLE_30_360},
-        
+
         {THIRTY_360_ISDA, 2012, 2, 28, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2012, 2, 29, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2011, 2, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2011, 2, 28, 2012, 2, 29, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2012, 2, 29, 2016, 2, 29, SIMPLE_30_360},
-        
+
         {THIRTY_360_ISDA, 2012, 3, 1, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2012, 5, 30, 2013, 8, 29, SIMPLE_30_360},
         {THIRTY_360_ISDA, 2012, 5, 29, 2013, 8, 30, SIMPLE_30_360},
@@ -230,7 +231,7 @@ public class DayCountTest {
         {THIRTY_360_ISDA, 2012, 5, 30, 2013, 8, 31, calc360(2012, 5, 30, 2013, 8, 30)},
         {THIRTY_360_ISDA, 2012, 5, 31, 2013, 8, 30, calc360(2012, 5, 30, 2013, 8, 30)},
         {THIRTY_360_ISDA, 2012, 5, 31, 2013, 8, 31, calc360(2012, 5, 30, 2013, 8, 30)},
-        
+
         //-------------------------------------------------------
         {THIRTY_E_360, 2011, 12, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2011, 12, 28, 2012, 2, 29, SIMPLE_30_360},
@@ -238,13 +239,13 @@ public class DayCountTest {
         {THIRTY_E_360, 2011, 12, 28, 2016, 2, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2011, 12, 28, 2016, 2, 29, SIMPLE_30_360},
         {THIRTY_E_360, 2011, 12, 28, 2016, 3, 1, SIMPLE_30_360},
-        
+
         {THIRTY_E_360, 2012, 2, 28, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2012, 2, 29, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2011, 2, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2011, 2, 28, 2012, 2, 29, SIMPLE_30_360},
         {THIRTY_E_360, 2012, 2, 29, 2016, 2, 29, SIMPLE_30_360},
-        
+
         {THIRTY_E_360, 2012, 3, 1, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_E_360, 2012, 5, 30, 2013, 8, 29, SIMPLE_30_360},
         {THIRTY_E_360, 2012, 5, 29, 2013, 8, 30, SIMPLE_30_360},
@@ -253,7 +254,7 @@ public class DayCountTest {
         {THIRTY_E_360, 2012, 5, 30, 2013, 8, 31, calc360(2012, 5, 30, 2013, 8, 30)},
         {THIRTY_E_360, 2012, 5, 31, 2013, 8, 30, calc360(2012, 5, 30, 2013, 8, 30)},
         {THIRTY_E_360, 2012, 5, 31, 2013, 8, 31, calc360(2012, 5, 30, 2013, 8, 30)},
-        
+
         //-------------------------------------------------------
         {THIRTY_EPLUS_360, 2011, 12, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2011, 12, 28, 2012, 2, 29, SIMPLE_30_360},
@@ -261,14 +262,14 @@ public class DayCountTest {
         {THIRTY_EPLUS_360, 2011, 12, 28, 2016, 2, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2011, 12, 28, 2016, 2, 29, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2011, 12, 28, 2016, 3, 1, SIMPLE_30_360},
-        
+
         {THIRTY_EPLUS_360, 2012, 2, 28, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2012, 2, 29, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2012, 3, 1, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2011, 2, 28, 2012, 2, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2011, 2, 28, 2012, 2, 29, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2012, 2, 29, 2016, 2, 29, SIMPLE_30_360},
-        
+
         {THIRTY_EPLUS_360, 2012, 3, 1, 2012, 3, 28, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2012, 5, 30, 2013, 8, 29, SIMPLE_30_360},
         {THIRTY_EPLUS_360, 2012, 5, 29, 2013, 8, 30, SIMPLE_30_360},
@@ -320,13 +321,13 @@ public class DayCountTest {
         {2011, 12, 28, 2016, 2, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2011, 12, 28, 2016, 2, 29, SIMPLE_30_360, SIMPLE_30_360},
         {2011, 12, 28, 2016, 3, 1, SIMPLE_30_360, SIMPLE_30_360},
-        
+
         {2012, 2, 28, 2012, 3, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 2, 29, 2012, 3, 28, SIMPLE_30_360, calc360(2012, 2, 30, 2012, 3, 28)},
         {2011, 2, 28, 2012, 2, 28, SIMPLE_30_360, calc360(2011, 2, 30, 2012, 2, 28)},
         {2011, 2, 28, 2012, 2, 29, SIMPLE_30_360, calc360(2011, 2, 30, 2012, 2, 30)},
         {2012, 2, 29, 2016, 2, 29, SIMPLE_30_360, calc360(2012, 2, 30, 2016, 2, 30)},
-        
+
         {2012, 3, 1, 2012, 3, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 5, 30, 2013, 8, 29, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 5, 29, 2013, 8, 30, SIMPLE_30_360, SIMPLE_30_360},
@@ -368,13 +369,13 @@ public class DayCountTest {
         {2011, 12, 28, 2016, 2, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2011, 12, 28, 2016, 2, 29, calc360(2011, 12, 28, 2016, 2, 30), SIMPLE_30_360},
         {2011, 12, 28, 2016, 3, 1, SIMPLE_30_360, SIMPLE_30_360},
-        
+
         {2012, 2, 28, 2012, 3, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 2, 29, 2012, 3, 28, calc360(2012, 2, 30, 2012, 3, 28), calc360(2012, 2, 30, 2012, 3, 28)},
         {2011, 2, 28, 2012, 2, 28, calc360(2011, 2, 30, 2012, 2, 28), calc360(2011, 2, 30, 2012, 2, 28)},
         {2011, 2, 28, 2012, 2, 29, calc360(2011, 2, 30, 2012, 2, 30), calc360(2011, 2, 30, 2012, 2, 29)},
         {2012, 2, 29, 2016, 2, 29, calc360(2012, 2, 30, 2016, 2, 30), calc360(2012, 2, 30, 2016, 2, 29)},
-        
+
         {2012, 3, 1, 2012, 3, 28, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 5, 30, 2013, 8, 29, SIMPLE_30_360, SIMPLE_30_360},
         {2012, 5, 29, 2013, 8, 30, SIMPLE_30_360, SIMPLE_30_360},
@@ -426,13 +427,13 @@ public class DayCountTest {
         // example from the original French specification
         {1994, 2, 10, 1997, 6, 30, 140d / 365d + 3},
         {1994, 2, 10, 1994, 6, 30, 140d / 365d},
-        
+
         // simple examples that are less than one year long
         {2004, 2, 10, 2005, 2, 10, 1d},
         {2004, 2, 28, 2005, 2, 28, 1d},
         {2004, 2, 29, 2005, 2, 28, 365d / 366d},
         {2004, 3, 1, 2005, 3, 1, 1d},
-        
+
         // examples over one year, from a fixed start date
         // from Feb28 2003
         {2003, 2, 28, 2005, 2, 27, 1d + (364d / 365d)},
@@ -472,7 +473,7 @@ public class DayCountTest {
         {2003, 3, 1, 2008, 2, 28, 4d + (364d / 365d)},
         {2003, 3, 1, 2008, 2, 29, 5d},
         {2003, 3, 1, 2008, 3, 1, 5d},
-        
+
         // examples over one year, up to a fixed end date (not relevant in real life)
         // up to Mar01 from leap year
         {2004, 2, 28, 2006, 3, 1, 2d + (2d / 366d)},
@@ -516,17 +517,17 @@ public class DayCountTest {
         {2011, 12, 28, 2012, 2, 28, P12M, 2012, 2, 28, 62d / 365d},
         {2011, 12, 28, 2012, 2, 28, P12M, 2012, 2, 29, 62d / 366d},
         {2011, 12, 28, 2012, 2, 28, P12M, 2012, 3, 1, 62d / 366d},
-        
+
         {2011, 12, 28, 2012, 2, 29, P12M, 2012, 2, 29, 63d / 366d},
         {2011, 12, 28, 2012, 2, 29, P12M, 2012, 3, 1, 63d / 366d},
-        
+
         {2011, 12, 28, 2012, 2, 28, P6M, 2012, 2, 28, 62d / 366d},
         {2011, 12, 28, 2012, 2, 28, P6M, 2012, 2, 29, 62d / 366d},
         {2011, 12, 28, 2012, 2, 28, P6M, 2012, 3, 1, 62d / 366d},
-        
+
         {2011, 12, 28, 2012, 2, 29, P6M, 2012, 2, 29, 63d / 366d},
         {2011, 12, 28, 2012, 2, 29, P6M, 2012, 3, 1, 63d / 366d},
-        
+
         {2010, 12, 28, 2011, 2, 28, P6M, 2011, 2, 28, 62d / 365d},
         {2010, 12, 28, 2011, 2, 28, P6M, 2011, 3, 1, 62d / 365d},
     };
@@ -662,7 +663,7 @@ public class DayCountTest {
     assertEquals(ACT_ACT_ISDA.yearFraction(start, firstRegular), (150d / 365d), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_ICMA.yearFraction(start, firstRegular, info1), (150d / (365d * 1d)), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_AFB.yearFraction(start, firstRegular), (150d / (365d)), TOLERANCE_ZERO);
-    
+
     assertEquals(ACT_ACT_ISDA.yearFraction(firstRegular, end), (184d / 365d) + (182d / 366d), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_ICMA.yearFraction(firstRegular, end, info2), (366d / (366d * 1d)), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_AFB.yearFraction(firstRegular, end), (366d / 366d), TOLERANCE_ZERO);
@@ -693,7 +694,7 @@ public class DayCountTest {
     assertEquals(ACT_ACT_ISDA.yearFraction(start, lastRegular), (155d / 365d) + (29d / 366d), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_ICMA.yearFraction(start, lastRegular, info1), (184d / (184d * 2d)), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_AFB.yearFraction(start, lastRegular), (184d / 365d), TOLERANCE_ZERO);
-    
+
     assertEquals(ACT_ACT_ISDA.yearFraction(lastRegular, end), (152d / 366d), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_ICMA.yearFraction(lastRegular, end, info2), (152d / (182d * 2d)), TOLERANCE_ZERO);
     assertEquals(ACT_ACT_AFB.yearFraction(lastRegular, end), (152d / 366d), TOLERANCE_ZERO);
@@ -753,11 +754,11 @@ public class DayCountTest {
   }
 
   public void test_of_lookup_notFound() {
-    assertThrows(() -> DayCount.of("Rubbish"), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> DayCount.of("Rubbish"));
   }
 
   public void test_of_lookup_null() {
-    assertThrows(() -> DayCount.of(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> DayCount.of(null));
   }
 
   //-------------------------------------------------------------------------
@@ -812,7 +813,7 @@ public class DayCountTest {
     private final LocalDate periodEnd;
     private final boolean eom;
     private final Frequency frequency;
-    
+
     public Info(boolean eom) {
       this(null, null, null, eom, null);
     }

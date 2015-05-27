@@ -74,7 +74,7 @@
     <module>finance-beta</module>
     <module>function</module>
     <module>function-beta</module>
-    <module>market-data</module>
+    <module>market</module>
     <module>pricer</module>
     <module>pricer-beta</module>
   </modules>
@@ -238,7 +238,7 @@
       </dependency>
       <dependency>
         <groupId>com.opengamma.strata</groupId>
-        <artifactId>strata-market-data</artifactId>
+        <artifactId>strata-market</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -293,6 +293,11 @@
         <artifactId>jsr305</artifactId>
         <version>${findbugs.version}</version>
         <optional>true</optional><!-- needed only for annotations -->
+      </dependency>
+      <dependency>
+        <groupId>org.jooq</groupId>
+        <artifactId>jool</artifactId>
+        <version>${jool.version}</version>
       </dependency>
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -480,6 +485,7 @@
     <slf4j.version>1.7.5</slf4j.version>
     <assertj.version>2.0.0</assertj.version>
     <og-analytics.version>3.0.0-SNAPSHOT</og-analytics.version>
+    <jool.version>0.9.4</jool.version>
     <!-- Properties for maven-javadoc-plugin -->
     <windowtitle>OpenGamma Strata</windowtitle>
     <doctitle><![CDATA[<h1>OpenGamma Strata</h1>]]></doctitle>

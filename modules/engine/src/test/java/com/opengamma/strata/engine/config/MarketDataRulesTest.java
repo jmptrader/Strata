@@ -11,7 +11,12 @@ import java.util.Optional;
 
 import org.testng.annotations.Test;
 
+import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.CalculationTarget;
+import com.opengamma.strata.basics.market.MarketDataFeed;
+import com.opengamma.strata.engine.marketdata.TestKey;
+import com.opengamma.strata.engine.marketdata.TestMapping;
+import com.opengamma.strata.engine.marketdata.mapping.DefaultMarketDataMappings;
 import com.opengamma.strata.engine.marketdata.mapping.MarketDataMappings;
 
 @Test
@@ -25,46 +30,9 @@ public class MarketDataRulesTest {
   private static final MarketDataMappings MAPPINGS2 = mappings("2");
   private static final MarketDataMappings MAPPINGS3 = mappings("3");
 
-  private static final SimpleMarketDataRules RULES1 =
-      SimpleMarketDataRules.builder()
-          .addMappings(TestTrade1.class, MAPPINGS1)
-          .build();
-
-  private static final SimpleMarketDataRules RULES2 =
-      SimpleMarketDataRules.builder()
-          .addMappings(TestTrade2.class, MAPPINGS2)
-          .build();
-
-  private static final SimpleMarketDataRules RULES3 =
-      SimpleMarketDataRules.builder()
-          .addMappings(TestTrade3.class, MAPPINGS3)
-          .build();
-
-  public void ofEmpty() {
-    MarketDataRules rules = MarketDataRules.of();
-    Optional<MarketDataMappings> mappings = rules.mappings(TRADE1);
-
-    assertThat(rules).isInstanceOf(EmptyMarketDataRules.class);
-    assertThat(mappings).isEmpty();
-  }
-
-  public void ofSingle() {
-    MarketDataRules rules = MarketDataRules.of(RULES1);
-    assertThat(rules).isInstanceOf(SimpleMarketDataRules.class);
-    Optional<MarketDataMappings> mappings = rules.mappings(TRADE1);
-    assertThat(mappings).hasValue(MAPPINGS1);
-  }
-
-  public void ofMultiple() {
-    MarketDataRules rules = MarketDataRules.of(RULES1, RULES2);
-    Optional<MarketDataMappings> mappings1 = rules.mappings(TRADE1);
-    Optional<MarketDataMappings> mappings2 = rules.mappings(TRADE2);
-    Optional<MarketDataMappings> mappings3 = rules.mappings(TRADE3);
-
-    assertThat(mappings1).hasValue(MAPPINGS1);
-    assertThat(mappings2).hasValue(MAPPINGS2);
-    assertThat(mappings3).isEmpty();
-  }
+  private static final MarketDataRules RULES1 = MarketDataRules.of(MarketDataRule.of(MAPPINGS1, TestTrade1.class));
+  private static final MarketDataRules RULES2 = MarketDataRules.of(MarketDataRule.of(MAPPINGS2, TestTrade2.class));
+  private static final MarketDataRules RULES3 = MarketDataRules.of(MarketDataRule.of(MAPPINGS3, TestTrade3.class));
 
   public void composedWithComposite() {
     CompositeMarketDataRules compositeRules = CompositeMarketDataRules.builder().rules(RULES1, RULES2).build();
@@ -81,10 +49,10 @@ public class MarketDataRulesTest {
   }
 
   public void composedWithEmpty() {
-    MarketDataRules rules = MarketDataRules.EMPTY.composedWith(RULES1);
+    MarketDataRules rules = MarketDataRules.empty().composedWith(RULES1);
     Optional<MarketDataMappings> mappings = rules.mappings(TRADE1);
 
-    assertThat(rules).isInstanceOf(SimpleMarketDataRules.class);
+    assertThat(rules).isInstanceOf(DefaultMarketDataRules.class);
     assertThat(mappings).hasValue(MAPPINGS1);
   }
 
@@ -99,9 +67,10 @@ public class MarketDataRulesTest {
     assertThat(mappings3).isEmpty();
   }
 
-  private static MarketDataMappings mappings(String curveGroupName) {
-    return MarketDataMappings.builder()
-        .curveGroup(curveGroupName)
+  private static MarketDataMappings mappings(String str) {
+    return DefaultMarketDataMappings.builder()
+        .marketDataFeed(MarketDataFeed.NONE)
+        .mappings(ImmutableMap.of(TestKey.class, new TestMapping(str)))
         .build();
   }
 
@@ -109,4 +78,5 @@ public class MarketDataRulesTest {
   private static final class TestTrade2 implements CalculationTarget { }
   private static final class TestTrade3 implements CalculationTarget { }
   private static final class TestTrade4 implements CalculationTarget { }
+
 }

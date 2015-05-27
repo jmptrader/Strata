@@ -11,7 +11,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.BeanBuilder;
 import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
@@ -24,11 +23,11 @@ import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.strata.marketdata.id.MarketDataFeed;
-import com.opengamma.strata.marketdata.id.MarketDataId;
-import com.opengamma.strata.marketdata.id.ObservableId;
-import com.opengamma.strata.marketdata.key.MarketDataKey;
-import com.opengamma.strata.marketdata.key.ObservableKey;
+import com.opengamma.strata.basics.market.MarketDataFeed;
+import com.opengamma.strata.basics.market.MarketDataId;
+import com.opengamma.strata.basics.market.MarketDataKey;
+import com.opengamma.strata.basics.market.ObservableId;
+import com.opengamma.strata.basics.market.ObservableKey;
 
 /**
  * Market data mappings specify which market data from the global set of data should be used for a particular
@@ -42,11 +41,11 @@ import com.opengamma.strata.marketdata.key.ObservableKey;
  * curve) to a specific piece of data (the USD discounting curve from the curve group named 'XYZ').
  */
 @SuppressWarnings("unchecked")
-@BeanDefinition(builderScope = "private")
+@BeanDefinition
 public final class DefaultMarketDataMappings implements MarketDataMappings, ImmutableBean {
 
   /** An empty set of market data mappings containing no mappers. */
-  public static final MarketDataMappings EMPTY = MarketDataMappings.builder().build();
+  public static final MarketDataMappings EMPTY = new DefaultMarketDataMappings(MarketDataFeed.NONE, ImmutableMap.of());
 
   /** Market data feed system that is the source of observable market data, for example Bloomberg or Reuters. */
   @PropertyDefinition(validate = "notNull")
@@ -61,11 +60,15 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
   private final ImmutableMap<Class<? extends MarketDataKey<?>>, MarketDataMapping<?, ?>> mappings;
 
   /**
+   * Returns a set of market data mappings with the specified source of observable data and made up
+   * of the specified individual mappings.
+   *
    * @param marketDataFeed  the feed that is the source of the market data, for example Bloomberg or Reuters
    * @param mappings  mappings for converting market data requests from calculations into requests that
    *   can be used to query the global set of market data
+   * @return a set of mappings containing the specified feed and mapping instances
    */
-  static MarketDataMappings of(
+  public static MarketDataMappings of(
       MarketDataFeed marketDataFeed,
       List<? extends MarketDataMapping<?, ?>> mappings) {
 
@@ -105,6 +108,14 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
 
   static {
     JodaBeanUtils.registerMetaBean(DefaultMarketDataMappings.Meta.INSTANCE);
+  }
+
+  /**
+   * Returns a builder used to create an instance of the bean.
+   * @return the builder, not null
+   */
+  public static DefaultMarketDataMappings.Builder builder() {
+    return new DefaultMarketDataMappings.Builder();
   }
 
   private DefaultMarketDataMappings(
@@ -152,6 +163,14 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
   }
 
   //-----------------------------------------------------------------------
+  /**
+   * Returns a builder that allows this bean to be mutated.
+   * @return the mutable builder, not null
+   */
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (obj == this) {
@@ -230,7 +249,7 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
     }
 
     @Override
-    public BeanBuilder<? extends DefaultMarketDataMappings> builder() {
+    public DefaultMarketDataMappings.Builder builder() {
       return new DefaultMarketDataMappings.Builder();
     }
 
@@ -288,7 +307,7 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
   /**
    * The bean-builder for {@code DefaultMarketDataMappings}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<DefaultMarketDataMappings> {
+  public static final class Builder extends DirectFieldsBeanBuilder<DefaultMarketDataMappings> {
 
     private MarketDataFeed marketDataFeed;
     private Map<Class<? extends MarketDataKey<?>>, MarketDataMapping<?, ?>> mappings = ImmutableMap.of();
@@ -297,6 +316,15 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
      * Restricted constructor.
      */
     private Builder() {
+    }
+
+    /**
+     * Restricted copy constructor.
+     * @param beanToCopy  the bean to copy from, not null
+     */
+    private Builder(DefaultMarketDataMappings beanToCopy) {
+      this.marketDataFeed = beanToCopy.getMarketDataFeed();
+      this.mappings = beanToCopy.getMappings();
     }
 
     //-----------------------------------------------------------------------
@@ -357,6 +385,29 @@ public final class DefaultMarketDataMappings implements MarketDataMappings, Immu
       return new DefaultMarketDataMappings(
           marketDataFeed,
           mappings);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Sets the {@code marketDataFeed} property in the builder.
+     * @param marketDataFeed  the new value, not null
+     * @return this, for chaining, not null
+     */
+    public Builder marketDataFeed(MarketDataFeed marketDataFeed) {
+      JodaBeanUtils.notNull(marketDataFeed, "marketDataFeed");
+      this.marketDataFeed = marketDataFeed;
+      return this;
+    }
+
+    /**
+     * Sets the {@code mappings} property in the builder.
+     * @param mappings  the new value, not null
+     * @return this, for chaining, not null
+     */
+    public Builder mappings(Map<Class<? extends MarketDataKey<?>>, MarketDataMapping<?, ?>> mappings) {
+      JodaBeanUtils.notNull(mappings, "mappings");
+      this.mappings = mappings;
+      return this;
     }
 
     //-----------------------------------------------------------------------

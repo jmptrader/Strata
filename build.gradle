@@ -1,3 +1,8 @@
+import com.github.jk1.license.LicenseReportPlugin
+import com.opengamma.tools.gradle.analytics.AnalyticsPlugin
+import com.opengamma.tools.gradle.depreport.InMemoryRenderer
+import com.opengamma.tools.gradle.depreport.task.AggregatedCSVDependencyReport
+import com.opengamma.tools.gradle.distrepo.DistRepoPlugin
 import com.opengamma.tools.gradle.sphinx.SphinxPlugin
 import com.opengamma.tools.gradle.release.AutoVersionPlugin
 import com.opengamma.tools.gradle.release.ReleasePlugin
@@ -7,6 +12,13 @@ ext {
 	guavaVersion = "18.0"
 	jodaConvertVersion = "1.7"
 	jodaBeansVersion = "1.5.1"
+	joolVersion = "0.9.6"
+    fastutilVersion = "6.5.6"
+    commonsMath3Version = "3.5"
+    coltVersion = "1.2.0"
+    jtransformsVersion = "2.4.0"
+    openCSVVersion = "2.3"
+    poiVersion = "3.9"
 	slf4jVersion = "1.7.5"
 	ogAnalyticsVersion = "3.0.0-SNAPSHOT"
 
@@ -18,15 +30,16 @@ ext {
     javadocFooterLicense = ""
 }
 
+apply plugin: AnalyticsPlugin
+
 allprojects {
-    version "0.9.0-SNAPSHOT"
+    version "0.7.0-SNAPSHOT"
     group "com.opengamma.strata"
 }
 
 apply plugin: "base"
 apply plugin: SphinxPlugin
-apply plugin: AutoVersionPlugin
-apply plugin: ReleasePlugin
+apply plugin: "maven"
 
 sphinx {
     userGuideArchiveName = "strata-@project.version@-guide.zip"
@@ -38,10 +51,13 @@ subprojects {
     apply plugin: "checkstyle"
     apply plugin: "findbugs"
     apply plugin: JodaBeansPlugin
+    apply plugin: DistRepoPlugin
+    apply from: "${rootProject.projectDir}/gradle/deployment.gradle"
+    apply from: "${rootProject.projectDir}/gradle/metadata.gradle"
 
     compileJava {
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
     }
 
 	tasks.withType(JavaCompile) {
@@ -52,6 +68,7 @@ subprojects {
 		compile "com.google.guava:guava:${guavaVersion}"
 		compile "org.joda:joda-convert:${jodaConvertVersion}"
 		compile "org.joda:joda-beans:${jodaBeansVersion}"
+		compile "org.jooq:jool:${joolVersion}"
 		compile "org.slf4j:slf4j-api:${slf4jVersion}"
 	}
 
@@ -92,6 +109,10 @@ subprojects {
         indent = 2
         prefix = "_"
     }
+
+    distRepo {
+        deployInto project.rootProject
+    }
 }
 
 task fullJavadoc(type: Javadoc) {
@@ -104,10 +125,17 @@ task fullJavadoc(type: Javadoc) {
     options.windowTitle = "OpenGamma Strata"
     title = "OpenGamma Strata API Documentation"
 
-    // TODO - This doesn't work. Don't know what it's supposed to do when it does work. Find out & fix.
-    //options.header = """<script type="text/x-mathjax-config">MathJax.Hub.Config({ tex2jax: { inlineMath: [ ["\$","\$"], ["\\\\\\\\(","\\\\\\\\)"] ],processEscapes: true} });</script><script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>"""
-
+    options.header = """<script type="text/x-mathjax-config">MathJax.Hub.Config({ tex2jax: { inlineMath: [ ["\$","\$"], ["\\\\\\\\(","\\\\\\\\)"] ],processEscapes: true} });</script><script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>"""
     options.footer = """<i>Copyright 2009-Present by OpenGamma Inc. and individual contributors</i><br/><i>${javadocFooterLicense}</i><br/><i>Additional documentation can be found at <a href="http://docs.opengamma.com">docs.opengamma.com</a>.</i><script type="text/javascript">var _gaq = _gaq || [];_gaq.push(["_setAccount", "UA-12092825-5"]);_gaq.push(["_trackPageview"]);(function() {var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true; ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js"; var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s); })(); </script>"""
+}
+
+task packageJavadoc(type: Zip) {
+    from fullJavadoc
+    doFirst {
+        String pkgName = "${project.name}-${project.version}-javadoc"
+        into pkgName
+        archiveName "${pkgName}.zip"
+    }
 }
 
 task testReport(type: TestReport) { testReport ->
@@ -120,12 +148,31 @@ task testReport(type: TestReport) { testReport ->
 
     destinationDir = file("${buildDir}/reports/tests")
     reportOn subprojects*.test.binResultsDir
+
+    project.allprojects*.tasks*.withType(JacocoReport) { jr ->
+        if(jr.enabled)
+            testReport.finalizedBy jr
+    }
 }
+
+allprojects {
+    apply plugin: LicenseReportPlugin
+    licenseReport {
+        renderer = new InMemoryRenderer()
+    }
+}
+
+task dependencyReport(type: AggregatedCSVDependencyReport)
+
+apply plugin: ReleasePlugin
+apply plugin: AutoVersionPlugin
+apply from: "${project.rootProject.projectDir}/gradle/packaging.gradle"
 
 allprojects {
     afterEvaluate {
         rootProject.getTasksByName("javadoc", true).each { Javadoc t ->
-            if( ! t.enabled) return
+            if(
+            ! t.enabled) return
             t.failOnError = false
             rootProject.tasks.fullJavadoc {
                 source += files(t.project.sourceSets.collect { srcSet -> srcSet.allJava })
@@ -147,6 +194,21 @@ allprojects {
 			}
 		}
 	}
+}
+
+if(project.hasProperty("fast"))
+{
+    [
+            "javadoc",
+            "fullJavadoc",
+            "findbugsMain",
+            "findbugsTest",
+            "checkstyleMain",
+            "checkstyleTest",
+            "jacocoAgent",
+    ].each { tn ->
+        project.getTasksByName(tn, true)*.enabled = false
+    }
 }
 
 buildscript {
@@ -190,14 +252,14 @@ buildscript {
                 password ogNexusPassword
             }
         }
+        maven {
+            url "https://plugins.gradle.org/m2"
+        }
     }
     dependencies {
         classpath "com.opengamma.tools:build-tools:1.2.2"
         classpath 'com.google.guava:guava:18.0'
-	    classpath "com.opengamma.tools:gradle-simpleexec-plugin:${gradleSimpleExecPluginVersion}"
-	    classpath "com.opengamma.tools:gradle-git-plugin:${gradleGitPluginVersion}"
-	    classpath "com.opengamma.tools:gradle-sphinx-plugin:${gradleSphinxPluginVersion}"
-	    classpath "com.opengamma.tools:gradle-og-release-plugin:${gradleOGReleasePluginVersion}"
+        classpath "com.opengamma.tools:gradle-depreport-extension:0.1.0-SNAPSHOT" //TODO
         classpath group: 'org.joda', name: 'joda-beans', version: '1.4'
         classpath group: 'org.joda', name: 'joda-beans-plugin', version: '1.0.0'
     }

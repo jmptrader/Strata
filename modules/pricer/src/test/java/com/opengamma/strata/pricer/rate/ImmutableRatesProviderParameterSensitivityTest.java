@@ -32,13 +32,13 @@ import com.opengamma.strata.basics.currency.FxMatrix;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.tuple.DoublesPair;
 import com.opengamma.strata.collect.tuple.Pair;
+import com.opengamma.strata.market.sensitivity.CurveParameterSensitivity;
+import com.opengamma.strata.market.sensitivity.IborRateSensitivity;
+import com.opengamma.strata.market.sensitivity.NameCurrencySensitivityKey;
+import com.opengamma.strata.market.sensitivity.OvernightRateSensitivity;
+import com.opengamma.strata.market.sensitivity.PointSensitivities;
+import com.opengamma.strata.market.sensitivity.ZeroRateSensitivity;
 import com.opengamma.strata.pricer.impl.Legacy;
-import com.opengamma.strata.pricer.sensitivity.CurveParameterSensitivity;
-import com.opengamma.strata.pricer.sensitivity.IborRateSensitivity;
-import com.opengamma.strata.pricer.sensitivity.NameCurrencySensitivityKey;
-import com.opengamma.strata.pricer.sensitivity.OvernightRateSensitivity;
-import com.opengamma.strata.pricer.sensitivity.PointSensitivities;
-import com.opengamma.strata.pricer.sensitivity.ZeroRateSensitivity;
 
 /**
  * Tests related to {@link ImmutableRatesProvider} for the computation of curve parameters sensitivities.
@@ -78,13 +78,13 @@ public class ImmutableRatesProviderParameterSensitivityTest {
   private static final PointSensitivities POINT_ON_4 =
       PointSensitivities.of(OvernightRateSensitivity.of(EUR_EONIA, DATE_1, AMOUNT_1));
   private static final PointSensitivities[] POINTS = new PointSensitivities[] {
-    POINT_ZERO_1, POINT_ZERO_2, POINT_ZERO_3, POINT_ZERO_4,
+      POINT_ZERO_1, POINT_ZERO_2, POINT_ZERO_3, POINT_ZERO_4,
       POINT_IBOR_1, POINT_IBOR_2, POINT_IBOR_3, POINT_IBOR_4,
       POINT_ON_1, POINT_ON_2, POINT_ON_3, POINT_ON_4};
   private static final PointSensitivities POINT =
       POINT_ZERO_1.combinedWith(POINT_ZERO_2).combinedWith(POINT_ZERO_3).combinedWith(POINT_ZERO_4)
-      .combinedWith(POINT_IBOR_1).combinedWith(POINT_IBOR_2).combinedWith(POINT_IBOR_3).combinedWith(POINT_IBOR_4)
-      .combinedWith(POINT_ON_1).combinedWith(POINT_ON_2).combinedWith(POINT_ON_3).combinedWith(POINT_ON_4);
+          .combinedWith(POINT_IBOR_1).combinedWith(POINT_IBOR_2).combinedWith(POINT_IBOR_3).combinedWith(POINT_IBOR_4)
+          .combinedWith(POINT_ON_1).combinedWith(POINT_ON_2).combinedWith(POINT_ON_3).combinedWith(POINT_ON_4);
 
   // curve providers
   private static final LocalDateDoubleTimeSeries TS_EMTPY = LocalDateDoubleTimeSeries.empty();

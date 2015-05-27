@@ -10,6 +10,7 @@ import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.FOLLOWING;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
+import static com.opengamma.strata.basics.date.BusinessDayConventions.PRECEDING;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
 import static com.opengamma.strata.basics.date.HolidayCalendars.EUTA;
@@ -18,7 +19,7 @@ import static com.opengamma.strata.basics.date.HolidayCalendars.USNY;
 import static com.opengamma.strata.basics.date.Tenor.TENOR_3M;
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
+import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static com.opengamma.strata.collect.TestHelper.date;
@@ -41,9 +42,9 @@ public class IborIndexTest {
 
   public void test_null() {
     IborIndex test = IborIndex.of("GBP-LIBOR-3M");
-    assertThrows(() -> test.calculateEffectiveFromFixing(null), IllegalArgumentException.class);
-    assertThrows(() -> test.calculateFixingFromEffective(null), IllegalArgumentException.class);
-    assertThrows(() -> test.calculateMaturityFromEffective(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> test.calculateEffectiveFromFixing(null));
+    assertThrowsIllegalArg(() -> test.calculateFixingFromEffective(null));
+    assertThrowsIllegalArg(() -> test.calculateMaturityFromEffective(null));
   }
 
   public void test_gbpLibor3m() {
@@ -52,8 +53,10 @@ public class IborIndexTest {
     assertEquals(test.getName(), "GBP-LIBOR-3M");
     assertEquals(test.getTenor(), TENOR_3M);
     assertEquals(test.getFixingCalendar(), GBLO);
-    assertEquals(test.getFixingDateOffset(), DaysAdjustment.NONE);
-    assertEquals(test.getEffectiveDateOffset(), DaysAdjustment.NONE);
+    assertEquals(test.getFixingDateOffset(),
+        DaysAdjustment.ofCalendarDays(0, BusinessDayAdjustment.of(PRECEDING, GBLO)));
+    assertEquals(test.getEffectiveDateOffset(),
+        DaysAdjustment.ofCalendarDays(0, BusinessDayAdjustment.of(FOLLOWING, GBLO)));
     assertEquals(test.getMaturityDateOffset(),
         TenorAdjustment.ofLastBusinessDay(TENOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO)));
     assertEquals(test.getDayCount(), ACT_365F);
@@ -190,11 +193,11 @@ public class IborIndexTest {
   }
 
   public void test_of_lookup_notFound() {
-    assertThrows(() -> IborIndex.of("Rubbish"), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> IborIndex.of("Rubbish"));
   }
 
   public void test_of_lookup_null() {
-    assertThrows(() -> IborIndex.of(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> IborIndex.of(null));
   }
 
   //-------------------------------------------------------------------------

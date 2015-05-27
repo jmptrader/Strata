@@ -7,7 +7,7 @@ package com.opengamma.strata.basics.date;
 
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
+import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static com.opengamma.strata.collect.TestHelper.date;
@@ -99,7 +99,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_NO_HOLIDAYS_combineWith_null() {
-    assertThrows(() -> HolidayCalendars.NO_HOLIDAYS.combineWith(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> HolidayCalendars.NO_HOLIDAYS.combineWith(null));
   }
 
   //-------------------------------------------------------------------------
@@ -125,17 +125,17 @@ public class HolidayCalendarTest {
     assertEquals(HolidayCalendars.SAT_SUN.shift(FRI_2014_07_11, 2), TUE_2014_07_15);
     assertEquals(HolidayCalendars.SAT_SUN.shift(SUN_2014_07_13, 2), TUE_2014_07_15);
     assertEquals(HolidayCalendars.SAT_SUN.shift(MON_2014_07_14, 2), WED_2014_07_16);
-    
+
     assertEquals(HolidayCalendars.SAT_SUN.shift(FRI_2014_07_11, -2), WED_2014_07_09);
     assertEquals(HolidayCalendars.SAT_SUN.shift(SAT_2014_07_12, -2), THU_2014_07_10);
     assertEquals(HolidayCalendars.SAT_SUN.shift(SUN_2014_07_13, -2), THU_2014_07_10);
     assertEquals(HolidayCalendars.SAT_SUN.shift(MON_2014_07_14, -2), THU_2014_07_10);
     assertEquals(HolidayCalendars.SAT_SUN.shift(TUE_2014_07_15, -2), FRI_2014_07_11);
     assertEquals(HolidayCalendars.SAT_SUN.shift(WED_2014_07_16, -2), MON_2014_07_14);
-    
+
     assertEquals(HolidayCalendars.SAT_SUN.shift(FRI_2014_07_11, 5), FRI_2014_07_18);
     assertEquals(HolidayCalendars.SAT_SUN.shift(FRI_2014_07_11, 6), MON_2014_07_21);
-    
+
     assertEquals(HolidayCalendars.SAT_SUN.shift(FRI_2014_07_18, -5), FRI_2014_07_11);
     assertEquals(HolidayCalendars.SAT_SUN.shift(MON_2014_07_21, -6), FRI_2014_07_11);
   }
@@ -185,17 +185,17 @@ public class HolidayCalendarTest {
     assertEquals(HolidayCalendars.FRI_SAT.shift(FRI_2014_07_11, 2), MON_2014_07_14);
     assertEquals(HolidayCalendars.FRI_SAT.shift(SUN_2014_07_13, 2), TUE_2014_07_15);
     assertEquals(HolidayCalendars.FRI_SAT.shift(MON_2014_07_14, 2), WED_2014_07_16);
-    
+
     assertEquals(HolidayCalendars.FRI_SAT.shift(FRI_2014_07_11, -2), WED_2014_07_09);
     assertEquals(HolidayCalendars.FRI_SAT.shift(SAT_2014_07_12, -2), WED_2014_07_09);
     assertEquals(HolidayCalendars.FRI_SAT.shift(SUN_2014_07_13, -2), WED_2014_07_09);
     assertEquals(HolidayCalendars.FRI_SAT.shift(MON_2014_07_14, -2), THU_2014_07_10);
     assertEquals(HolidayCalendars.FRI_SAT.shift(TUE_2014_07_15, -2), SUN_2014_07_13);
     assertEquals(HolidayCalendars.FRI_SAT.shift(WED_2014_07_16, -2), MON_2014_07_14);
-    
+
     assertEquals(HolidayCalendars.FRI_SAT.shift(THU_2014_07_10, 5), THU_2014_07_17);
     assertEquals(HolidayCalendars.FRI_SAT.shift(THU_2014_07_10, 6), SUN_2014_07_20);
-    
+
     assertEquals(HolidayCalendars.FRI_SAT.shift(THU_2014_07_17, -5), THU_2014_07_10);
     assertEquals(HolidayCalendars.FRI_SAT.shift(SUN_2014_07_20, -6), THU_2014_07_10);
   }
@@ -246,15 +246,15 @@ public class HolidayCalendarTest {
     assertEquals(HolidayCalendars.THU_FRI.shift(THU_2014_07_10, 2), SUN_2014_07_13);
     assertEquals(HolidayCalendars.THU_FRI.shift(FRI_2014_07_11, 2), SUN_2014_07_13);
     assertEquals(HolidayCalendars.THU_FRI.shift(SAT_2014_07_12, 2), MON_2014_07_14);
-    
+
     assertEquals(HolidayCalendars.THU_FRI.shift(FRI_2014_07_18, -2), TUE_2014_07_15);
     assertEquals(HolidayCalendars.THU_FRI.shift(SAT_2014_07_19, -2), TUE_2014_07_15);
     assertEquals(HolidayCalendars.THU_FRI.shift(SUN_2014_07_20, -2), WED_2014_07_16);
     assertEquals(HolidayCalendars.THU_FRI.shift(MON_2014_07_21, -2), SAT_2014_07_19);
-    
+
     assertEquals(HolidayCalendars.THU_FRI.shift(WED_2014_07_09, 5), WED_2014_07_16);
     assertEquals(HolidayCalendars.THU_FRI.shift(WED_2014_07_09, 6), SAT_2014_07_19);
-    
+
     assertEquals(HolidayCalendars.THU_FRI.shift(WED_2014_07_16, -5), WED_2014_07_09);
     assertEquals(HolidayCalendars.THU_FRI.shift(SAT_2014_07_19, -6), WED_2014_07_09);
   }
@@ -297,7 +297,7 @@ public class HolidayCalendarTest {
         {SAT_2014_07_19, 1, MON_2014_07_21},
         {SUN_2014_07_20, 1, MON_2014_07_21},
         {MON_2014_07_21, 1, TUE_2014_07_22},
-        
+
         {THU_2014_07_10, 2, MON_2014_07_14},
         {FRI_2014_07_11, 2, TUE_2014_07_15},
         {SAT_2014_07_12, 2, TUE_2014_07_15},
@@ -310,7 +310,7 @@ public class HolidayCalendarTest {
         {SAT_2014_07_19, 2, TUE_2014_07_22},
         {SUN_2014_07_20, 2, TUE_2014_07_22},
         {MON_2014_07_21, 2, WED_2014_07_23},
-        
+
         {THU_2014_07_10, 0, THU_2014_07_10},
         {FRI_2014_07_11, 0, FRI_2014_07_11},
         {SAT_2014_07_12, 0, SAT_2014_07_12},
@@ -323,7 +323,7 @@ public class HolidayCalendarTest {
         {SAT_2014_07_19, 0, SAT_2014_07_19},
         {SUN_2014_07_20, 0, SUN_2014_07_20},
         {MON_2014_07_21, 0, MON_2014_07_21},
-        
+
         {FRI_2014_07_11, -1, THU_2014_07_10},
         {SAT_2014_07_12, -1, FRI_2014_07_11},
         {SUN_2014_07_13, -1, FRI_2014_07_11},
@@ -336,7 +336,7 @@ public class HolidayCalendarTest {
         {SUN_2014_07_20, -1, THU_2014_07_17},
         {MON_2014_07_21, -1, THU_2014_07_17},
         {TUE_2014_07_22, -1, MON_2014_07_21},
-        
+
         {FRI_2014_07_11, -2, WED_2014_07_09},
         {SAT_2014_07_12, -2, THU_2014_07_10},
         {SUN_2014_07_13, -2, THU_2014_07_10},
@@ -360,7 +360,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_shift_null() {
-    assertThrows(() -> new MockHolCal().shift(null, 1), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().shift(null, 1));
   }
 
   @Test(dataProvider = "shift")
@@ -395,7 +395,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_next_null() {
-    assertThrows(() -> new MockHolCal().next(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().next(null));
   }
 
   //-------------------------------------------------------------------------
@@ -424,7 +424,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_nextOrSame_null() {
-    assertThrows(() -> new MockHolCal().nextOrSame(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().nextOrSame(null));
   }
 
   //-------------------------------------------------------------------------
@@ -453,7 +453,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_previous_null() {
-    assertThrows(() -> new MockHolCal().previous(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().previous(null));
   }
 
   //-------------------------------------------------------------------------
@@ -482,7 +482,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_previousOrSame_null() {
-    assertThrows(() -> new MockHolCal().previousOrSame(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().previousOrSame(null));
   }
 
   //-------------------------------------------------------------------------
@@ -514,7 +514,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_nextSameOrLastInMonth_null() {
-    assertThrows(() -> new MockHolCal().nextSameOrLastInMonth(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().nextSameOrLastInMonth(null));
   }
 
   //-------------------------------------------------------------------------
@@ -556,8 +556,8 @@ public class HolidayCalendarTest {
   }
 
   public void test_lastBusinessDayOfMonth_null() {
-    assertThrows(() -> new MockEomHolCal().isLastBusinessDayOfMonth(null), IllegalArgumentException.class);
-    assertThrows(() -> new MockEomHolCal().lastBusinessDayOfMonth(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockEomHolCal().isLastBusinessDayOfMonth(null));
+    assertThrowsIllegalArg(() -> new MockEomHolCal().lastBusinessDayOfMonth(null));
   }
 
   //-------------------------------------------------------------------------
@@ -593,10 +593,10 @@ public class HolidayCalendarTest {
 
   public void test_daysBetween_null() {
     HolidayCalendar test = new MockHolCal();
-    assertThrows(() -> test.daysBetween(null, WED_2014_07_16), IllegalArgumentException.class);
-    assertThrows(() -> test.daysBetween(WED_2014_07_16, null), IllegalArgumentException.class);
-    assertThrows(() -> test.daysBetween(null, null), IllegalArgumentException.class);
-    assertThrows(() -> test.daysBetween(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> test.daysBetween(null, WED_2014_07_16));
+    assertThrowsIllegalArg(() -> test.daysBetween(WED_2014_07_16, null));
+    assertThrowsIllegalArg(() -> test.daysBetween(null, null));
+    assertThrowsIllegalArg(() -> test.daysBetween(null));
   }
 
   //-------------------------------------------------------------------------
@@ -610,7 +610,7 @@ public class HolidayCalendarTest {
     assertEquals(test.equals(""), false);
     assertEquals(test.equals(null), false);
     assertEquals(test.hashCode(), base1.combineWith(base2).hashCode());
-    
+
     assertEquals(test.isHoliday(THU_2014_07_10), false);
     assertEquals(test.isHoliday(FRI_2014_07_11), true);
     assertEquals(test.isHoliday(SAT_2014_07_12), true);
@@ -638,7 +638,7 @@ public class HolidayCalendarTest {
   }
 
   public void test_combineWith_null() {
-    assertThrows(() -> new MockHolCal().combineWith(null), IllegalArgumentException.class);
+    assertThrowsIllegalArg(() -> new MockHolCal().combineWith(null));
   }
 
   //-------------------------------------------------------------------------

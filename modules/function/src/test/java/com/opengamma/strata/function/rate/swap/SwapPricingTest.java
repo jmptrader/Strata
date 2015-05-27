@@ -9,6 +9,7 @@ import static com.opengamma.strata.basics.PayReceive.RECEIVE;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.THIRTY_U_360;
 import static com.opengamma.strata.collect.CollectProjectAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 
 import java.time.LocalDate;
@@ -30,12 +31,12 @@ import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.basics.index.IborIndices;
 import com.opengamma.strata.basics.index.ImmutableIborIndex;
+import com.opengamma.strata.basics.market.ObservableId;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.StubConvention;
 import com.opengamma.strata.basics.value.ValueSchedule;
 import com.opengamma.strata.collect.id.StandardId;
-import com.opengamma.strata.collect.result.FailureReason;
 import com.opengamma.strata.collect.result.Result;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.tuple.Pair;
@@ -45,21 +46,20 @@ import com.opengamma.strata.engine.calculations.CalculationTasks;
 import com.opengamma.strata.engine.calculations.DefaultCalculationRunner;
 import com.opengamma.strata.engine.calculations.Results;
 import com.opengamma.strata.engine.config.CalculationTasksConfig;
+import com.opengamma.strata.engine.config.MarketDataRule;
 import com.opengamma.strata.engine.config.MarketDataRules;
 import com.opengamma.strata.engine.config.Measure;
 import com.opengamma.strata.engine.config.ReportingRules;
-import com.opengamma.strata.engine.config.SimpleMarketDataRules;
 import com.opengamma.strata.engine.config.pricing.DefaultFunctionGroup;
 import com.opengamma.strata.engine.config.pricing.DefaultPricingRules;
 import com.opengamma.strata.engine.config.pricing.FunctionGroup;
 import com.opengamma.strata.engine.config.pricing.PricingRule;
 import com.opengamma.strata.engine.marketdata.BaseMarketData;
+import com.opengamma.strata.engine.marketdata.BaseMarketDataResult;
 import com.opengamma.strata.engine.marketdata.DefaultMarketDataFactory;
-import com.opengamma.strata.engine.marketdata.MarketDataResult;
-import com.opengamma.strata.engine.marketdata.builders.DiscountingCurveMarketDataBuilder;
-import com.opengamma.strata.engine.marketdata.builders.IndexCurveMarketDataBuilder;
-import com.opengamma.strata.engine.marketdata.builders.ObservableMarketDataBuilder;
-import com.opengamma.strata.engine.marketdata.builders.TimeSeriesProvider;
+import com.opengamma.strata.engine.marketdata.config.MarketDataConfig;
+import com.opengamma.strata.engine.marketdata.functions.ObservableMarketDataFunction;
+import com.opengamma.strata.engine.marketdata.functions.TimeSeriesProvider;
 import com.opengamma.strata.engine.marketdata.mapping.FeedIdMapping;
 import com.opengamma.strata.engine.marketdata.mapping.MarketDataMappings;
 import com.opengamma.strata.finance.TradeInfo;
@@ -70,9 +70,11 @@ import com.opengamma.strata.finance.rate.swap.PaymentSchedule;
 import com.opengamma.strata.finance.rate.swap.RateCalculationSwapLeg;
 import com.opengamma.strata.finance.rate.swap.Swap;
 import com.opengamma.strata.finance.rate.swap.SwapTrade;
-import com.opengamma.strata.marketdata.curve.CurveGroup;
-import com.opengamma.strata.marketdata.id.CurveGroupId;
-import com.opengamma.strata.marketdata.id.ObservableId;
+import com.opengamma.strata.function.marketdata.curve.DiscountingCurveMarketDataFunction;
+import com.opengamma.strata.function.marketdata.curve.RateIndexCurveMarketDataFunction;
+import com.opengamma.strata.function.marketdata.mapping.MarketDataMappingsBuilder;
+import com.opengamma.strata.market.curve.CurveGroup;
+import com.opengamma.strata.market.id.CurveGroupId;
 import com.opengamma.strata.pricer.rate.e2e.CalendarUSD;
 
 @Test
@@ -112,14 +114,14 @@ public class SwapPricingTest {
             .paymentSchedule(
                 PaymentSchedule.builder()
                     .paymentFrequency(Frequency.P1M)
-                    .paymentOffset(DaysAdjustment.NONE)
+                    .paymentDateOffset(DaysAdjustment.NONE)
                     .build())
             .notionalSchedule(NOTIONAL)
             .calculation(
                 IborRateCalculation.builder()
                     .dayCount(DayCounts.ACT_360)
                     .index(USD_LIBOR_1M)
-                    .fixingOffset(DaysAdjustment.ofBusinessDays(-2, CalendarUSD.NYC, BDA_P))
+                    .fixingDateOffset(DaysAdjustment.ofBusinessDays(-2, CalendarUSD.NYC, BDA_P))
                     .build())
             .build();
 
@@ -151,22 +153,19 @@ public class SwapPricingTest {
     DefaultPricingRules pricingRules = DefaultPricingRules.of(pricingRule);
 
     MarketDataMappings marketDataMappings =
-        MarketDataMappings.builder()
+        MarketDataMappingsBuilder.create()
             .curveGroup(curveGroupName)
             .build();
 
-    MarketDataRules marketDataRules =
-        SimpleMarketDataRules.builder()
-            .addMappings(SwapTrade.class, marketDataMappings)
-            .build();
+    MarketDataRules marketDataRules = MarketDataRules.of(MarketDataRule.of(marketDataMappings, SwapTrade.class));
 
     DefaultMarketDataFactory marketDataFactory =
         new DefaultMarketDataFactory(
             new EmptyTimeSeriesProvider(),
-            ObservableMarketDataBuilder.none(),
+            ObservableMarketDataFunction.none(),
             FeedIdMapping.identity(),
-            new DiscountingCurveMarketDataBuilder(),
-            new IndexCurveMarketDataBuilder());
+            new DiscountingCurveMarketDataFunction(),
+            new RateIndexCurveMarketDataFunction());
 
     List<SwapTrade> trades = ImmutableList.of(trade);
     Column pvColumn = Column.of(Measure.PRESENT_VALUE);
@@ -177,10 +176,11 @@ public class SwapPricingTest {
         calculationRunner.createCalculationConfig(trades, columns, pricingRules, marketDataRules, reportingCurrency);
     CalculationTasks calculationTasks = calculationRunner.createCalculationTasks(calculationConfig);
 
-    MarketDataResult marketDataResult =
+    BaseMarketDataResult marketDataResult =
         marketDataFactory.buildBaseMarketData(
             calculationTasks.getMarketDataRequirements(),
-            suppliedData);
+            suppliedData,
+            MarketDataConfig.empty());
 
     BaseMarketData marketData = marketDataResult.getMarketData();
     Results results = calculationRunner.calculate(calculationTasks, marketData);
@@ -211,7 +211,7 @@ public class SwapPricingTest {
         .paymentSchedule(
             PaymentSchedule.builder()
                 .paymentFrequency(frequency)
-                .paymentOffset(DaysAdjustment.NONE)
+                .paymentDateOffset(DaysAdjustment.NONE)
                 .build())
         .notionalSchedule(notional)
         .calculation(
@@ -248,7 +248,8 @@ public class SwapPricingTest {
 
     @Override
     public Result<LocalDateDoubleTimeSeries> timeSeries(ObservableId id) {
-      return Result.failure(FailureReason.MISSING_DATA, "No time series available");
+      return Result.success(LocalDateDoubleTimeSeries.empty());
     }
   }
+
 }
