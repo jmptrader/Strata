@@ -2,7 +2,6 @@ description = "Entities in financial markets - Beta code, subject to change"
 
 dependencies {
 	compile project(":collect")
-	compile project(":basics")
 	compile project(":finance")
 
 	testCompile project(":collect-testutils")

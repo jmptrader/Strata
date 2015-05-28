@@ -1,10 +1,7 @@
 description = "Calculation engine"
 
 dependencies {
-	compile project(":collect")
-	compile project(":market")
-	compile project(":pricer")
-
+	compile project(":basics")
 	compile ogAnalytics()
 
 	testCompile project(":collect-testutils")

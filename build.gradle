@@ -156,6 +156,7 @@ task testReport(type: TestReport) { testReport ->
 }
 
 allprojects {
+    apply plugin: "eclipse"
     apply plugin: LicenseReportPlugin
     licenseReport {
         renderer = new InMemoryRenderer()

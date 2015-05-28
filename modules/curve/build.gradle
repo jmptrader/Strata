@@ -3,8 +3,6 @@ description = "Curve API"
 dependencies {
 	compile project(":basics")
 	compile ogAnalytics()
-
-	testCompile project(":collect")
 }
 
 javadoc {

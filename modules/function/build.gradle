@@ -4,12 +4,10 @@ dependencies {
 	compile project(":engine")
 	compile project(":market")
 	compile project(":basics")
-	compile ogAnalytics()
+	compile project(":pricer")
+	compile group: 'com.opengamma.analytics', name: 'og-analytics', version: ogAnalyticsVersion, classifier: 'tests'
 
-	testCompile project(":pricer")
 	testCompile project(":pricer-testutils")
-
-	testCompile project(":collect")
 	testCompile project(":collect-testutils")
 }
 

@@ -1,11 +1,7 @@
 dependencies {
 	compile project(":engine")
-	compile project(":market")
-	compile project(":basics")
-	compile project(":pricer")
-	compile project(":pricer-beta")
+	compile project(":finance")
+	compile project(":finance-beta")
 	compile project(":function")
-	compile ogAnalytics()
-
-	testCompile project(":collect")
+	compile project(":pricer-beta")
 }
