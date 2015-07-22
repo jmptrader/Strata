@@ -38,9 +38,19 @@ import com.opengamma.analytics.financial.provider.curve.SingleCurveBundle;
 import com.opengamma.analytics.financial.provider.curve.multicurve.MulticurveDiscountBuildingRepository;
 import com.opengamma.analytics.financial.provider.description.interestrate.MulticurveProviderDiscount;
 import com.opengamma.analytics.math.interpolation.CombinedInterpolatorExtrapolator;
+import com.opengamma.analytics.math.interpolation.Extrapolator1D;
+import com.opengamma.analytics.math.interpolation.FlatExtrapolator1D;
+import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
+import com.opengamma.analytics.math.interpolation.InterpolatorExtrapolator;
+import com.opengamma.analytics.math.interpolation.LinearExtrapolator1D;
+import com.opengamma.analytics.math.interpolation.LogLinearExtrapolator1D;
+import com.opengamma.analytics.math.interpolation.ProductPolynomialExtrapolator1D;
+import com.opengamma.analytics.math.interpolation.QuadraticPolynomialLeftExtrapolator;
+import com.opengamma.analytics.math.interpolation.ReciprocalExtrapolator1D;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.index.OvernightIndex;
+import com.opengamma.strata.basics.interpolator.CurveExtrapolator;
 import com.opengamma.strata.basics.market.MarketDataFeed;
 import com.opengamma.strata.basics.market.ObservableKey;
 import com.opengamma.strata.collect.result.FailureReason;
@@ -304,11 +314,37 @@ public class CurveGroupMarketDataFunction implements MarketDataFunction<CurveGro
    * @return a generator capable of generating the curve
    */
   private GeneratorYDCurve createCurveGenerator(InterpolatedCurveConfig curveConfig) {
-    CombinedInterpolatorExtrapolator interpolatorExtrapolator = CombinedInterpolatorExtrapolator.of(
-        curveConfig.getInterpolator(),
-        curveConfig.getLeftExtrapolator(),
-        curveConfig.getRightExtrapolator());
+    CombinedInterpolatorExtrapolator interpolatorExtrapolator = new CombinedInterpolatorExtrapolator(
+        Interpolator1DFactory.getInterpolator(curveConfig.getInterpolator().getName()),
+        convert(curveConfig.getLeftExtrapolator()),
+        convert(curveConfig.getRightExtrapolator()));
 
     return new GeneratorCurveYieldInterpolated(LastTimeCalculator.getInstance(), interpolatorExtrapolator);
   }
+
+  public static Extrapolator1D convert(CurveExtrapolator extrapolator) {
+    if (LinearExtrapolator1D.NAME.equals(extrapolator.getName())) {
+      return new LinearExtrapolator1D();
+    }
+    if (LogLinearExtrapolator1D.NAME.equals(extrapolator.getName())) {
+      return new LogLinearExtrapolator1D();
+    }
+    if (QuadraticPolynomialLeftExtrapolator.NAME.equals(extrapolator.getName())) {
+      return new QuadraticPolynomialLeftExtrapolator();
+    }
+    if (ProductPolynomialExtrapolator1D.NAME.equals(extrapolator.getName())) {
+      return new ProductPolynomialExtrapolator1D();
+    }
+    if (ReciprocalExtrapolator1D.NAME.equals(extrapolator.getName())) {
+      return new ReciprocalExtrapolator1D();
+    }
+    if (FlatExtrapolator1D.NAME.equals(extrapolator.getName())) {
+      return new FlatExtrapolator1D();
+    }
+    if (InterpolatorExtrapolator.NAME.equals(extrapolator.getName())) {
+      return new InterpolatorExtrapolator();
+    }
+    throw new IllegalArgumentException("Extrapolator not handled: " + extrapolator.getName());
+  }
+
 }

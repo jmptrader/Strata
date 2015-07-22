@@ -1,0 +1,63 @@
+/**
+ * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
+ * 
+ * Please see distribution for license.
+ */
+package com.opengamma.strata.math.impl.cube;
+
+import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.math.impl.Plane;
+import com.opengamma.strata.math.impl.interpolation.Interpolator2D;
+import com.opengamma.strata.math.impl.surface.ConstantDoublesSurface;
+import com.opengamma.strata.math.impl.surface.InterpolatedDoublesSurface;
+import com.opengamma.strata.math.impl.surface.Surface;
+
+/**
+ * 
+ */
+public class CubeSliceFunction {
+
+  public Surface<Double, Double, Double> cut(final Cube<Double, Double, Double, Double> cube, final Plane plane, final Double at) {
+    ArgChecker.notNull(cube, "cube");
+    ArgChecker.notNull(plane, "plane");
+    ArgChecker.notNull(at, "at");
+    return ConstantDoublesSurface.from(cube.getValue(null, null, null));
+  }
+
+  public static Surface<Double, Double, Double> cut(final Cube<Double, Double, Double, Double> cube, final Plane plane, final Double at, final Interpolator2D interpolator) {
+    ArgChecker.notNull(cube, "cube");
+    ArgChecker.notNull(plane, "plane");
+    ArgChecker.notNull(at, "at");
+
+    if (plane == Plane.XY) {
+      Double[] xData = cube.getXData();
+      Double[] yData = cube.getYData();
+      Double[] zData = new Double[xData.length];
+
+      for (int i = 0; i < xData.length; i++) {
+        zData[i] = cube.getValue(xData[i], yData[i], at);
+      }
+      return InterpolatedDoublesSurface.from(xData, yData, zData, interpolator);
+
+    } else if (plane == Plane.YZ) {
+      Double[] yData = cube.getYData();
+      Double[] zData = cube.getZData();
+      Double[] xData = new Double[yData.length];
+
+      for (int i = 0; i < xData.length; i++) {
+        xData[i] = cube.getValue(at, yData[i], zData[i]);
+      }
+      return InterpolatedDoublesSurface.from(xData, yData, zData, interpolator);
+    } else if (plane == Plane.ZX) {
+      Double[] xData = cube.getXData();
+      Double[] zData = cube.getYData();
+      Double[] yData = new Double[xData.length];
+
+      for (int i = 0; i < xData.length; i++) {
+        yData[i] = cube.getValue(xData[i], at, zData[i]);
+      }
+      return InterpolatedDoublesSurface.from(xData, yData, zData, interpolator);
+    }
+    return null; // FIXME Need an example of how to throw exceptions.
+  }
+}

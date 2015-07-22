@@ -9,9 +9,9 @@ import static com.opengamma.strata.collect.CollectProjectAssertions.assertThat;
 
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.interpolation.LinearExtrapolator1D;
-import com.opengamma.analytics.math.interpolation.LogLinearExtrapolator1D;
 import com.opengamma.strata.basics.interpolator.CurveExtrapolator;
+import com.opengamma.strata.math.impl.interpolation.LinearExtrapolator1D;
+import com.opengamma.strata.math.impl.interpolation.LogLinearExtrapolator1D;
 
 @Test
 public class CurveExtrapolatorsTest {

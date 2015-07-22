@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 import org.testng.annotations.Test;
 
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 
 @Test
 public class ParallelShiftedCurveTest {

@@ -18,7 +18,6 @@ import java.util.List;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableList;
-import com.opengamma.analytics.math.interpolation.Interpolator1DFactory;
 import com.opengamma.strata.basics.date.DayCounts;
 import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.basics.interpolator.CurveInterpolator;
@@ -30,6 +29,7 @@ import com.opengamma.strata.market.curve.DefaultCurveMetadata;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.curve.ShiftType;
 import com.opengamma.strata.market.curve.TenorCurveNodeMetadata;
+import com.opengamma.strata.math.impl.interpolation.Interpolator1DFactory;
 
 @Test
 public class CurvePointShiftTest {

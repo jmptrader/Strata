@@ -1,0 +1,197 @@
+/**
+ * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
+ * 
+ * Please see distribution for license.
+ */
+package com.opengamma.strata.math.impl.util;
+
+import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.analysis.UnivariateFunction;
+import org.apache.commons.math3.analysis.differentiation.DerivativeStructure;
+import org.apache.commons.math3.analysis.differentiation.UnivariateDifferentiableFunction;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunctionLagrangeForm;
+import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.exception.DimensionMismatchException;
+import org.apache.commons.math3.exception.NonMonotonicSequenceException;
+import org.apache.commons.math3.exception.NumberIsTooSmallException;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.optim.PointValuePair;
+
+import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.math.impl.ComplexNumber;
+import com.opengamma.strata.math.impl.MathException;
+import com.opengamma.strata.math.impl.function.DoubleFunction1D;
+import com.opengamma.strata.math.impl.function.Function1D;
+import com.opengamma.strata.math.impl.function.FunctionND;
+import com.opengamma.strata.math.impl.matrix.DoubleMatrix1D;
+import com.opengamma.strata.math.impl.matrix.DoubleMatrix2D;
+
+/**
+ * Utility class for converting OpenGamma mathematical objects into <a href="http://commons.apache.org/math/api-2.1/index.html">Commons</a> objects and vice versa.
+ */
+public final class CommonsMathWrapper {
+
+  private CommonsMathWrapper() {
+  }
+
+  /**
+   * @param f An OG 1-D function mapping doubles onto doubles, not null 
+   * @return A Commons univariate real function
+   */
+  public static UnivariateFunction wrapUnivariate(final Function1D<Double, Double> f) {
+    ArgChecker.notNull(f, "f");
+    return f::evaluate;
+  }
+
+  /**
+   * @param f An OG 1-D function mapping doubles onto doubles, not null 
+   * @return A Commons univariate real function
+   */
+  public static MultivariateFunction wrapMultivariate(final Function1D<Double, Double> f) {
+    ArgChecker.notNull(f, "f");
+    return point -> {
+      final int n = point.length;
+      final Double[] coordinate = new Double[n];
+      for (int i = 0; i < n; i++) {
+        coordinate[i] = point[i];
+      }
+      return f.evaluate(coordinate);
+    };
+  }
+
+  /**
+   * @param f An OG 1-D function mapping vectors of doubles onto doubles, not null
+   * @return A Commons multivariate real function
+   */
+  public static MultivariateFunction wrapMultivariateVector(final Function1D<DoubleMatrix1D, Double> f) {
+    ArgChecker.notNull(f, "f");
+    return point -> f.evaluate(new DoubleMatrix1D(point));
+  }
+
+  /**
+   * @param f An OG n-D function mapping doubles onto doubles, not null
+   * @return A Commons multivariate real function
+   */
+  public static MultivariateFunction wrap(final FunctionND<Double, Double> f) {
+    ArgChecker.notNull(f, "f");
+    return point -> {
+      final int n = point.length;
+      final Double[] coordinate = new Double[n];
+      for (int i = 0; i < n; i++) {
+        coordinate[i] = point[i];
+      }
+      return f.evaluate(coordinate);
+    };
+  }
+
+  /**
+   * @param x An OG 2-D matrix of doubles, not null
+   * @return A Commons matrix
+   */
+  public static RealMatrix wrap(final DoubleMatrix2D x) {
+    ArgChecker.notNull(x, "x");
+    return new Array2DRowRealMatrix(x.getData());
+  }
+
+  /**
+   * @param x An OG 1-D vector of doubles, not null
+   * @return A Commons matrix 
+   */
+  public static RealMatrix wrapAsMatrix(final DoubleMatrix1D x) {
+    ArgChecker.notNull(x, "x");
+    final int n = x.getNumberOfElements();
+    final double[][] y = new double[n][1];
+    for (int i = 0; i < n; i++) {
+      y[i][0] = x.getEntry(i);
+    }
+    return new Array2DRowRealMatrix(x.getData());
+  }
+
+  /**
+   * @param x A Commons matrix, not null
+   * @return An OG 2-D matrix of doubles
+   */
+  public static DoubleMatrix2D unwrap(final RealMatrix x) {
+    ArgChecker.notNull(x, "x");
+    return new DoubleMatrix2D(x.getData());
+  }
+
+  /**
+   * @param x An OG vector of doubles, not null
+   * @return A Commons vector
+   */
+  public static RealVector wrap(final DoubleMatrix1D x) {
+    ArgChecker.notNull(x, "x");
+    return new ArrayRealVector(x.getData());
+  }
+
+  /**
+   * @param x A Commons vector, not null
+   * @return An OG 1-D matrix of doubles
+   */
+  public static DoubleMatrix1D unwrap(final RealVector x) {
+    ArgChecker.notNull(x, "x");
+    return new DoubleMatrix1D(x.toArray());
+  }
+
+  /**
+   * @param z An OG complex number, not null
+   * @return A Commons complex number
+   */
+  public static Complex wrap(final ComplexNumber z) {
+    ArgChecker.notNull(z, "z");
+    return new Complex(z.getReal(), z.getImaginary());
+  }
+
+  /**
+   * @param lagrange A Commons polynomial in Lagrange form, not null
+   * @return An OG 1-D function mapping doubles to doubles
+   */
+  public static Function1D<Double, Double> unwrap(final PolynomialFunctionLagrangeForm lagrange) {
+    ArgChecker.notNull(lagrange, "lagrange");
+    return new Function1D<Double, Double>() {
+
+      @Override
+      public Double evaluate(final Double x) {
+        try {
+          return lagrange.value(x);
+        } catch (DimensionMismatchException | NonMonotonicSequenceException | NumberIsTooSmallException e) {
+          throw new MathException(e);
+        }
+      }
+
+    };
+  }
+
+  /**
+   * @param x A Commons pair of <i>(x, f(x))</i>, not null
+   * @return A matrix of double with the <i>x</i> as the first element and <i>f(x)</i> the second
+   */
+  public static double[] unwrap(final PointValuePair x) {
+    ArgChecker.notNull(x, "x");
+    return x.getPoint();
+  }
+
+  /**
+   * @param f An OG 1-D function mapping doubles to doubles, not null
+   * @return A Commons differentiable univariate real function
+   */
+  public static UnivariateDifferentiableFunction wrapDifferentiable(final DoubleFunction1D f) {
+    ArgChecker.notNull(f, "f");
+    return new UnivariateDifferentiableFunction() {
+
+      @Override
+      public double value(final double x) {
+        return f.evaluate(x);
+      }
+
+      @Override
+      public DerivativeStructure value(DerivativeStructure t) throws DimensionMismatchException {
+        throw new IllegalArgumentException("Not implemented yet");
+      }
+    };
+  }
+}

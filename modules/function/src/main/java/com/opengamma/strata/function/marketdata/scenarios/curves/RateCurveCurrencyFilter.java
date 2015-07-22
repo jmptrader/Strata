@@ -21,7 +21,6 @@ import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 
-import com.opengamma.analytics.financial.model.interestrate.curve.YieldCurve;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.engine.marketdata.scenarios.MarketDataFilter;
 import com.opengamma.strata.market.curve.Curve;
@@ -47,7 +46,7 @@ public final class RateCurveCurrencyFilter implements MarketDataFilter<Curve, Ra
 
   @Override
   public Class<?> getMarketDataIdType() {
-    return YieldCurve.class;
+    return RateCurveId.class;
   }
 
   /**
