@@ -132,6 +132,7 @@ public final class InterpolatedNodalSurface
     if (xValues.length != yValues.length) {
       throw new IllegalArgumentException("Length of x-values and y-values must match");
     }
+    // TODO check xValues.length == zValues.length ? or this is intended flexibility?
     metadata.getParameterMetadata().ifPresent(params -> {
       if (xValues.length != params.size()) {
         throw new IllegalArgumentException("Length of x-values and parameter metadata must match when metadata present");
@@ -143,7 +144,7 @@ public final class InterpolatedNodalSurface
     this.zValues = zValues.clone();
     Map<DoublesPair, Double> pairs = new HashMap<>();
     for (int i = 0; i < xValues.length; i++) {
-      pairs.put(DoublesPair.of(xValues[i], yValues[i]), zValues[i]);
+      pairs.put(DoublesPair.of(xValues[i], yValues[i]), zValues[i]); // TODO fails if xValues.length > zValues.length
     }
     this.interpolator = interpolator;
     underlyingDataBundle = interpolator.getDataBundle(pairs);

@@ -42,7 +42,7 @@ import com.opengamma.strata.collect.tuple.DoublesPair;
  * The sensitivity is 1.
  */
 @BeanDefinition(builderScope = "private")
-public final class ConstantNodalSurface
+public final class ConstantNodalSurface // TODO this is a nodal surface? zValueParameterSensitivity needs to be defined?
     implements NodalSurface, ImmutableBean, Serializable {
 
   /**
@@ -55,7 +55,7 @@ public final class ConstantNodalSurface
   /**
    * The single z-value.
    */
-  @PropertyDefinition(validate = "notNull", get = "private")
+  @PropertyDefinition(validate = "notNull", get = "private") // TODO need notNull?
   private final double zValue;
 
   //-------------------------------------------------------------------------

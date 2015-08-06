@@ -112,7 +112,7 @@ public interface NodalSurface
    */
   public default NodalSurface shiftedBy(List<ValueAdjustment> adjustments) {
     double[] shifted = getZValues();
-    int minSize = Math.min(shifted.length, adjustments.size());
+    int minSize = Math.min(shifted.length, adjustments.size()); // TODO need this flexibility?
     for (int i = 0; i < minSize; i++) {
       shifted[i] = adjustments.get(i).adjust(shifted[i]);
     }
