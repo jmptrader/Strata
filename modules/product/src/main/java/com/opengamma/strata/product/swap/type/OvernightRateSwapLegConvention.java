@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,17 +12,16 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableDefaults;
-import org.joda.beans.ImmutableValidator;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableDefaults;
+import org.joda.beans.gen.ImmutableValidator;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
@@ -62,7 +61,7 @@ import com.opengamma.strata.product.swap.RateCalculationSwapLeg;
  */
 @BeanDefinition
 public final class OvernightRateSwapLegConvention
-    implements SwapLegConvention, ImmutableBean, Serializable {
+    implements FloatRateSwapLegConvention, ImmutableBean, Serializable {
 
   /**
    * The Overnight index.
@@ -70,7 +69,7 @@ public final class OvernightRateSwapLegConvention
    * The floating rate to be paid is based on this index
    * It will be a well known market index such as 'GBP-SONIA'.
    */
-  @PropertyDefinition(validate = "notNull")
+  @PropertyDefinition(validate = "notNull", overrideGet = true)
   private final OvernightIndex index;
   /**
    * The method of accruing overnight interest, defaulted to 'Compounded'.
@@ -173,7 +172,7 @@ public final class OvernightRateSwapLegConvention
    * remaining period occurs at the start or end of the schedule.
    * It also determines whether the irregular period is shorter or longer than the regular period.
    * <p>
-   * This will default to 'ShortInitial' if not specified.
+   * This will default to 'SmartInitial' if not specified.
    */
   @PropertyDefinition(get = "field")
   private final StubConvention stubConvention;
@@ -220,6 +219,15 @@ public final class OvernightRateSwapLegConvention
    */
   @PropertyDefinition(get = "field")
   private final CompoundingMethod compoundingMethod;
+  /**
+   * The flag indicating whether to exchange the notional.
+   * <p>
+   * If 'true', the notional there is both an initial exchange and a final exchange of notional.
+   * <p>
+   * This will default to 'false' if not specified.
+   */
+  @PropertyDefinition
+  private final boolean notionalExchange;
 
   //-------------------------------------------------------------------------
   /**
@@ -227,7 +235,7 @@ public final class OvernightRateSwapLegConvention
    * <p>
    * The standard market convention for an Overnight rate leg is based on the index,
    * frequency and payment offset, with the accrual method set to 'Compounded' and the
-   * stub convention set to 'ShortInitial'.
+   * stub convention set to 'SmartInitial'.
    * Use the {@linkplain #builder() builder} for unusual conventions.
    * 
    * @param index  the index, the market convention values are extracted from the index
@@ -247,7 +255,7 @@ public final class OvernightRateSwapLegConvention
    * Creates a convention based on the specified index, specifying the accrual method.
    * <p>
    * The standard market convention for an Overnight rate leg is based on the index,
-   * frequency, payment offset and accrual type, with the stub convention set to 'ShortInitial'.
+   * frequency, payment offset and accrual type, with the stub convention set to 'SmartInitial'.
    * Use the {@linkplain #builder() builder} for unusual conventions.
    * <p>
    * The accrual method is usually 'Compounded'.
@@ -271,7 +279,7 @@ public final class OvernightRateSwapLegConvention
         .accrualFrequency(frequency)
         .paymentFrequency(frequency)
         .paymentDateOffset(DaysAdjustment.ofBusinessDays(paymentOffsetDays, index.getFixingCalendar()))
-        .stubConvention(StubConvention.SHORT_INITIAL)
+        .stubConvention(StubConvention.SMART_INITIAL)
         .build();
   }
 
@@ -324,6 +332,7 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the start date business day adjustment, not null
    */
+  @Override
   public Currency getCurrency() {
     return currency != null ? currency : index.getCurrency();
   }
@@ -340,6 +349,7 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the day count, not null
    */
+  @Override
   public DayCount getDayCount() {
     return dayCount != null ? dayCount : index.getDayCount();
   }
@@ -369,9 +379,11 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getAccrualBusinessDayAdjustment() {
     return accrualBusinessDayAdjustment != null ?
-        accrualBusinessDayAdjustment : BusinessDayAdjustment.of(MODIFIED_FOLLOWING, index.getFixingCalendar());
+        accrualBusinessDayAdjustment :
+        BusinessDayAdjustment.of(MODIFIED_FOLLOWING, index.getFixingCalendar());
   }
 
   /**
@@ -385,6 +397,7 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the start date business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getStartDateBusinessDayAdjustment() {
     return startDateBusinessDayAdjustment != null ? startDateBusinessDayAdjustment : getAccrualBusinessDayAdjustment();
   }
@@ -400,6 +413,7 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the end date business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getEndDateBusinessDayAdjustment() {
     return endDateBusinessDayAdjustment != null ? endDateBusinessDayAdjustment : getAccrualBusinessDayAdjustment();
   }
@@ -412,12 +426,12 @@ public final class OvernightRateSwapLegConvention
    * remaining period occurs at the start or end of the schedule.
    * It also determines whether the irregular period is shorter or longer than the regular period.
    * <p>
-   * This will default to 'ShortInitial' if not specified.
+   * This will default to 'SmartInitial' if not specified.
    * 
    * @return the stub convention, not null
    */
   public StubConvention getStubConvention() {
-    return stubConvention != null ? stubConvention : StubConvention.SHORT_INITIAL;
+    return stubConvention != null ? stubConvention : StubConvention.SMART_INITIAL;
   }
 
   /**
@@ -428,12 +442,12 @@ public final class OvernightRateSwapLegConvention
    * the frequency to the start date, or subtracting it from the end date.
    * The roll convention provides the detailed rule to adjust the day-of-month or day-of-week.
    * <p>
-   * This will default to 'None' if not specified.
+   * This will default to 'EOM' if not specified.
    * 
    * @return the roll convention, not null
    */
   public RollConvention getRollConvention() {
-    return rollConvention != null ? rollConvention : RollConventions.NONE;
+    return rollConvention != null ? rollConvention : RollConventions.EOM;
   }
 
   /**
@@ -462,6 +476,7 @@ public final class OvernightRateSwapLegConvention
    * 
    * @return the payment date offset, not null
    */
+  @Override
   public DaysAdjustment getPaymentDateOffset() {
     return paymentDateOffset != null ? paymentDateOffset : DaysAdjustment.NONE;
   }
@@ -542,7 +557,11 @@ public final class OvernightRateSwapLegConvention
             .paymentDateOffset(getPaymentDateOffset())
             .compoundingMethod(getCompoundingMethod())
             .build())
-        .notionalSchedule(NotionalSchedule.of(getCurrency(), notional))
+        .notionalSchedule(NotionalSchedule.builder()
+            .currency(getCurrency())
+            .finalExchange(notionalExchange)
+            .initialExchange(notionalExchange)
+            .amount(ValueSchedule.of(notional)).build())
         .calculation(OvernightRateCalculation.builder()
             .index(index)
             .dayCount(getDayCount())
@@ -554,7 +573,6 @@ public final class OvernightRateSwapLegConvention
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code OvernightRateSwapLegConvention}.
    * @return the meta-bean, not null
@@ -564,7 +582,7 @@ public final class OvernightRateSwapLegConvention
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(OvernightRateSwapLegConvention.Meta.INSTANCE);
+    MetaBean.register(OvernightRateSwapLegConvention.Meta.INSTANCE);
   }
 
   /**
@@ -594,7 +612,8 @@ public final class OvernightRateSwapLegConvention
       RollConvention rollConvention,
       Frequency paymentFrequency,
       DaysAdjustment paymentDateOffset,
-      CompoundingMethod compoundingMethod) {
+      CompoundingMethod compoundingMethod,
+      boolean notionalExchange) {
     JodaBeanUtils.notNull(index, "index");
     JodaBeanUtils.notNull(accrualMethod, "accrualMethod");
     this.index = index;
@@ -611,22 +630,13 @@ public final class OvernightRateSwapLegConvention
     this.paymentFrequency = paymentFrequency;
     this.paymentDateOffset = paymentDateOffset;
     this.compoundingMethod = compoundingMethod;
+    this.notionalExchange = notionalExchange;
     validate();
   }
 
   @Override
   public OvernightRateSwapLegConvention.Meta metaBean() {
     return OvernightRateSwapLegConvention.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -637,6 +647,7 @@ public final class OvernightRateSwapLegConvention
    * It will be a well known market index such as 'GBP-SONIA'.
    * @return the value of the property, not null
    */
+  @Override
   public OvernightIndex getIndex() {
     return index;
   }
@@ -651,6 +662,19 @@ public final class OvernightRateSwapLegConvention
    */
   public OvernightAccrualMethod getAccrualMethod() {
     return accrualMethod;
+  }
+
+  //-----------------------------------------------------------------------
+  /**
+   * Gets the flag indicating whether to exchange the notional.
+   * <p>
+   * If 'true', the notional there is both an initial exchange and a final exchange of notional.
+   * <p>
+   * This will default to 'false' if not specified.
+   * @return the value of the property
+   */
+  public boolean isNotionalExchange() {
+    return notionalExchange;
   }
 
   //-----------------------------------------------------------------------
@@ -682,7 +706,8 @@ public final class OvernightRateSwapLegConvention
           JodaBeanUtils.equal(rollConvention, other.rollConvention) &&
           JodaBeanUtils.equal(paymentFrequency, other.paymentFrequency) &&
           JodaBeanUtils.equal(paymentDateOffset, other.paymentDateOffset) &&
-          JodaBeanUtils.equal(compoundingMethod, other.compoundingMethod);
+          JodaBeanUtils.equal(compoundingMethod, other.compoundingMethod) &&
+          (notionalExchange == other.notionalExchange);
     }
     return false;
   }
@@ -704,27 +729,29 @@ public final class OvernightRateSwapLegConvention
     hash = hash * 31 + JodaBeanUtils.hashCode(paymentFrequency);
     hash = hash * 31 + JodaBeanUtils.hashCode(paymentDateOffset);
     hash = hash * 31 + JodaBeanUtils.hashCode(compoundingMethod);
+    hash = hash * 31 + JodaBeanUtils.hashCode(notionalExchange);
     return hash;
   }
 
   @Override
   public String toString() {
-    StringBuilder buf = new StringBuilder(480);
+    StringBuilder buf = new StringBuilder(512);
     buf.append("OvernightRateSwapLegConvention{");
-    buf.append("index").append('=').append(index).append(',').append(' ');
-    buf.append("accrualMethod").append('=').append(accrualMethod).append(',').append(' ');
-    buf.append("rateCutOffDays").append('=').append(rateCutOffDays).append(',').append(' ');
-    buf.append("currency").append('=').append(currency).append(',').append(' ');
-    buf.append("dayCount").append('=').append(dayCount).append(',').append(' ');
-    buf.append("accrualFrequency").append('=').append(accrualFrequency).append(',').append(' ');
-    buf.append("accrualBusinessDayAdjustment").append('=').append(accrualBusinessDayAdjustment).append(',').append(' ');
-    buf.append("startDateBusinessDayAdjustment").append('=').append(startDateBusinessDayAdjustment).append(',').append(' ');
-    buf.append("endDateBusinessDayAdjustment").append('=').append(endDateBusinessDayAdjustment).append(',').append(' ');
-    buf.append("stubConvention").append('=').append(stubConvention).append(',').append(' ');
-    buf.append("rollConvention").append('=').append(rollConvention).append(',').append(' ');
-    buf.append("paymentFrequency").append('=').append(paymentFrequency).append(',').append(' ');
-    buf.append("paymentDateOffset").append('=').append(paymentDateOffset).append(',').append(' ');
-    buf.append("compoundingMethod").append('=').append(JodaBeanUtils.toString(compoundingMethod));
+    buf.append("index").append('=').append(JodaBeanUtils.toString(index)).append(',').append(' ');
+    buf.append("accrualMethod").append('=').append(JodaBeanUtils.toString(accrualMethod)).append(',').append(' ');
+    buf.append("rateCutOffDays").append('=').append(JodaBeanUtils.toString(rateCutOffDays)).append(',').append(' ');
+    buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
+    buf.append("dayCount").append('=').append(JodaBeanUtils.toString(dayCount)).append(',').append(' ');
+    buf.append("accrualFrequency").append('=').append(JodaBeanUtils.toString(accrualFrequency)).append(',').append(' ');
+    buf.append("accrualBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(accrualBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("startDateBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(startDateBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("endDateBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(endDateBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("stubConvention").append('=').append(JodaBeanUtils.toString(stubConvention)).append(',').append(' ');
+    buf.append("rollConvention").append('=').append(JodaBeanUtils.toString(rollConvention)).append(',').append(' ');
+    buf.append("paymentFrequency").append('=').append(JodaBeanUtils.toString(paymentFrequency)).append(',').append(' ');
+    buf.append("paymentDateOffset").append('=').append(JodaBeanUtils.toString(paymentDateOffset)).append(',').append(' ');
+    buf.append("compoundingMethod").append('=').append(JodaBeanUtils.toString(compoundingMethod)).append(',').append(' ');
+    buf.append("notionalExchange").append('=').append(JodaBeanUtils.toString(notionalExchange));
     buf.append('}');
     return buf.toString();
   }
@@ -810,6 +837,11 @@ public final class OvernightRateSwapLegConvention
     private final MetaProperty<CompoundingMethod> compoundingMethod = DirectMetaProperty.ofImmutable(
         this, "compoundingMethod", OvernightRateSwapLegConvention.class, CompoundingMethod.class);
     /**
+     * The meta-property for the {@code notionalExchange} property.
+     */
+    private final MetaProperty<Boolean> notionalExchange = DirectMetaProperty.ofImmutable(
+        this, "notionalExchange", OvernightRateSwapLegConvention.class, Boolean.TYPE);
+    /**
      * The meta-properties.
      */
     private final Map<String, MetaProperty<?>> metaPropertyMap$ = new DirectMetaPropertyMap(
@@ -827,7 +859,8 @@ public final class OvernightRateSwapLegConvention
         "rollConvention",
         "paymentFrequency",
         "paymentDateOffset",
-        "compoundingMethod");
+        "compoundingMethod",
+        "notionalExchange");
 
     /**
      * Restricted constructor.
@@ -866,6 +899,8 @@ public final class OvernightRateSwapLegConvention
           return paymentDateOffset;
         case -1376171496:  // compoundingMethod
           return compoundingMethod;
+        case -159410813:  // notionalExchange
+          return notionalExchange;
       }
       return super.metaPropertyGet(propertyName);
     }
@@ -998,6 +1033,14 @@ public final class OvernightRateSwapLegConvention
       return compoundingMethod;
     }
 
+    /**
+     * The meta-property for the {@code notionalExchange} property.
+     * @return the meta-property, not null
+     */
+    public MetaProperty<Boolean> notionalExchange() {
+      return notionalExchange;
+    }
+
     //-----------------------------------------------------------------------
     @Override
     protected Object propertyGet(Bean bean, String propertyName, boolean quiet) {
@@ -1030,6 +1073,8 @@ public final class OvernightRateSwapLegConvention
           return ((OvernightRateSwapLegConvention) bean).paymentDateOffset;
         case -1376171496:  // compoundingMethod
           return ((OvernightRateSwapLegConvention) bean).compoundingMethod;
+        case -159410813:  // notionalExchange
+          return ((OvernightRateSwapLegConvention) bean).isNotionalExchange();
       }
       return super.propertyGet(bean, propertyName, quiet);
     }
@@ -1065,6 +1110,7 @@ public final class OvernightRateSwapLegConvention
     private Frequency paymentFrequency;
     private DaysAdjustment paymentDateOffset;
     private CompoundingMethod compoundingMethod;
+    private boolean notionalExchange;
 
     /**
      * Restricted constructor.
@@ -1092,6 +1138,7 @@ public final class OvernightRateSwapLegConvention
       this.paymentFrequency = beanToCopy.paymentFrequency;
       this.paymentDateOffset = beanToCopy.paymentDateOffset;
       this.compoundingMethod = beanToCopy.compoundingMethod;
+      this.notionalExchange = beanToCopy.isNotionalExchange();
     }
 
     //-----------------------------------------------------------------------
@@ -1126,6 +1173,8 @@ public final class OvernightRateSwapLegConvention
           return paymentDateOffset;
         case -1376171496:  // compoundingMethod
           return compoundingMethod;
+        case -159410813:  // notionalExchange
+          return notionalExchange;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -1176,6 +1225,9 @@ public final class OvernightRateSwapLegConvention
         case -1376171496:  // compoundingMethod
           this.compoundingMethod = (CompoundingMethod) newValue;
           break;
+        case -159410813:  // notionalExchange
+          this.notionalExchange = (Boolean) newValue;
+          break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
@@ -1185,24 +1237,6 @@ public final class OvernightRateSwapLegConvention
     @Override
     public Builder set(MetaProperty<?> property, Object value) {
       super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
       return this;
     }
 
@@ -1222,7 +1256,8 @@ public final class OvernightRateSwapLegConvention
           rollConvention,
           paymentFrequency,
           paymentDateOffset,
-          compoundingMethod);
+          compoundingMethod,
+          notionalExchange);
     }
 
     //-----------------------------------------------------------------------
@@ -1381,7 +1416,7 @@ public final class OvernightRateSwapLegConvention
      * remaining period occurs at the start or end of the schedule.
      * It also determines whether the irregular period is shorter or longer than the regular period.
      * <p>
-     * This will default to 'ShortInitial' if not specified.
+     * This will default to 'SmartInitial' if not specified.
      * @param stubConvention  the new value
      * @return this, for chaining, not null
      */
@@ -1453,10 +1488,24 @@ public final class OvernightRateSwapLegConvention
       return this;
     }
 
+    /**
+     * Sets the flag indicating whether to exchange the notional.
+     * <p>
+     * If 'true', the notional there is both an initial exchange and a final exchange of notional.
+     * <p>
+     * This will default to 'false' if not specified.
+     * @param notionalExchange  the new value
+     * @return this, for chaining, not null
+     */
+    public Builder notionalExchange(boolean notionalExchange) {
+      this.notionalExchange = notionalExchange;
+      return this;
+    }
+
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(480);
+      StringBuilder buf = new StringBuilder(512);
       buf.append("OvernightRateSwapLegConvention.Builder{");
       buf.append("index").append('=').append(JodaBeanUtils.toString(index)).append(',').append(' ');
       buf.append("accrualMethod").append('=').append(JodaBeanUtils.toString(accrualMethod)).append(',').append(' ');
@@ -1471,13 +1520,13 @@ public final class OvernightRateSwapLegConvention
       buf.append("rollConvention").append('=').append(JodaBeanUtils.toString(rollConvention)).append(',').append(' ');
       buf.append("paymentFrequency").append('=').append(JodaBeanUtils.toString(paymentFrequency)).append(',').append(' ');
       buf.append("paymentDateOffset").append('=').append(JodaBeanUtils.toString(paymentDateOffset)).append(',').append(' ');
-      buf.append("compoundingMethod").append('=').append(JodaBeanUtils.toString(compoundingMethod));
+      buf.append("compoundingMethod").append('=').append(JodaBeanUtils.toString(compoundingMethod)).append(',').append(' ');
+      buf.append("notionalExchange").append('=').append(JodaBeanUtils.toString(notionalExchange));
       buf.append('}');
       return buf.toString();
     }
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

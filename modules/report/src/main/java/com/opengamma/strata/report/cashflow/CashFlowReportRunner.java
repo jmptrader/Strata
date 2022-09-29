@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.report.cashflow;
@@ -35,7 +35,7 @@ import com.opengamma.strata.report.ReportRunner;
 /**
  * Report runner for cash flow reports.
  */
-public class CashFlowReportRunner
+public final class CashFlowReportRunner
     implements ReportRunner<CashFlowReportTemplate> {
 
   // TODO - when the cashflow report INI file supports specific columns, the following maps should
@@ -123,15 +123,13 @@ public class CashFlowReportRunner
               Measures.EXPLAIN_PRESENT_VALUE));
     }
 
-    Result<?> result = calculationResults.getCalculationResults().get(0, columnIdx);
+    Result<ExplainMap> result = calculationResults.getCalculationResults().get(0, columnIdx, ExplainMap.class);
     if (result.isFailure()) {
       throw new IllegalArgumentException(
           Messages.format("Failure result found for required measure '{}': {}",
               Measures.EXPLAIN_PRESENT_VALUE, result.getFailure().getMessage()));
     }
-    ExplainMap explainMap = (ExplainMap) result.getValue();
-
-    return runReport(explainMap, calculationResults.getValuationDate());
+    return runReport(result.getValue(), calculationResults.getValuationDate());
   }
 
   private Report runReport(ExplainMap explainMap, LocalDate valuationDate) {
@@ -233,7 +231,7 @@ public class CashFlowReportRunner
   private int compareNestedEntries(ExplainMap m1, ExplainMap m2) {
     Optional<LocalDate> paymentDate1 = m1.get(ExplainKey.PAYMENT_DATE);
     Optional<LocalDate> paymentDate2 = m2.get(ExplainKey.PAYMENT_DATE);
-    if (paymentDate1.isPresent() && paymentDate1.isPresent()) {
+    if (paymentDate1.isPresent() && paymentDate2.isPresent()) {
       return paymentDate1.get().compareTo(paymentDate2.get());
     }
     if (!paymentDate2.isPresent()) {

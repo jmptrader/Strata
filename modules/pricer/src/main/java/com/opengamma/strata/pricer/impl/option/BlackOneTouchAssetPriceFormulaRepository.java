@@ -1,11 +1,12 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.impl.option;
 
-import com.google.common.math.DoubleMath;
+import static com.opengamma.strata.math.MathUtils.nearZero;
+
 import com.opengamma.strata.basics.value.ValueDerivatives;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
@@ -62,7 +63,7 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
     double lognormalVolSq = lognormalVol * lognormalVol;
     double lognormalVolT = lognormalVol * Math.sqrt(timeToExpiry);
-    if (DoubleMath.fuzzyEquals(Math.min(timeToExpiry, lognormalVolSq), 0d, SMALL)) {
+    if (nearZero(Math.min(timeToExpiry, lognormalVolSq), SMALL)) {
       return isKnockIn ? 0d : spot * df1;
     }
     double mu = (costOfCarry - 0.5 * lognormalVolSq) / lognormalVolSq;
@@ -71,7 +72,8 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double x2 = Math.log(spot / h) / lognormalVolT + m1;
     double y2 = Math.log(h / spot) / lognormalVolT + m1;
     double z = Math.log(h / spot) / lognormalVolT + lambda * lognormalVolT;
-    double xE = isKnockIn ? getF(spot, z, lognormalVolT, h, mu, lambda, eta, h) :
+    double xE = isKnockIn ?
+        getF(spot, z, lognormalVolT, h, mu, lambda, eta, h) :
         getE(spot, df1, x2, y2, h, mu, eta);
     return xE;
   }
@@ -111,7 +113,7 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double df1 = Math.exp(timeToExpiry * (costOfCarry - rate));
     double lognormalVolSq = lognormalVol * lognormalVol;
     double lognormalVolT = lognormalVol * Math.sqrt(timeToExpiry);
-    if (DoubleMath.fuzzyEquals(Math.min(timeToExpiry, lognormalVolSq), 0d, SMALL)) {
+    if (nearZero(Math.min(timeToExpiry, lognormalVolSq), SMALL)) {
       if (isKnockIn) {
         return ValueDerivatives.of(0d, DoubleArray.filled(6));
       }
@@ -173,22 +175,18 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     double m1Bar = x2Bar + y2Bar;
     muBar += lognormalVolT * m1Bar + mu / lambda * lambdaBar;
     lognormalVolTBar +=
-        +(lambda - Math.log(h / spot) / (lognormalVolT * lognormalVolT)) * zBar
-            - Math.log(h / spot) / (lognormalVolT * lognormalVolT) * y2Bar
-            - Math.log(spot / h) / (lognormalVolT * lognormalVolT) * x2Bar
-            + (1 + mu) * m1Bar;
+        +(lambda - Math.log(h / spot) / (lognormalVolT * lognormalVolT)) * zBar -
+            Math.log(h / spot) / (lognormalVolT * lognormalVolT) * y2Bar -
+            Math.log(spot / h) / (lognormalVolT * lognormalVolT) * x2Bar + (1 + mu) * m1Bar;
     double lognormalVolSqBar = -costOfCarry / (lognormalVolSq * lognormalVolSq) * muBar - rate /
         (lognormalVolSq * lognormalVolSq) / lambda * lambdaBar;
     derivatives[0] += dxyds * x2Bar - dxyds * y2Bar - dxyds * zBar;
     derivatives[1] = 1d / lambda / lognormalVolSq * lambdaBar - timeToExpiry * df1 * df1Bar;
     derivatives[2] = 1d / lognormalVolSq * muBar + timeToExpiry * df1 * df1Bar;
     derivatives[3] = 2d * lognormalVol * lognormalVolSqBar + Math.sqrt(timeToExpiry) * lognormalVolTBar;
-    derivatives[4] = +(costOfCarry - rate) * df1 * df1Bar
-        + lognormalVolTBar * lognormalVolT * 0.5 / timeToExpiry;
-    derivatives[5] += -dxyds * x2Bar / spot + dxyds * y2Bar / spot + dxyds * zBar / spot
-        + dxyds * dxyds * x2SqBar + 2d * dxyds * x2sBar
-        + dxyds * dxyds * y2SqBar - 2d * dxyds * y2sBar
-        + dxyds * dxyds * zSqBar - 2d * dxyds * zsBar;
+    derivatives[4] = +(costOfCarry - rate) * df1 * df1Bar + lognormalVolTBar * lognormalVolT * 0.5 / timeToExpiry;
+    derivatives[5] += -dxyds * x2Bar / spot + dxyds * y2Bar / spot + dxyds * zBar / spot + dxyds * dxyds * x2SqBar +
+        2d * dxyds * x2sBar + dxyds * dxyds * y2SqBar - 2d * dxyds * y2sBar + dxyds * dxyds * zSqBar - 2d * dxyds * zsBar;
     return ValueDerivatives.of(price, DoubleArray.ofUnsafe(derivatives));
   }
 
@@ -214,8 +212,8 @@ public class BlackOneTouchAssetPriceFormulaRepository {
       double eta,
       double barrier) {
 
-    return barrier * (Math.pow(h / s, mu + lambda) * NORMAL.getCDF(eta * z)
-        + Math.pow(h / s, mu - lambda) * NORMAL.getCDF(eta * (z - 2d * lambda * lognormalVolT)));
+    return barrier * (Math.pow(h / s, mu + lambda) * NORMAL.getCDF(eta * z) +
+        Math.pow(h / s, mu - lambda) * NORMAL.getCDF(eta * (z - 2d * lambda * lognormalVolT)));
   }
 
   //-------------------------------------------------------------------------
@@ -284,8 +282,8 @@ public class BlackOneTouchAssetPriceFormulaRepository {
     firstDerivatives[2] = barrier * (-n2df * eta * 2 * lambda * n2Bar); //lognormalVolT
     firstDerivatives[3] = barrier * (hsMuPLa * Math.log(h / s) * hsMuPLaBar + hsMuMLa * Math.log(h / s) * hsMuMLaBar); // mu
     firstDerivatives[4] = barrier * (hsMuPLa * Math.log(h / s) * hsMuPLaBar - hsMuMLa * Math.log(h / s) * hsMuMLaBar); // lambda
-    secondDerivatives[0] = barrier * (hsMuPLa * hsMuPLaBar * (mu + lambda) * (mu + lambda + 1d) / (s * s)
-        + hsMuMLa * hsMuMLaBar * (mu - lambda) * (mu - lambda + 1d) / (s * s));
+    secondDerivatives[0] = barrier * (hsMuPLa * hsMuPLaBar * (mu + lambda) * (mu + lambda + 1d) / (s * s) +
+        hsMuMLa * hsMuMLaBar * (mu - lambda) * (mu - lambda + 1d) / (s * s));
     secondDerivatives[1] = barrier * (-z * n1df * eta * n1Bar - (z - 2 * lambda * lognormalVolT) * n2df * eta * n2Bar);
     secondDerivatives[2] = barrier * (-n1df * n1Bar * (mu + lambda) * eta / s - n2df * n2Bar * (mu - lambda) * eta / s);
     return f;

@@ -1,18 +1,23 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.io;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -39,10 +44,10 @@ import com.opengamma.strata.collect.Unchecked;
  *    // use the CsvIterator
  *  }
  * </pre>
- * One way to use the iterable is with the for-each loop, using a lambda to adapt {@code Iterator} to {@code Iterable}:
+ * One way to use the iterable is with the for-each loop, using {@link #asIterable()}:
  * <pre>
  *  try (CsvIterator csvIterator = CsvIterator.of(source, true)) {
- *    for (CsvRow row : () -> csvIterator) {
+ *    for (CsvRow row : csvIterator.asIterable()) {
  *      // process the row
  *    }
  *  }
@@ -76,15 +81,16 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
    * The next row.
    */
   private CsvRow nextRow;
+  /**
+   * The current line number in the source file.
+   */
+  private int currentLineNumber;
 
   //------------------------------------------------------------------------
   /**
-   * Parses the specified source as a CSV file.
-   * <p>
-   * This method opens the CSV file for reading.
-   * The caller is responsible for closing it by calling {@link #close()}.
+   * Parses the specified source as a CSV file, using a comma as the separator.
    * 
-   * @param source  the CSV file resource
+   * @param source  the source to read as CSV
    * @param headerRow  whether the source has a header row, an empty source must still contain the header
    * @return the CSV file
    * @throws UncheckedIOException if an IO exception occurs
@@ -99,14 +105,11 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
    * <p>
    * This overload allows the separator to be controlled.
    * For example, a tab-separated file is very similar to a CSV file, the only difference is the separator.
-   * <p>
-   * This method opens the CSV file for reading.
-   * The caller is responsible for closing it by calling {@link #close()}.
    * 
-   * @param source  the file resource
+   * @param source  the source to read as CSV
    * @param headerRow  whether the source has a header row, an empty source must still contain the header
    * @param separator  the separator used to separate each field, typically a comma, but a tab is sometimes used
-   * @return the TSV file
+   * @return the CSV file
    * @throws UncheckedIOException if an IO exception occurs
    * @throws IllegalArgumentException if the file cannot be parsed
    */
@@ -114,20 +117,67 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
     ArgChecker.notNull(source, "source");
     @SuppressWarnings("resource")
     BufferedReader reader = Unchecked.wrap(() -> source.openBufferedStream());
+    return create(reader, headerRow, separator);
+  }
+
+  /**
+   * Parses the specified reader as a CSV file, using a comma as the separator.
+   * <p>
+   * The caller is responsible for closing the reader, such as by calling {@link #close()}.
+   * 
+   * @param reader  the file reader
+   * @param headerRow  whether the source has a header row, an empty source must still contain the header
+   * @return the CSV file
+   * @throws UncheckedIOException if an IO exception occurs
+   * @throws IllegalArgumentException if the file cannot be parsed
+   */
+  public static CsvIterator of(Reader reader, boolean headerRow) {
+    return of(reader, headerRow, ',');
+  }
+
+  /**
+   * Parses the specified reader as a CSV file where the separator is specified and might not be a comma.
+   * <p>
+   * This overload allows the separator to be controlled.
+   * For example, a tab-separated file is very similar to a CSV file, the only difference is the separator.
+   * <p>
+   * The caller is responsible for closing the reader, such as by calling {@link #close()}.
+   * 
+   * @param reader  the file reader
+   * @param headerRow  whether the source has a header row, an empty source must still contain the header
+   * @param separator  the separator used to separate each field, typically a comma, but a tab is sometimes used
+   * @return the CSV file
+   * @throws UncheckedIOException if an IO exception occurs
+   * @throws IllegalArgumentException if the file cannot be parsed
+   */
+  public static CsvIterator of(Reader reader, boolean headerRow, char separator) {
+    ArgChecker.notNull(reader, "reader");
+    @SuppressWarnings("resource")
+    BufferedReader breader = reader instanceof BufferedReader ? (BufferedReader) reader : new BufferedReader(reader);
+    return create(breader, headerRow, separator);
+  }
+
+  // create the iterator
+  private static CsvIterator create(BufferedReader breader, boolean headerRow, char separator) {
     try {
       if (!headerRow) {
-        return new CsvIterator(reader, separator, ImmutableList.of(), ImmutableMap.of());
+        return new CsvIterator(breader, separator, ImmutableList.of(), ImmutableMap.of(), 0);
       }
-      String line = reader.readLine();
-      if (line == null) {
-        throw new IllegalArgumentException("Could not read header row from empty CSV file");
+      String line = breader.readLine();
+      int lineNumber = 1;
+      while (line != null) {
+        ImmutableList<String> headers = CsvFile.parseLine(line, separator);
+        if (!headers.isEmpty()) {
+          return new CsvIterator(breader, separator, headers, CsvFile.buildSearchHeaders(headers), lineNumber);
+        }
+        line = breader.readLine();
+        lineNumber++;
       }
-      ImmutableList<String> headers = CsvFile.parseLine(line, separator);
-      return new CsvIterator(reader, separator, headers, CsvFile.buildSearchHeaders(headers));
+      throw new IllegalArgumentException("Could not read header row from empty CSV file");
 
     } catch (RuntimeException ex) {
       try {
-        reader.close();
+        breader.close();
       } catch (IOException ex2) {
         ex.addSuppressed(ex2);
       }
@@ -135,7 +185,7 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
 
     } catch (IOException ex) {
       try {
-        reader.close();
+        breader.close();
       } catch (IOException ex2) {
         ex.addSuppressed(ex2);
       }
@@ -155,12 +205,14 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
       BufferedReader reader,
       char separator,
       ImmutableList<String> headers,
-      ImmutableMap<String, Integer> searchHeaders) {
+      ImmutableMap<String, Integer> searchHeaders,
+      int currentLineNumber) {
 
     this.reader = reader;
     this.separator = separator;
     this.headers = headers;
     this.searchHeaders = searchHeaders;
+    this.currentLineNumber = currentLineNumber;
   }
 
   //------------------------------------------------------------------------
@@ -176,6 +228,66 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
   }
 
   /**
+   * Checks if the header is present in the file.
+   * <p>
+   * Matching is case insensitive.
+   * 
+   * @param header  the column header to match
+   * @return true if the header is present
+   */
+  public boolean containsHeader(String header) {
+    return searchHeaders.containsKey(header.toLowerCase(Locale.ENGLISH));
+  }
+
+  /**
+   * Checks if the headers are present in the file.
+   * <p>
+   * Matching is case insensitive.
+   * 
+   * @param headers  the column headers to match
+   * @return true if all the headers are present
+   */
+  public boolean containsHeaders(Collection<String> headers) {
+    return headers.stream().allMatch(this::containsHeader);
+  }
+
+  /**
+   * Checks if the header pattern is present in the file.
+   * <p>
+   * Matching is case insensitive.
+   * 
+   * @param headerPattern  the header pattern to match
+   * @return true if the header is present
+   */
+  public boolean containsHeader(Pattern headerPattern) {
+    for (int i = 0; i < headers.size(); i++) {
+      if (headerPattern.matcher(headers.get(i)).matches()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Returns an {@code Iterable} that wraps this iterator.
+   * <p>
+   * Unlike most {@code Iterable} implementations, the method {@link Iterable#iterator()}
+   * can only be called once. This is intended for use with the for-each loop.
+   * <pre>
+   *  try (CsvIterator csvIterator = CsvIterator.of(source, true)) {
+   *    for (CsvRow row : csvIterator.asIterable()) {
+   *      // process the row
+   *    }
+   *  }
+   * </pre>
+   * 
+   * @return this iterator as an {@code Iterable}
+   */
+  public Iterable<CsvRow> asIterable() {
+    return () -> this;
+  }
+
+  /**
    * Returns a stream that wraps this iterator.
    * <p>
    * The stream will process any remaining rows in the CSV file.
@@ -184,7 +296,8 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
    * @return the stream wrapping this iterator
    */
   public Stream<CsvRow> asStream() {
-    Spliterator<CsvRow> spliterator = Spliterators.spliteratorUnknownSize(this, Spliterator.ORDERED | Spliterator.NONNULL);
+    Spliterator<CsvRow> spliterator =
+        Spliterators.spliteratorUnknownSize(this, Spliterator.ORDERED | Spliterator.NONNULL);
     return StreamSupport.stream(spliterator, false);
   }
 
@@ -203,9 +316,10 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
     } else {
       String line = null;
       while ((line = Unchecked.wrap(() -> reader.readLine())) != null) {
+        currentLineNumber++;
         ImmutableList<String> fields = CsvFile.parseLine(line, separator);
         if (!fields.isEmpty()) {
-          nextRow = new CsvRow(headers, searchHeaders, fields);
+          nextRow = new CsvRow(headers, searchHeaders, currentLineNumber, fields);
           return true;
         }
       }
@@ -266,6 +380,38 @@ public final class CsvIterator implements AutoCloseable, PeekingIterator<CsvRow>
       if (hasNext()) {
         rows.add(next());
       }
+    }
+    return rows;
+  }
+
+  /**
+   * Returns the next batch of rows from the CSV file using a predicate to determine the rows.
+   * <p>
+   * This is useful for CSV files where information is grouped with an identifier or key.
+   * For example, a variable notional trade file might have one row for the trade followed by
+   * multiple rows for the variable aspects, all grouped by a common trade identifier.
+   * In general, callers should peek or read the first row and use information within it to
+   * create the selector:
+   * <pre>
+   *  while (it.hasNext()) {
+   *    CsvRow first = it.peek();
+   *    String id = first.getValue("ID");
+   *    List&lt;CsvRow&gt; batch = it.nextBatch(row -&gt; row.getValue("ID").equals(id));
+   *    // process batch
+   *  }
+   * </pre>
+   * This will return a batch of rows where the selector returns true for the row.
+   * An empty list is returned if the selector returns false for the first row.
+   * 
+   * @param selector  selects whether a row is part of the batch or part of the next batch
+   * @return the next batch of rows, as determined by the selector
+   * @throws UncheckedIOException if an IO exception occurs
+   * @throws IllegalArgumentException if the file cannot be parsed
+   */
+  public List<CsvRow> nextBatch(Predicate<CsvRow> selector) {
+    List<CsvRow> rows = new ArrayList<>();
+    while (hasNext() && selector.test(peek())) {
+      rows.add(next());
     }
     return rows;
   }

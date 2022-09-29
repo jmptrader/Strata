@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,12 +8,14 @@ package com.opengamma.strata.product.swap.type;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.EUTA;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.GBLO;
+import static com.opengamma.strata.basics.date.HolidayCalendarIds.JPTO;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.USNY;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.BusinessDayConvention;
@@ -26,125 +28,142 @@ import com.opengamma.strata.basics.schedule.Frequency;
 /**
  * Test {@link XCcyIborIborSwapConventions}.
  */
-@Test
 public class XCcyIborIborSwapConventionsTest {
 
   private static final HolidayCalendarId EUTA_USNY = EUTA.combinedWith(USNY);
   private static final HolidayCalendarId GBLO_USNY = GBLO.combinedWith(USNY);
+  private static final HolidayCalendarId EUTA_GBLO = EUTA.combinedWith(GBLO);
+  private static final HolidayCalendarId GBLO_JPTO = GBLO.combinedWith(JPTO);
 
-  @DataProvider(name = "spotLag")
-  static Object[][] data_spot_lag() {
+  public static Object[][] data_spot_lag() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, 2},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, 2}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, 2},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, 2}
     };
   }
 
-  @Test(dataProvider = "spotLag")
+  @ParameterizedTest
+  @MethodSource("data_spot_lag")
   public void test_spot_lag(ImmutableXCcyIborIborSwapConvention convention, int lag) {
-    assertEquals(convention.getSpotDateOffset().getDays(), lag);
+    assertThat(convention.getSpotDateOffset().getDays()).isEqualTo(lag);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "period")
-  static Object[][] data_period() {
+  public static Object[][] data_period() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, Frequency.P3M},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, Frequency.P3M}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, Frequency.P3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, Frequency.P3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, Frequency.P3M}
     };
   }
 
-  @Test(dataProvider = "period")
+  @ParameterizedTest
+  @MethodSource("data_period")
   public void test_period(XCcyIborIborSwapConvention convention, Frequency frequency) {
-    assertEquals(convention.getSpreadLeg().getPaymentFrequency(), frequency);
+    assertThat(convention.getSpreadLeg().getPaymentFrequency()).isEqualTo(frequency);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "spreadLegIndex")
-  static Object[][] data_spread_leg() {
+  public static Object[][] data_spread_leg() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, IborIndices.EUR_EURIBOR_3M},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, IborIndices.GBP_LIBOR_3M}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, IborIndices.GBP_LIBOR_3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, IborIndices.GBP_LIBOR_3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, IborIndices.GBP_LIBOR_3M}
     };
   }
 
-  @Test(dataProvider = "spreadLegIndex")
+  @ParameterizedTest
+  @MethodSource("data_spread_leg")
   public void test_float_leg(XCcyIborIborSwapConvention convention, IborIndex index) {
-    assertEquals(convention.getSpreadLeg().getIndex(), index);
+    assertThat(convention.getSpreadLeg().getIndex()).isEqualTo(index);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "spreadLegBda")
-  static Object[][] data_spread_leg_bda() {
+  public static Object[][] data_spread_leg_bda() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, EUTA_USNY)},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_USNY)}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_USNY)},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, EUTA_GBLO)},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_JPTO)}
     };
   }
 
-  @Test(dataProvider = "spreadLegBda")
+  @ParameterizedTest
+  @MethodSource("data_spread_leg_bda")
   public void test_spread_leg_bdc(XCcyIborIborSwapConvention convention, BusinessDayAdjustment bda) {
-    assertEquals(convention.getSpreadLeg().getAccrualBusinessDayAdjustment(), bda);
+    assertThat(convention.getSpreadLeg().getAccrualBusinessDayAdjustment()).isEqualTo(bda);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "flatLegIndex")
-  static Object[][] data_flat_leg() {
+  public static Object[][] data_flat_leg() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, IborIndices.USD_LIBOR_3M},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, IborIndices.USD_LIBOR_3M}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, IborIndices.USD_LIBOR_3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, IborIndices.EUR_EURIBOR_3M},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, IborIndices.JPY_LIBOR_3M}
     };
   }
 
-  @Test(dataProvider = "flatLegIndex")
+  @ParameterizedTest
+  @MethodSource("data_flat_leg")
   public void test_flat_leg(XCcyIborIborSwapConvention convention, IborIndex index) {
-    assertEquals(convention.getFlatLeg().getIndex(), index);
+    assertThat(convention.getFlatLeg().getIndex()).isEqualTo(index);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "flatLegBda")
-  static Object[][] data_flat_leg_bda() {
+  public static Object[][] data_flat_leg_bda() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, EUTA_USNY)},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_USNY)}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_USNY)},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, EUTA_GBLO)},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO_JPTO)}
     };
   }
 
-  @Test(dataProvider = "flatLegBda")
+  @ParameterizedTest
+  @MethodSource("data_flat_leg_bda")
   public void test_flat_leg_bdc(XCcyIborIborSwapConvention convention, BusinessDayAdjustment bda) {
-    assertEquals(convention.getFlatLeg().getAccrualBusinessDayAdjustment(), bda);
+    assertThat(convention.getFlatLeg().getAccrualBusinessDayAdjustment()).isEqualTo(bda);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "dayConvention")
-  static Object[][] data_day_convention() {
+  public static Object[][] data_day_convention() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_JPY_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING}
     };
   }
 
-  @Test(dataProvider = "dayConvention")
+  @ParameterizedTest
+  @MethodSource("data_day_convention")
   public void test_day_convention(XCcyIborIborSwapConvention convention, BusinessDayConvention dayConvention) {
-    assertEquals(convention.getSpreadLeg().getAccrualBusinessDayAdjustment().getConvention(), dayConvention);
+    assertThat(convention.getSpreadLeg().getAccrualBusinessDayAdjustment().getConvention()).isEqualTo(dayConvention);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "notionalExchange")
-  static Object[][] data_notional_exchange() {
+  public static Object[][] data_notional_exchange() {
     return new Object[][] {
         {XCcyIborIborSwapConventions.EUR_EURIBOR_3M_USD_LIBOR_3M, true},
-        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, true}
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_USD_LIBOR_3M, true},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, true},
+        {XCcyIborIborSwapConventions.GBP_LIBOR_3M_EUR_EURIBOR_3M, true}
     };
   }
 
-  @Test(dataProvider = "notionalExchange")
+  @ParameterizedTest
+  @MethodSource("data_notional_exchange")
   public void test_notional_exchange(XCcyIborIborSwapConvention convention, boolean notionalExchange) {
-    assertEquals(convention.getSpreadLeg().isNotionalExchange(), notionalExchange);
-    assertEquals(convention.getFlatLeg().isNotionalExchange(), notionalExchange);
+    assertThat(convention.getSpreadLeg().isNotionalExchange()).isEqualTo(notionalExchange);
+    assertThat(convention.getFlatLeg().isNotionalExchange()).isEqualTo(notionalExchange);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverPrivateConstructor(XCcyIborIborSwapConventions.class);
     coverPrivateConstructor(StandardXCcyIborIborSwapConventions.class);

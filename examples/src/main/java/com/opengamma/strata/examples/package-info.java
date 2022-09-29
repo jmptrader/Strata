@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,4 +12,3 @@
  * including examples of calibration, scenarios and trade construction.
  */
 package com.opengamma.strata.examples;
-

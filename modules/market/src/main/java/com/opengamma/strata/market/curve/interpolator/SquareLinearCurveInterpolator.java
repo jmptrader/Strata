@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -88,6 +88,28 @@ final class SquareLinearCurveInterpolator implements CurveInterpolator, Serializ
     protected double doInterpolate(double xValue) {
       // x-value is less than the x-value of the last node (lowerIndex < intervalCount)
       int lowerIndex = lowerBoundIndex(xValue, xValues);
+      double x1 = xValues[lowerIndex];
+      double y1 = yValues[lowerIndex];
+
+      int higherIndex = lowerIndex + 1;
+      double x2 = xValues[higherIndex];
+      double y2 = yValues[higherIndex];
+
+      double w = (x2 - xValue) / (x2 - x1);
+      double y21 = y1 * y1;
+      double y22 = y2 * y2;
+      double ySq = w * y21 + (1.0 - w) * y22;
+      return Math.sqrt(ySq);
+    }
+
+    @Override
+    protected double doInterpolateFromExtrapolator(double xValue) {
+      int lowerIndex = lowerBoundIndex(xValue, xValues);
+      // check if x-value is at the last node
+      if (lowerIndex == dataSize - 1) {
+        // if value is at last node, calculate the gradient from the previous interval
+        lowerIndex--;
+      }
       double x1 = xValues[lowerIndex];
       double y1 = yValues[lowerIndex];
 

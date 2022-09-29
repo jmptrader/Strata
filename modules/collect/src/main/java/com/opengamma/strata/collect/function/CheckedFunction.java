@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -25,6 +25,6 @@ public interface CheckedFunction<T, R> {
    * @return the function result
    * @throws Throwable if an error occurs
    */
-  public R apply(T t) throws Throwable;
+  public abstract R apply(T t) throws Throwable;
 
 }

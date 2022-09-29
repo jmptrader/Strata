@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -15,18 +15,17 @@ import static com.opengamma.strata.basics.schedule.Frequency.P1M;
 import static com.opengamma.strata.basics.schedule.Frequency.P3M;
 import static com.opengamma.strata.basics.schedule.Frequency.P6M;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.common.PayReceive.PAY;
 import static com.opengamma.strata.product.common.PayReceive.RECEIVE;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
-import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
@@ -37,13 +36,12 @@ import com.opengamma.strata.basics.index.IborIndices;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.StubConvention;
 import com.opengamma.strata.basics.value.ValueSchedule;
+import com.opengamma.strata.collect.TestHelper;
+import com.opengamma.strata.product.PositionInfo;
 import com.opengamma.strata.product.SecurityInfo;
 import com.opengamma.strata.product.SecurityPriceInfo;
 import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.common.BuySell;
-import com.opengamma.strata.product.dsf.Dsf;
-import com.opengamma.strata.product.dsf.DsfSecurity;
-import com.opengamma.strata.product.dsf.DsfTrade;
 import com.opengamma.strata.product.swap.FixedRateCalculation;
 import com.opengamma.strata.product.swap.IborRateCalculation;
 import com.opengamma.strata.product.swap.KnownAmountSwapLeg;
@@ -57,7 +55,6 @@ import com.opengamma.strata.product.swap.type.FixedIborSwapConventions;
 /**
  * Test {@link DsfSecurity}.
  */
-@Test
 public class DsfSecurityTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -75,14 +72,16 @@ public class DsfSecurityTest {
   private static final double NOTIONAL = 100000;
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     DsfSecurity test = sut();
-    assertEquals(test.getInfo(), INFO);
-    assertEquals(test.getSecurityId(), PRODUCT.getSecurityId());
-    assertEquals(test.getCurrency(), PRODUCT.getCurrency());
-    assertEquals(test.getUnderlyingIds(), ImmutableSet.of());
+    assertThat(test.getInfo()).isEqualTo(INFO);
+    assertThat(test.getSecurityId()).isEqualTo(PRODUCT.getSecurityId());
+    assertThat(test.getCurrency()).isEqualTo(PRODUCT.getCurrency());
+    assertThat(test.getUnderlyingIds()).isEmpty();
   }
 
+  @Test
   public void test_builder_notUnitNotional() {
     SwapLeg fixedLeg10 = RateCalculationSwapLeg.builder()
         .payReceive(RECEIVE)
@@ -146,18 +145,20 @@ public class DsfSecurityTest {
     Swap swap1 = Swap.of(fixedLeg10, SWAP.getLeg(PAY).get());
     Swap swap2 = Swap.of(SWAP.getLeg(RECEIVE).get(), iborLeg500);
     Swap swap3 = Swap.of(knownAmountLeg, SWAP.getLeg(PAY).get());
-    assertThrowsIllegalArg(() -> DsfSecurity.builder()
-        .info(INFO)
-        .notional(NOTIONAL)
-        .lastTradeDate(LAST_TRADE_DATE)
-        .underlyingSwap(swap1)
-        .build());
-    assertThrowsIllegalArg(() -> DsfSecurity.builder()
-        .info(INFO)
-        .notional(NOTIONAL)
-        .lastTradeDate(LAST_TRADE_DATE)
-        .underlyingSwap(swap2)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DsfSecurity.builder()
+            .info(INFO)
+            .notional(NOTIONAL)
+            .lastTradeDate(LAST_TRADE_DATE)
+            .underlyingSwap(swap1)
+            .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> DsfSecurity.builder()
+            .info(INFO)
+            .notional(NOTIONAL)
+            .lastTradeDate(LAST_TRADE_DATE)
+            .underlyingSwap(swap2)
+            .build());
     // should succeed normally (no notional to validate on known amount leg)
     DsfSecurity.builder()
         .info(INFO)
@@ -168,9 +169,10 @@ public class DsfSecurityTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_createProduct() {
     DsfSecurity test = sut();
-    assertEquals(test.createProduct(ReferenceData.empty()), PRODUCT);
+    assertThat(test.createProduct(ReferenceData.empty())).isEqualTo(PRODUCT);
     TradeInfo tradeInfo = TradeInfo.of(PRODUCT.getLastTradeDate().minusDays(1));
     DsfTrade expectedTrade = DsfTrade.builder()
         .info(tradeInfo)
@@ -178,15 +180,32 @@ public class DsfSecurityTest {
         .quantity(100)
         .price(123.50)
         .build();
-    assertEquals(test.createTrade(tradeInfo, 100, 123.50, ReferenceData.empty()), expectedTrade);
+    assertThat(test.createTrade(tradeInfo, 100, 123.50, ReferenceData.empty())).isEqualTo(expectedTrade);
+
+    PositionInfo positionInfo = PositionInfo.empty();
+    DsfPosition expectedPosition1 = DsfPosition.builder()
+        .info(positionInfo)
+        .product(PRODUCT)
+        .longQuantity(100)
+        .build();
+    TestHelper.assertEqualsBean(test.createPosition(positionInfo, 100, ReferenceData.empty()), expectedPosition1);
+    DsfPosition expectedPosition2 = DsfPosition.builder()
+        .info(positionInfo)
+        .product(PRODUCT)
+        .longQuantity(100)
+        .shortQuantity(50)
+        .build();
+    assertThat(test.createPosition(positionInfo, 100, 50, ReferenceData.empty())).isEqualTo(expectedPosition2);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

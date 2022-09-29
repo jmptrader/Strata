@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -33,11 +33,13 @@ import com.opengamma.strata.math.impl.function.DoubleFunction1D;
  * currently does not attempt to correct for this: if the value of $x$ goes beyond the initial range of values $x_{low}$
  * and $x_{high}$, an exception is thrown.
  * <p>
- * If the function that is provided does not override the {@link com.opengamma.strata.math.impl.function.DoubleFunction1D#derivative()} method, then 
- * the derivative is approximated using finite difference. This is undesirable for several reasons: (i) the extra function evaluations will lead
- * to slower convergence; and (ii) the choice of shift size is very important (too small and the result will be dominated by rounding errors, too large
+ * If the function that is provided does not override the {@link com.opengamma.strata.math.impl.function.DoubleFunction1D#derivative()}
+ * method, then  the derivative is approximated using finite difference. This is undesirable for several reasons:
+ * (i) the extra function evaluations will lead to slower convergence; and 
+ * (ii) the choice of shift size is very important (too small and the result will be dominated by rounding errors, too large
  * and convergence will be even slower). Use of another root-finder is recommended in this case.
  */
+// CSOFF: JavadocMethod
 public class NewtonRaphsonSingleRootFinder extends RealSingleRootFinder {
 
   private static final int MAX_ITER = 10000;
@@ -64,7 +66,7 @@ public class NewtonRaphsonSingleRootFinder extends RealSingleRootFinder {
   /**
    * {@inheritDoc}
    * @throws MathException If the root is not found in 1000 attempts; if the Newton
-   *  step takes the estimate for the root outside the original bounds.
+   *   step takes the estimate for the root outside the original bounds.
    */
   @Override
   public Double getRoot(Function<Double, Double> function, Double x1, Double x2) {
@@ -89,7 +91,7 @@ public class NewtonRaphsonSingleRootFinder extends RealSingleRootFinder {
    * @param x2 The second bound of the root, not null
    * @return The root
    * @throws MathException If the root is not found in 1000 attempts; if the Newton
-   *  step takes the estimate for the root outside the original bounds.
+   *   step takes the estimate for the root outside the original bounds.
    */
   public Double getRoot(DoubleFunction1D function, Double x1, Double x2) {
     ArgChecker.notNull(function, "function");
@@ -118,7 +120,7 @@ public class NewtonRaphsonSingleRootFinder extends RealSingleRootFinder {
    * @param x2 The second bound of the root, not null
    * @return The root
    * @throws MathException If the root is not found in 1000 attempts; if the Newton
-   *  step takes the estimate for the root outside the original bounds.
+   *   step takes the estimate for the root outside the original bounds.
    */
   public Double getRoot(Function<Double, Double> function, Function<Double, Double> derivative, Double x1, Double x2) {
     checkInputs(function, x1, x2);
@@ -146,7 +148,7 @@ public class NewtonRaphsonSingleRootFinder extends RealSingleRootFinder {
    * @param x2 The second bound of the root, not null
    * @return The root
    * @throws MathException If the root is not found in 1000 attempts; if the Newton
-   *  step takes the estimate for the root outside the original bounds.
+   *   step takes the estimate for the root outside the original bounds.
    */
   public Double getRoot(DoubleFunction1D function, DoubleFunction1D derivative, Double x1, Double x2) {
     checkInputs(function, x1, x2);

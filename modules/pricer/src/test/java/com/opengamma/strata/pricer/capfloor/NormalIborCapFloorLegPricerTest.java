@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,17 +13,19 @@ import static com.opengamma.strata.product.common.PayReceive.PAY;
 import static com.opengamma.strata.product.common.PayReceive.RECEIVE;
 import static com.opengamma.strata.product.common.PutCall.CALL;
 import static com.opengamma.strata.product.common.PutCall.PUT;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.Map;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.value.ValueSchedule;
 import com.opengamma.strata.collect.DoubleArrayMath;
+import com.opengamma.strata.collect.MapStream;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.param.CurrencyParameterSensitivities;
 import com.opengamma.strata.market.param.CurrencyParameterSensitivity;
@@ -35,7 +37,6 @@ import com.opengamma.strata.product.capfloor.ResolvedIborCapFloorLeg;
 /**
  * Test {@link NormalIborCapFloorLegPricer}.
  */
-@Test
 public class NormalIborCapFloorLegPricerTest {
 
   private static final double STRIKE = 0.015;
@@ -78,6 +79,7 @@ public class NormalIborCapFloorLegPricerTest {
   private static final NormalIborCapFloorLegPricer PRICER = NormalIborCapFloorLegPricer.DEFAULT;
   private static final NormalIborCapletFloorletPeriodPricer PRICER_PERIOD = NormalIborCapletFloorletPeriodPricer.DEFAULT;
 
+  @Test
   public void test_presentValue() {
     CurrencyAmount capComputed = PRICER.presentValue(CAP, RATES, VOLS);
     CurrencyAmount floorComputed = PRICER.presentValue(FLOOR, RATES, VOLS);
@@ -88,12 +90,13 @@ public class NormalIborCapFloorLegPricerTest {
       capExpected += PRICER_PERIOD.presentValue(CAP.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
       floorExpected += PRICER_PERIOD.presentValue(FLOOR.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isEqualTo(capExpected);
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isEqualTo(floorExpected);
   }
 
+  @Test
   public void test_presentValue_after() {
     CurrencyAmount capComputed = PRICER.presentValue(CAP, RATES_AFTER, VOLS_AFTER);
     CurrencyAmount floorComputed = PRICER.presentValue(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -106,13 +109,63 @@ public class NormalIborCapFloorLegPricerTest {
       capExpected += PRICER_PERIOD.presentValue(CAP.getCapletFloorletPeriods().get(i), RATES_AFTER, VOLS_AFTER).getAmount();
       floorExpected += PRICER_PERIOD.presentValue(FLOOR.getCapletFloorletPeriods().get(i), RATES_AFTER, VOLS_AFTER).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
   //-------------------------------------------------------------------------
+  @Test
+  public void test_presentValueCapletFloorletPeriods() {
+    CurrencyAmount capComputed = PRICER.presentValue(CAP, RATES, VOLS);
+    CurrencyAmount floorComputed = PRICER.presentValue(FLOOR, RATES, VOLS);
+    Map<IborCapletFloorletPeriod, CurrencyAmount> capletsComputed =
+        PRICER.presentValueCapletFloorletPeriods(CAP, RATES, VOLS).getAmounts();
+    Map<IborCapletFloorletPeriod, CurrencyAmount> floorletsComputed =
+        PRICER.presentValueCapletFloorletPeriods(FLOOR, RATES, VOLS).getAmounts();
+
+    Map<IborCapletFloorletPeriod, CurrencyAmount> capletsExpected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .mapValues(caplet -> PRICER_PERIOD.presentValue(caplet, RATES, VOLS))
+        .toMap();
+    CurrencyAmount capletsTotalExpected = capletsExpected.values().stream().reduce(CurrencyAmount::plus).get();
+    Map<IborCapletFloorletPeriod, CurrencyAmount> floorletsExpected = MapStream.of(FLOOR.getCapletFloorletPeriods())
+        .mapValues(floorlet -> PRICER_PERIOD.presentValue(floorlet, RATES, VOLS))
+        .toMap();
+    CurrencyAmount floorletsTotalExpected = floorletsExpected.values().stream().reduce(CurrencyAmount::plus).get();
+
+    assertThat(capletsComputed).isEqualTo(capletsExpected);
+    assertThat(capComputed).isEqualTo(capletsTotalExpected);
+    assertThat(floorletsComputed).isEqualTo(floorletsExpected);
+    assertThat(floorComputed).isEqualTo(floorletsTotalExpected);
+  }
+
+  @Test
+  public void test_presentValueCapletFloorletPeriods_after() {
+    CurrencyAmount capComputed = PRICER.presentValue(CAP, RATES_AFTER, VOLS_AFTER);
+    CurrencyAmount floorComputed = PRICER.presentValue(FLOOR, RATES_AFTER, VOLS_AFTER);
+    Map<IborCapletFloorletPeriod, CurrencyAmount> capletsComputed =
+        PRICER.presentValueCapletFloorletPeriods(CAP, RATES_AFTER, VOLS_AFTER).getAmounts();
+    Map<IborCapletFloorletPeriod, CurrencyAmount> floorletsComputed =
+        PRICER.presentValueCapletFloorletPeriods(FLOOR, RATES_AFTER, VOLS_AFTER).getAmounts();
+
+    Map<IborCapletFloorletPeriod, CurrencyAmount> capletsExpected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .mapValues(caplet -> PRICER_PERIOD.presentValue(caplet, RATES_AFTER, VOLS_AFTER))
+        .toMap();
+    CurrencyAmount capletsTotalExpected = capletsExpected.values().stream().reduce(CurrencyAmount::plus).get();
+    Map<IborCapletFloorletPeriod, CurrencyAmount> floorletsExpected = MapStream.of(FLOOR.getCapletFloorletPeriods())
+        .mapValues(floorlet -> PRICER_PERIOD.presentValue(floorlet, RATES_AFTER, VOLS_AFTER))
+        .toMap();
+    CurrencyAmount floorletsTotalExpected = floorletsExpected.values().stream().reduce(CurrencyAmount::plus).get();
+
+    assertThat(capletsComputed).isEqualTo(capletsExpected);
+    assertThat(capComputed).isEqualTo(capletsTotalExpected);
+    assertThat(floorletsComputed).isEqualTo(floorletsExpected);
+    assertThat(floorComputed).isEqualTo(floorletsTotalExpected);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void test_presentValueDelta() {
     CurrencyAmount capComputed = PRICER.presentValueDelta(CAP, RATES, VOLS);
     CurrencyAmount floorComputed = PRICER.presentValueDelta(FLOOR, RATES, VOLS);
@@ -123,12 +176,13 @@ public class NormalIborCapFloorLegPricerTest {
       capExpected += PRICER_PERIOD.presentValueDelta(CAP.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
       floorExpected += PRICER_PERIOD.presentValueDelta(FLOOR.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
+  @Test
   public void test_presentValueDelta_after() {
     CurrencyAmount capComputed = PRICER.presentValueDelta(CAP, RATES_AFTER, VOLS_AFTER);
     CurrencyAmount floorComputed = PRICER.presentValueDelta(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -141,13 +195,14 @@ public class NormalIborCapFloorLegPricerTest {
       floorExpected +=
           PRICER_PERIOD.presentValueDelta(FLOOR.getCapletFloorletPeriods().get(i), RATES_AFTER, VOLS_AFTER).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_presentValueGamma() {
     CurrencyAmount capComputed = PRICER.presentValueGamma(CAP, RATES, VOLS);
     CurrencyAmount floorComputed = PRICER.presentValueGamma(FLOOR, RATES, VOLS);
@@ -158,12 +213,13 @@ public class NormalIborCapFloorLegPricerTest {
       capExpected += PRICER_PERIOD.presentValueGamma(CAP.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
       floorExpected += PRICER_PERIOD.presentValueGamma(FLOOR.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
+  @Test
   public void test_presentValueGamma_after() {
     CurrencyAmount capComputed = PRICER.presentValueGamma(CAP, RATES_AFTER, VOLS_AFTER);
     CurrencyAmount floorComputed = PRICER.presentValueGamma(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -176,13 +232,14 @@ public class NormalIborCapFloorLegPricerTest {
       floorExpected +=
           PRICER_PERIOD.presentValueGamma(FLOOR.getCapletFloorletPeriods().get(i), RATES_AFTER, VOLS_AFTER).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_presentValueTheta() {
     CurrencyAmount capComputed = PRICER.presentValueTheta(CAP, RATES, VOLS);
     CurrencyAmount floorComputed = PRICER.presentValueTheta(FLOOR, RATES, VOLS);
@@ -193,12 +250,13 @@ public class NormalIborCapFloorLegPricerTest {
       capExpected += PRICER_PERIOD.presentValueTheta(CAP.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
       floorExpected += PRICER_PERIOD.presentValueTheta(FLOOR.getCapletFloorletPeriods().get(i), RATES, VOLS).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
+  @Test
   public void test_presentValueTheta_after() {
     CurrencyAmount capComputed = PRICER.presentValueTheta(CAP, RATES_AFTER, VOLS_AFTER);
     CurrencyAmount floorComputed = PRICER.presentValueTheta(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -211,13 +269,14 @@ public class NormalIborCapFloorLegPricerTest {
       floorExpected += PRICER_PERIOD
           .presentValueTheta(FLOOR.getCapletFloorletPeriods().get(i), RATES_AFTER, VOLS_AFTER).getAmount();
     }
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected, TOL * NOTIONAL_VALUE);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isCloseTo(capExpected, offset(TOL * NOTIONAL_VALUE));
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_presentValueSensitivity() {
     PointSensitivityBuilder capComputed = PRICER.presentValueSensitivityRates(CAP, RATES, VOLS);
     PointSensitivityBuilder floorComputed = PRICER.presentValueSensitivityRates(FLOOR, RATES, VOLS);
@@ -234,10 +293,11 @@ public class NormalIborCapFloorLegPricerTest {
     CurrencyParameterSensitivities floorSensiComputed = RATES_AFTER.parameterSensitivity(floorComputed.build());
     CurrencyParameterSensitivities capSensiExpected = RATES_AFTER.parameterSensitivity(capExpected.build());
     CurrencyParameterSensitivities floorSensiExpected = RATES_AFTER.parameterSensitivity(floorExpected.build());
-    assertTrue(capSensiComputed.equalWithTolerance(capSensiExpected, NOTIONAL_VALUE * TOL));
-    assertTrue(floorSensiComputed.equalWithTolerance(floorSensiExpected, NOTIONAL_VALUE * TOL));
+    assertThat(capSensiComputed.equalWithTolerance(capSensiExpected, NOTIONAL_VALUE * TOL)).isTrue();
+    assertThat(floorSensiComputed.equalWithTolerance(floorSensiExpected, NOTIONAL_VALUE * TOL)).isTrue();
   }
 
+  @Test
   public void test_presentValueSensitivity_after() {
     PointSensitivityBuilder capComputed = PRICER.presentValueSensitivityRates(CAP, RATES_AFTER, VOLS_AFTER);
     PointSensitivityBuilder floorComputed = PRICER.presentValueSensitivityRates(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -257,11 +317,12 @@ public class NormalIborCapFloorLegPricerTest {
     CurrencyParameterSensitivities floorSensiComputed = RATES_AFTER.parameterSensitivity(floorComputed.build());
     CurrencyParameterSensitivities capSensiExpected = RATES_AFTER.parameterSensitivity(capExpected.build());
     CurrencyParameterSensitivities floorSensiExpected = RATES_AFTER.parameterSensitivity(floorExpected.build());
-    assertTrue(capSensiComputed.equalWithTolerance(capSensiExpected, NOTIONAL_VALUE * TOL));
-    assertTrue(floorSensiComputed.equalWithTolerance(floorSensiExpected, NOTIONAL_VALUE * TOL));
+    assertThat(capSensiComputed.equalWithTolerance(capSensiExpected, NOTIONAL_VALUE * TOL)).isTrue();
+    assertThat(floorSensiComputed.equalWithTolerance(floorSensiExpected, NOTIONAL_VALUE * TOL)).isTrue();
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_presentValueSensitivityVolatility() {
     PointSensitivityBuilder capComputed = PRICER.presentValueSensitivityModelParamsVolatility(CAP, RATES, VOLS);
     PointSensitivityBuilder floorComputed = PRICER.presentValueSensitivityModelParamsVolatility(FLOOR, RATES, VOLS);
@@ -280,12 +341,13 @@ public class NormalIborCapFloorLegPricerTest {
         VOLS.parameterSensitivity(floorComputed.build());
     CurrencyParameterSensitivity capSensiExpected = capExpected.getSensitivities().get(0);
     CurrencyParameterSensitivity floorSensiExpected = floorExpected.getSensitivities().get(0);
-    assertTrue(DoubleArrayMath.fuzzyEquals(capSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
-        capSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE));
-    assertTrue(DoubleArrayMath.fuzzyEquals(floorSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
-        floorSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE));
+    assertThat(DoubleArrayMath.fuzzyEquals(capSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
+        capSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE)).isTrue();
+    assertThat(DoubleArrayMath.fuzzyEquals(floorSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
+        floorSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE)).isTrue();
   }
 
+  @Test
   public void test_presentValueSensitivityVolatility_after() {
     PointSensitivityBuilder capComputed = PRICER.presentValueSensitivityModelParamsVolatility(CAP, RATES_AFTER, VOLS_AFTER);
     PointSensitivityBuilder floorComputed = PRICER.presentValueSensitivityModelParamsVolatility(FLOOR, RATES_AFTER, VOLS_AFTER);
@@ -304,32 +366,98 @@ public class NormalIborCapFloorLegPricerTest {
         VOLS_AFTER.parameterSensitivity(floorComputed.build());
     CurrencyParameterSensitivity capSensiExpected = capExpected.getSensitivities().get(0);
     CurrencyParameterSensitivity floorSensiExpected = floorExpected.getSensitivities().get(0);
-    assertTrue(DoubleArrayMath.fuzzyEquals(capSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
-        capSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE));
-    assertTrue(DoubleArrayMath.fuzzyEquals(floorSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
-        floorSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE));
+    assertThat(DoubleArrayMath.fuzzyEquals(capSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
+        capSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE)).isTrue();
+    assertThat(DoubleArrayMath.fuzzyEquals(floorSensiComputed.getSensitivities().get(0).getSensitivity().toArray(),
+        floorSensiExpected.getSensitivity().toArray(), TOL * NOTIONAL_VALUE)).isTrue();
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_currentCash() {
     CurrencyAmount capComputed = PRICER.currentCash(CAP, RATES, VOLS);
     CurrencyAmount floorComputed = PRICER.currentCash(FLOOR, RATES, VOLS);
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), 0d);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), 0d);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isEqualTo(0d);
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isEqualTo(0d);
   }
 
+  @Test
   public void test_currentCash_pay() {
     CurrencyAmount capComputed = PRICER.currentCash(CAP, RATES_PAY, VOLS_PAY);
     CurrencyAmount floorComputed = PRICER.currentCash(FLOOR, RATES_PAY, VOLS_PAY);
     double capExpected = 0d;
     IborCapletFloorletPeriod period = FLOOR.getCapletFloorletPeriods().get(1);
     double floorExpected = -(STRIKE - OBS_INDEX_2) * NOTIONAL_VALUE * period.getYearFraction();
-    assertEquals(capComputed.getCurrency(), EUR);
-    assertEquals(capComputed.getAmount(), capExpected);
-    assertEquals(floorComputed.getCurrency(), EUR);
-    assertEquals(floorComputed.getAmount(), floorExpected, TOL * NOTIONAL_VALUE);
+    assertThat(capComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(capComputed.getAmount()).isEqualTo(capExpected);
+    assertThat(floorComputed.getCurrency()).isEqualTo(EUR);
+    assertThat(floorComputed.getAmount()).isCloseTo(floorExpected, offset(TOL * NOTIONAL_VALUE));
   }
 
+  //-------------------------------------------------------------------------
+  @Test
+  public void test_impliedVolatility() {
+    Map<IborCapletFloorletPeriod, Double> computed =
+        PRICER.impliedVolatilities(CAP, RATES, VOLS).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .mapValues(caplet -> PRICER_PERIOD.impliedVolatility(caplet, RATES, VOLS))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+    computed.forEach((caplet, vol) -> assertThat(vol).isCloseTo(expected.get(caplet), offset(TOL)));
+  }
+
+  @Test
+  public void test_impliedVolatility_onFix() {
+    Map<IborCapletFloorletPeriod, Double> computed =
+        PRICER.impliedVolatilities(CAP, RATES_PAY, VOLS_PAY).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .filterKeys(caplet -> VOLS_PAY.relativeTime(caplet.getFixingDateTime()) >= 0)
+        .mapValues(caplet -> PRICER_PERIOD.impliedVolatility(caplet, RATES_PAY, VOLS_PAY))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_impliedVolatility_afterFix() {
+    Map<IborCapletFloorletPeriod, Double> computed =
+        PRICER.impliedVolatilities(CAP, RATES_AFTER, VOLS_AFTER).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .filterKeys(caplet -> VOLS_PAY.relativeTime(caplet.getFixingDateTime()) >= 0)
+        .mapValues(caplet -> PRICER_PERIOD.impliedVolatility(caplet, RATES_AFTER, VOLS_AFTER))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
+  public void test_forwardRate() {
+    Map<IborCapletFloorletPeriod, Double> computed = PRICER.forwardRates(CAP, RATES).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .filterKeys(caplet -> !RATES.getValuationDate().isAfter(caplet.getFixingDate()))
+        .mapValues(caplet -> PRICER_PERIOD.forwardRate(caplet, RATES))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_forwardRate_onFix() {
+    Map<IborCapletFloorletPeriod, Double> computed = PRICER.forwardRates(CAP, RATES_PAY).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .filterKeys(caplet -> !RATES_PAY.getValuationDate().isAfter(caplet.getFixingDate()))
+        .mapValues(caplet -> PRICER_PERIOD.forwardRate(caplet, RATES_PAY))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_forwardRate_afterFix() {
+    Map<IborCapletFloorletPeriod, Double> computed = PRICER.forwardRates(CAP, RATES_AFTER).getAmounts();
+    Map<IborCapletFloorletPeriod, Double> expected = MapStream.of(CAP.getCapletFloorletPeriods())
+        .filterKeys(caplet -> !RATES_AFTER.getValuationDate().isAfter(caplet.getFixingDate()))
+        .mapValues(caplet -> PRICER_PERIOD.forwardRate(caplet, RATES_AFTER))
+        .toMap();
+    assertThat(computed).isEqualTo(expected);
+  }
 }

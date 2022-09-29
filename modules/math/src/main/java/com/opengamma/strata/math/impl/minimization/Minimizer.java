@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.minimization;
@@ -19,6 +19,6 @@ public interface Minimizer<F extends Function<S, ?>, S> {
    * @param startPosition The start position
    * @return The minimum
    */
-  S minimize(F function, S startPosition);
+  public abstract S minimize(F function, S startPosition);
 
 }

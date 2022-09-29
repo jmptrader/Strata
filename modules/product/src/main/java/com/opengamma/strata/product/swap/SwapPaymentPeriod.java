@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -87,6 +87,6 @@ public interface SwapPaymentPeriod {
    * @param adjuster  the adjuster to apply to the payment date
    * @return the adjusted payment event
    */
-  SwapPaymentPeriod adjustPaymentDate(TemporalAdjuster adjuster);
+  public abstract SwapPaymentPeriod adjustPaymentDate(TemporalAdjuster adjuster);
 
 }

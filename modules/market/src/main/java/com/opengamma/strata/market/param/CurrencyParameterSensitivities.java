@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,6 +6,7 @@
 package com.opengamma.strata.market.param;
 
 import static com.opengamma.strata.basics.currency.MultiCurrencyAmount.toMultiCurrencyAmount;
+import static com.opengamma.strata.collect.Guavate.toImmutableList;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -15,23 +16,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.DoubleUnaryOperator;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableConstructor;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.ImmutableList;
 import com.opengamma.strata.basics.currency.Currency;
@@ -42,6 +44,7 @@ import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
 import com.opengamma.strata.collect.Guavate;
 import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.collect.array.DoubleArray;
+import com.opengamma.strata.collect.function.IntDoubleToDoubleFunction;
 import com.opengamma.strata.data.MarketDataName;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.surface.Surface;
@@ -65,6 +68,7 @@ import com.opengamma.strata.market.surface.Surface;
  * One way of viewing this class is as a {@code Map} from a specific sensitivity key to
  * {@code DoubleArray} sensitivity values. However, instead of being structured as a {@code Map},
  * the data is structured as a {@code List}, with the key and value in each entry.
+ * As such, the sensitivities are always in a "normalized" form.
  */
 @BeanDefinition(builderScope = "private")
 public final class CurrencyParameterSensitivities
@@ -94,6 +98,18 @@ public final class CurrencyParameterSensitivities
   }
 
   /**
+   * Returns a builder that can be used to create an instance of {@code CurrencyParameterSensitivities}.
+   * <p>
+   * The builder takes into account the parameter metadata when creating the sensitivity map.
+   * As such, the parameter metadata added to the builder must not be empty.
+   * 
+   * @return the builder
+   */
+  public static CurrencyParameterSensitivitiesBuilder builder() {
+    return new CurrencyParameterSensitivitiesBuilder();
+  }
+
+  /**
    * Obtains an instance from a single sensitivity entry.
    * 
    * @param sensitivity  the sensitivity entry
@@ -106,8 +122,7 @@ public final class CurrencyParameterSensitivities
   /**
    * Obtains an instance from an array of sensitivity entries.
    * <p>
-   * The order of sensitivities is typically unimportant, however it is retained
-   * and exposed in {@link #equals(Object)}.
+   * The sensitivities are sorted using {@link CurrencyParameterSensitivity#compareKey}.
    *
    * @param sensitivities  the sensitivities
    * @return the sensitivities instance
@@ -119,8 +134,7 @@ public final class CurrencyParameterSensitivities
   /**
    * Obtains an instance from a list of sensitivity entries.
    * <p>
-   * The order of sensitivities is typically unimportant, however it is retained
-   * and exposed in {@link #equals(Object)}.
+   * The sensitivities are sorted using {@link CurrencyParameterSensitivity#compareKey}.
    * 
    * @param sensitivities  the list of sensitivity entries
    * @return the sensitivities instance
@@ -195,7 +209,11 @@ public final class CurrencyParameterSensitivities
    * <p>
    * This returns a new sensitivity instance with the specified sensitivity added.
    * This instance is immutable and unaffected by this method.
-   * The result may contain duplicate parameter sensitivities.
+   * <p>
+   * The sensitivities are merged using market data name and currency as a key.
+   * The parameter metadata is not checked, thus the caller must ensure the sensitivities
+   * are compatible with the same metadata and parameter count.
+   * To combine taking the metadata into account, use {@link #mergedWith(CurrencyParameterSensitivities)}.
    * 
    * @param other  the other parameter sensitivity
    * @return an instance based on this one, with the other instance added
@@ -211,7 +229,11 @@ public final class CurrencyParameterSensitivities
    * <p>
    * This returns a new sensitivity instance with a combined list of parameter sensitivities.
    * This instance is immutable and unaffected by this method.
-   * The result may contain duplicate parameter sensitivities.
+   * <p>
+   * The sensitivities are merged using market data name and currency as a key.
+   * The parameter metadata is not checked, thus the caller must ensure the sensitivities
+   * are compatible with the same metadata and parameter count.
+   * To combine taking the metadata into account, use {@link #mergedWith(CurrencyParameterSensitivities)}.
    * 
    * @param other  the other parameter sensitivities
    * @return an instance based on this one, with the other instance added
@@ -239,6 +261,62 @@ public final class CurrencyParameterSensitivities
     }
   }
 
+  /**
+   * Merges this parameter sensitivities with another instance taking the metadata into account.
+   * <p>
+   * This returns a new sensitivity instance with a combined set of parameter sensitivities.
+   * This instance is immutable and unaffected by this method.
+   * <p>
+   * The sensitivities are merged using market data name and currency as a key.
+   * Each sensitivity is then merged taking into account the metadata, such as the tenor.
+   * As such, this method can only be used if the parameter metadata instances are not be empty.
+   * 
+   * @param other  the other parameter sensitivities
+   * @return an instance based on this one, with the other instance added
+   * @throws IllegalArgumentException if any metadata instance is empty
+   */
+  public CurrencyParameterSensitivities mergedWith(CurrencyParameterSensitivities other) {
+    return toBuilder().add(other).build();
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Checks and adjusts the market data names.
+   * <p>
+   * The supplied function is invoked for each market data name in this sensitivities.
+   * If the function returns the same name for two different inputs, the sensitivity values will be summed.
+   * A typical use case would be to convert index names to curve names valid for an underlying system.
+   * 
+   * @param nameFn  the function for checking and adjusting the name
+   * @return the adjusted sensitivity
+   * @throws RuntimeException if the function throws an exception
+   */
+  public CurrencyParameterSensitivities withMarketDataNames(Function<MarketDataName<?>, MarketDataName<?>> nameFn) {
+    CurrencyParameterSensitivitiesBuilder builder = CurrencyParameterSensitivities.builder();
+    for (CurrencyParameterSensitivity sensitivity : sensitivities) {
+      builder.add(sensitivity.toBuilder()
+          .marketDataName(nameFn.apply(sensitivity.getMarketDataName()))
+          .build());
+    }
+    return builder.build();
+  }
+
+  /**
+   * Checks and adjusts the parameter metadata.
+   * <p>
+   * The supplied function is invoked for each parameter metadata in this sensitivities.
+   * If the function returns the same metadata for two different inputs, the sensitivity values will be summed.
+   * A typical use case would be to normalize parameter metadata tenors to be valid for an underlying system.
+   * 
+   * @param mdFn  the function for checking and adjusting the metadata
+   * @return the adjusted sensitivity
+   * @throws IllegalArgumentException if any metadata instance is empty
+   * @throws RuntimeException if the function throws an exception
+   */
+  public CurrencyParameterSensitivities withParameterMetadatas(UnaryOperator<ParameterMetadata> mdFn) {
+    return toBuilder().mapMetadata(mdFn).build();
+  }
+
   //-------------------------------------------------------------------------
   /**
    * Converts the sensitivities in this instance to an equivalent in the specified currency.
@@ -259,6 +337,25 @@ public final class CurrencyParameterSensitivities
     return new CurrencyParameterSensitivities(ImmutableList.copyOf(mutable));
   }
 
+  //-------------------------------------------------------------------------
+  /**
+   * Splits this sensitivity instance.
+   * <p>
+   * This examines each individual sensitivity to see if it can be {@link CurrencyParameterSensitivity#split() split}.
+   * If any can be split, the result will contain the combination of the split sensitivities.
+   * 
+   * @return this sensitivity, with any combined sensitivities split
+   */
+  public CurrencyParameterSensitivities split() {
+    if (!sensitivities.stream().anyMatch(s -> s.getParameterSplit().isPresent())) {
+      return this;
+    }
+    return of(sensitivities.stream()
+        .flatMap(s -> s.split().stream())
+        .collect(toImmutableList()));
+  }
+
+  //-------------------------------------------------------------------------
   /**
    * Returns the total of the sensitivity values.
    * <p>
@@ -329,6 +426,29 @@ public final class CurrencyParameterSensitivities
                 CurrencyParameterSensitivities::new));
   }
 
+  /**
+   * Returns an instance with an operation applied to each indexed value in the sensitivity values.
+   * <p>
+   * Each value in the sensitivity array will be operated on.
+   * The function receives both the index and the value.
+   * For example, the operator could multiply the sensitivities by the index.
+   * <pre>
+   *   result = base.mapSensitivityWithIndex((index, value) -> index * value);
+   * </pre>
+   * This instance is immutable and unaffected by this method.
+   *
+   * @param function  the function to be applied to the sensitivities
+   * @return an instance based on this one, with the operator applied to the sensitivity values
+   */
+  public CurrencyParameterSensitivities mapSensitivitiesWithIndex(IntDoubleToDoubleFunction function) {
+    return sensitivities.stream()
+        .map(s -> s.mapSensitivityWithIndex(function))
+        .collect(
+            Collectors.collectingAndThen(
+                Guavate.toImmutableList(),
+                CurrencyParameterSensitivities::new));
+  }
+
   //-------------------------------------------------------------------------
   /**
    * Checks if this sensitivity equals another within the specified tolerance.
@@ -369,8 +489,21 @@ public final class CurrencyParameterSensitivities
     return true;
   }
 
+  //-------------------------------------------------------------------------
+  /**
+   * Returns a builder populated with the set of sensitivities from this instance.
+   * <p>
+   * The builder takes into account the parameter metadata when creating the sensitivity map.
+   * As such, the parameter metadata added to the builder must not be empty.
+   * 
+   * @return the builder
+   * @throws IllegalArgumentException if any metadata instance is empty
+   */
+  public CurrencyParameterSensitivitiesBuilder toBuilder() {
+    return new CurrencyParameterSensitivitiesBuilder(sensitivities);
+  }
+
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code CurrencyParameterSensitivities}.
    * @return the meta-bean, not null
@@ -380,7 +513,7 @@ public final class CurrencyParameterSensitivities
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(CurrencyParameterSensitivities.Meta.INSTANCE);
+    MetaBean.register(CurrencyParameterSensitivities.Meta.INSTANCE);
   }
 
   /**
@@ -391,16 +524,6 @@ public final class CurrencyParameterSensitivities
   @Override
   public CurrencyParameterSensitivities.Meta metaBean() {
     return CurrencyParameterSensitivities.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -530,7 +653,7 @@ public final class CurrencyParameterSensitivities
   /**
    * The bean-builder for {@code CurrencyParameterSensitivities}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<CurrencyParameterSensitivities> {
+  private static final class Builder extends DirectPrivateBeanBuilder<CurrencyParameterSensitivities> {
 
     private List<CurrencyParameterSensitivity> sensitivities = ImmutableList.of();
 
@@ -565,30 +688,6 @@ public final class CurrencyParameterSensitivities
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public CurrencyParameterSensitivities build() {
       return new CurrencyParameterSensitivities(
           sensitivities);
@@ -606,6 +705,5 @@ public final class CurrencyParameterSensitivities
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

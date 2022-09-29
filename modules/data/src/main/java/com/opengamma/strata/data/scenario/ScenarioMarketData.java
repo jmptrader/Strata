@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -279,7 +279,7 @@ public interface ScenarioMarketData {
    * @return the set of observable identifiers
    */
   public abstract Set<ObservableId> getTimeSeriesIds();
-  
+
   /**
    * Gets the time-series associated with the specified identifier, empty if not found.
    * <p>

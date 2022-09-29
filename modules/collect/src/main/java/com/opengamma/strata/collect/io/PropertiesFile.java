@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.io;
@@ -9,9 +9,8 @@ import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Properties;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.io.CharSource;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.Unchecked;
@@ -27,6 +26,8 @@ import com.opengamma.strata.collect.Unchecked;
  * There is only one element - key-value pairs.
  * <p>
  * The key is separated from the value using the '=' symbol.
+ * The string ' = ' is searched for before '=' to allow an equals sign to be present
+ * in the key, which implies that this string cannot be in either the key or the value.
  * Duplicate keys are allowed.
  * For example 'key = value'.
  * The equals sign and value may be omitted, in which case the value is an empty string.
@@ -60,6 +61,9 @@ public final class PropertiesFile {
    * <p>
    * This parses the specified character source expecting a properties file format.
    * The resulting instance can be queried for each key and value.
+   * <p>
+   * Properties files sometimes contain a Unicode Byte Order Mark.
+   * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
    * 
    * @param source  the properties file resource
    * @return the properties file
@@ -75,7 +79,9 @@ public final class PropertiesFile {
 
   // parses the properties file format
   private static PropertySet parse(ImmutableList<String> lines) {
-    Multimap<String, String> parsed = ArrayListMultimap.create();
+    // cannot use ArrayListMultiMap as it does not retain the order of the keys
+    // whereas ImmutableListMultimap does retain the order of the keys
+    ImmutableListMultimap.Builder<String, String> parsed = ImmutableListMultimap.builder();
     int lineNum = 0;
     for (String line : lines) {
       lineNum++;
@@ -83,7 +89,8 @@ public final class PropertiesFile {
       if (line.length() == 0 || line.startsWith("#") || line.startsWith(";")) {
         continue;
       }
-      int equalsPosition = line.indexOf('=');
+      int equalsPosition = line.indexOf(" = ");
+      equalsPosition = equalsPosition < 0 ? line.indexOf('=') : equalsPosition + 1;
       String key = (equalsPosition < 0 ? line.trim() : line.substring(0, equalsPosition).trim());
       String value = (equalsPosition < 0 ? "" : line.substring(equalsPosition + 1).trim());
       if (key.length() == 0) {
@@ -91,7 +98,7 @@ public final class PropertiesFile {
       }
       parsed.put(key, value);
     }
-    return PropertySet.of(parsed);
+    return PropertySet.of(parsed.build());
   }
 
   //-------------------------------------------------------------------------

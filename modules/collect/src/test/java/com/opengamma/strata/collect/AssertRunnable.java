@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -16,6 +16,6 @@ public interface AssertRunnable {
    * 
    * @throws Throwable the expected result
    */
-  void run() throws Throwable;
+  public abstract void run() throws Throwable;
 
 }

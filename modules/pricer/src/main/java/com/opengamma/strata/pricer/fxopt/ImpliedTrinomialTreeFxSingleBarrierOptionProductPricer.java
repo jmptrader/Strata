@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.fxopt;
@@ -54,6 +54,12 @@ public class ImpliedTrinomialTreeFxSingleBarrierOptionProductPricer {
    * Default number of time steps.
    */
   private static final int NUM_STEPS_DEFAULT = 51;
+
+  /**
+   * Default implementation.
+   */
+  public static final ImpliedTrinomialTreeFxSingleBarrierOptionProductPricer DEFAULT =
+      new ImpliedTrinomialTreeFxSingleBarrierOptionProductPricer(NUM_STEPS_DEFAULT);
 
   /**
    * Number of time steps.
@@ -204,14 +210,14 @@ public class ImpliedTrinomialTreeFxSingleBarrierOptionProductPricer {
    * @param volatilities  the Black volatility provider
    * @return the present value of the product
    */
-  public CurrencyParameterSensitivities presentValueRatesSensitivity(
+  public CurrencyParameterSensitivities presentValueSensitivityRates(
       ResolvedFxSingleBarrierOption option,
       RatesProvider ratesProvider,
       BlackFxOptionVolatilities volatilities) {
 
     RecombiningTrinomialTreeData baseTreeData =
         calibrator.calibrateTrinomialTree(option.getUnderlyingOption(), ratesProvider, volatilities);
-    return presentValueRatesSensitivity(option, ratesProvider, volatilities, baseTreeData);
+    return presentValueSensitivityRates(option, ratesProvider, volatilities, baseTreeData);
   }
 
   /**
@@ -228,7 +234,7 @@ public class ImpliedTrinomialTreeFxSingleBarrierOptionProductPricer {
    * @param baseTreeData  the trinomial tree data
    * @return the present value of the product
    */
-  public CurrencyParameterSensitivities presentValueRatesSensitivity(
+  public CurrencyParameterSensitivities presentValueSensitivityRates(
       ResolvedFxSingleBarrierOption option,
       RatesProvider ratesProvider,
       BlackFxOptionVolatilities volatilities,

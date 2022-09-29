@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -9,10 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
 import com.opengamma.strata.math.impl.statistics.distribution.NormalDistribution;
 import com.opengamma.strata.math.impl.statistics.distribution.ProbabilityDistribution;
-
-import cern.jet.random.engine.RandomEngine;
 
 /**
  * Random number generator based on {@code ProbabilityDistribution}. 

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,25 +10,26 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableValidator;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableValidator;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -50,10 +51,9 @@ import com.opengamma.strata.collect.Messages;
  * Application code using a result should also operate in a functional style.
  * Use {@link #map(Function)} and {@link #flatMap(Function)} in preference to
  * {@link #isSuccess()} and {@link #getValue()}.
- * <p>
  * <pre>
  *  Result{@literal <Foo>} intermediateResult = calculateIntermediateResult();
- *  return intermediateResult.flatMap(foo -> calculateFinalResult(foo, ...));
+ *  return intermediateResult.flatMap(foo -&gt; calculateFinalResult(foo, ...));
  * </pre>
  * <p>
  * Results can be generated using the factory methods on this class.
@@ -114,7 +114,7 @@ public final class Result<T>
    */
   public static <R> Result<R> failure(FailureReason reason, String message, Object... messageArgs) {
     String msg = Messages.format(message, messageArgs);
-    return new Result<>(Failure.of(FailureItem.of(reason, msg, 1)));
+    return new Result<>(Failure.of(FailureItem.ofAutoStackTrace(reason, msg, 1)));
   }
 
   /**
@@ -123,6 +123,7 @@ public final class Result<T>
    * <p>
    * Note that if the supplier throws an exception, this will be caught
    * and converted to a failure {@code Result}.
+   * This recognizes and handles {@link FailureException} and {@link FailureItemProvider} exceptions.
    *
    * @param <T> the type of the value
    * @param supplier  supplier of the result value
@@ -131,8 +132,8 @@ public final class Result<T>
   public static <T> Result<T> of(Supplier<T> supplier) {
     try {
       return success(supplier.get());
-    } catch (Exception e) {
-      return failure(e);
+    } catch (Exception ex) {
+      return failure(ex);
     }
   }
 
@@ -141,6 +142,7 @@ public final class Result<T>
    * <p>
    * Note that if the supplier throws an exception, this will be caught
    * and converted to a failure {@code Result}.
+   * This recognizes and handles {@link FailureException} and {@link FailureItemProvider} exceptions.
    *
    * @param <T> the type of the result value
    * @param supplier  supplier of the result
@@ -149,22 +151,60 @@ public final class Result<T>
   public static <T> Result<T> wrap(Supplier<Result<T>> supplier) {
     try {
       return supplier.get();
-    } catch (Exception e) {
-      return failure(e);
+    } catch (Exception ex) {
+      return failure(ex);
     }
+  }
+
+  /**
+   * Creates a failed result caused by a throwable.
+   * <p>
+   * This recognizes and handles {@link FailureException} and {@link FailureItemProvider} exceptions.
+   * If the exception type is not recognized, the failure will have a reason of {@code ERROR}.
+   *
+   * @param <R> the expected type of the result
+   * @param cause  the cause of the failure
+   * @return a failure result
+   */
+  public static <R> Result<R> failure(Throwable cause) {
+    return failure(Failure.from(cause));
   }
 
   /**
    * Creates a failed result caused by an exception.
    * <p>
-   * The failure will have a reason of {@code ERROR}.
+   * This recognizes and handles {@link FailureException} and {@link FailureItemProvider} exceptions.
+   * If the exception type is not recognized, the failure will have a reason of {@code ERROR}.
    *
    * @param <R> the expected type of the result
-   * @param exception  the cause of the failure
+   * @param cause  the cause of the failure
    * @return a failure result
    */
-  public static <R> Result<R> failure(Exception exception) {
-    return new Result<>(Failure.of(FailureReason.ERROR, exception));
+  public static <R> Result<R> failure(Exception cause) {
+    // this method is retained to ensure binary compatibility
+    return failure(Failure.from(cause));
+  }
+
+  /**
+   * Creates a failed result caused by a throwable.
+   * <p>
+   * The failure will have a reason of {@code ERROR}.
+   * <p>
+   * The message is produced using a template that contains zero to many "{}" placeholders.
+   * Each placeholder is replaced by the next available argument.
+   * If there are too few arguments, then the message will be left with placeholders.
+   * If there are too many arguments, then the excess arguments are appended to the
+   * end of the message. No attempt is made to format the arguments.
+   * See {@link Messages#format(String, Object...)} for more details.
+   *
+   * @param <R> the expected type of the result
+   * @param cause  the cause of the failure
+   * @param message  a message explaining the failure, uses "{}" for inserting {@code messageArgs}
+   * @param messageArgs  the arguments for the message
+   * @return a failure result
+   */
+  public static <R> Result<R> failure(Throwable cause, String message, Object... messageArgs) {
+    return new Result<>(Failure.of(FailureReason.ERROR, cause, message, messageArgs));
   }
 
   /**
@@ -180,13 +220,26 @@ public final class Result<T>
    * See {@link Messages#format(String, Object...)} for more details.
    *
    * @param <R> the expected type of the result
-   * @param exception  the cause of the failure
+   * @param cause  the cause of the failure
    * @param message  a message explaining the failure, uses "{}" for inserting {@code messageArgs}
    * @param messageArgs  the arguments for the message
    * @return a failure result
    */
-  public static <R> Result<R> failure(Exception exception, String message, Object... messageArgs) {
-    return new Result<>(Failure.of(FailureReason.ERROR, exception, message, messageArgs));
+  public static <R> Result<R> failure(Exception cause, String message, Object... messageArgs) {
+    // this method is retained to ensure binary compatibility
+    return new Result<>(Failure.of(FailureReason.ERROR, cause, message, messageArgs));
+  }
+
+  /**
+   * Creates a failed result caused by a throwable with a specified reason.
+   *
+   * @param <R> the expected type of the result
+   * @param reason  the result reason
+   * @param cause  the cause of the failure
+   * @return a failure result
+   */
+  public static <R> Result<R> failure(FailureReason reason, Throwable cause) {
+    return new Result<>(Failure.of(reason, cause));
   }
 
   /**
@@ -194,11 +247,38 @@ public final class Result<T>
    *
    * @param <R> the expected type of the result
    * @param reason  the result reason
-   * @param exception  the cause of the failure
+   * @param cause  the cause of the failure
    * @return a failure result
    */
-  public static <R> Result<R> failure(FailureReason reason, Exception exception) {
-    return new Result<>(Failure.of(reason, exception));
+  public static <R> Result<R> failure(FailureReason reason, Exception cause) {
+    // this method is retained to ensure binary compatibility
+    return new Result<>(Failure.of(reason, cause));
+  }
+
+  /**
+   * Creates a failed result caused by a throwable with a specified reason and message.
+   * <p>
+   * The message is produced using a template that contains zero to many "{}" placeholders.
+   * Each placeholder is replaced by the next available argument.
+   * If there are too few arguments, then the message will be left with placeholders.
+   * If there are too many arguments, then the excess arguments are appended to the
+   * end of the message. No attempt is made to format the arguments.
+   * See {@link Messages#format(String, Object...)} for more details.
+   *
+   * @param <R> the expected type of the result
+   * @param reason  the result reason
+   * @param cause  the cause of the failure
+   * @param message  a message explaining the failure, uses "{}" for inserting {@code messageArgs}
+   * @param messageArgs  the arguments for the message
+   * @return a failure result
+   */
+  public static <R> Result<R> failure(
+      FailureReason reason,
+      Throwable cause,
+      String message,
+      Object... messageArgs) {
+
+    return new Result<>(Failure.of(reason, cause, message, messageArgs));
   }
 
   /**
@@ -213,13 +293,19 @@ public final class Result<T>
    *
    * @param <R> the expected type of the result
    * @param reason  the result reason
-   * @param exception  the cause of the failure
+   * @param cause  the cause of the failure
    * @param message  a message explaining the failure, uses "{}" for inserting {@code messageArgs}
    * @param messageArgs  the arguments for the message
    * @return a failure result
    */
-  public static <R> Result<R> failure(FailureReason reason, Exception exception, String message, Object... messageArgs) {
-    return new Result<>(Failure.of(reason, exception, message, messageArgs));
+  public static <R> Result<R> failure(
+      FailureReason reason,
+      Exception cause,
+      String message,
+      Object... messageArgs) {
+
+    // this method is retained to ensure binary compatibility
+    return new Result<>(Failure.of(reason, cause, message, messageArgs));
   }
 
   /**
@@ -311,6 +397,19 @@ public final class Result<T>
    */
   public static <R> Result<R> failure(Failure failure) {
     return new Result<>(failure);
+  }
+
+  /**
+   * Creates a failed result containing a failure item.
+   * <p>
+   * This is useful for converting an existing {@code FailureItem} instance to a result.
+   *
+   * @param <R> the expected type of the result
+   * @param failureItem  details of the failure
+   * @return a failed result containing the specified failure
+   */
+  public static <R> Result<R> failure(FailureItem failureItem) {
+    return new Result<>(Failure.of(failureItem));
   }
 
   /**
@@ -434,11 +533,11 @@ public final class Result<T>
    * <p>
    * The following code shows where this method can be used. The code:
    * <blockquote><pre>
-   *   Set<Result<MyData>> results = goAndGatherData();
+   *   Set&lt;Result&lt;MyData&gt;&gt; results = goAndGatherData();
    *   if (Result.anyFailures(results)) {
    *     return Result.failure(results);
    *   } else {
-   *     Set<FooData> combined =
+   *     Set&lt;FooData&gt; combined =
    *         results.stream()
    *             .map(Result::getValue)
    *             .map(MyData::transformToFoo)
@@ -448,8 +547,8 @@ public final class Result<T>
    * </pre></blockquote>
    * can be replaced with:
    * <blockquote><pre>
-   *   Set<Result<MyData>> results = goAndGatherData();
-   *   return Result.combine(results, myDataStream ->
+   *   Set&lt;Result&lt;MyData&gt;&gt; results = goAndGatherData();
+   *   return Result.combine(results, myDataStream -&gt;
    *       myDataStream
    *           .map(MyData::transformToFoo)
    *           .collect(toSet())
@@ -472,8 +571,8 @@ public final class Result<T>
           success(function.apply(extractSuccesses(results))) :
           failure(results);
 
-    } catch (Exception e) {
-      return failure(e);
+    } catch (Exception ex) {
+      return failure(ex);
     }
   }
 
@@ -488,11 +587,11 @@ public final class Result<T>
    * <p>
    * The following code shows where this method can be used. The code:
    * <blockquote><pre>
-   *   Set<Result<MyData>> results = goAndGatherData();
+   *   Set&lt;Result&lt;MyData&gt;&gt; results = goAndGatherData();
    *   if (Result.anyFailures(results)) {
    *     return Result.failure(results);
    *   } else {
-   *     Set<FooData> combined =
+   *     Set&lt;FooData&gt; combined =
    *         results.stream()
    *             .map(Result::getValue)
    *             .map(MyData::transformToFoo)
@@ -502,9 +601,9 @@ public final class Result<T>
    * </pre></blockquote>
    * can be replaced with:
    * <blockquote><pre>
-   *   Set<Result<MyData>> results = goAndGatherData();
-   *   return Result.flatCombine(results, myDataStream -> {
-   *     Set<CombinedData> combined =
+   *   Set&lt;Result&lt;MyData&gt;&gt; results = goAndGatherData();
+   *   return Result.flatCombine(results, myDataStream -&gt; {
+   *     Set&lt;CombinedData&gt; combined =
    *         myDataStream
    *             .map(MyData::transformToFoo)
    *             .collect(toSet());
@@ -528,8 +627,8 @@ public final class Result<T>
           function.apply(extractSuccesses(results)) :
           failure(results);
 
-    } catch (Exception e) {
-      return failure(e);
+    } catch (Exception ex) {
+      return failure(ex);
     }
   }
 
@@ -581,6 +680,17 @@ public final class Result<T>
   }
 
   /**
+   * Executes the given consumer if the result represents a successful call and has a result available.
+   *
+   * @param consumer the consumer to be decorated
+   */
+  public void ifSuccess(Consumer<? super T> consumer) {
+    if (value != null) {
+      consumer.accept(value);
+    }
+  }
+
+  /**
    * Indicates if this result represents a failure.
    * <p>
    * This is the opposite of {@link #isSuccess()}.
@@ -591,7 +701,27 @@ public final class Result<T>
     return failure != null;
   }
 
+  /**
+   * Executes the given consumer if the result represents a failure.
+   *
+   * @param consumer the consumer to be decorated
+   */
+  public void ifFailure(Consumer<Failure> consumer) {
+    if (failure != null) {
+      consumer.accept(failure);
+    }
+  }
+
   //-------------------------------------------------------------------------
+  /**
+   * Returns the result value if calculated successfully, empty if a failure occurred.
+   *
+   * @return the result value if success, empty if failure
+   */
+  public Optional<T> get() {
+    return Optional.ofNullable(value);
+  }
+
   /**
    * Returns the actual result value if calculated successfully, throwing an
    * exception if a failure occurred.
@@ -618,7 +748,7 @@ public final class Result<T>
    * <p>
    * If this result is a success then the result value is returned.
    * If this result is a failure then the default value is returned.
-   * The default value must not be null.
+   * The default value may be null.
    * <p>
    * Application code is recommended to use {@link #map(Function)} and
    * {@link #flatMap(Function)} in preference to this method.
@@ -627,7 +757,6 @@ public final class Result<T>
    * @return either the result value or the default value
    */
   public T getValueOrElse(T defaultValue) {
-    ArgChecker.notNull(defaultValue, "defaultValue");
     return (isSuccess() ? value : defaultValue);
   }
 
@@ -657,7 +786,7 @@ public final class Result<T>
   /**
    * Returns the failure instance indicating the reason why the calculation failed.
    * <p>
-   * If this result is a success then an an IllegalStateException will be thrown.
+   * If this result is a success then an IllegalStateException will be thrown.
    * To avoid this, call {@link #isSuccess()} or {@link #isFailure()} first.
    *
    * @return the details of the failure, only available if calculation failed
@@ -688,7 +817,7 @@ public final class Result<T>
    * For example, it allows a {@code double} to be converted to a string:
    * <blockquote><pre>
    *   result = ...
-   *   return result.map(value -> Double.toString(value));
+   *   return result.map(value -&gt; Double.toString(value));
    * </pre></blockquote>
    *
    * @param <R>  the type of the value in the returned result
@@ -698,12 +827,70 @@ public final class Result<T>
   public <R> Result<R> map(Function<? super T, ? extends R> function) {
     if (isSuccess()) {
       try {
-        return Result.success(function.apply(value));
-      } catch (Exception e) {
-        return Result.failure(e);
+        return success(function.apply(value));
+      } catch (Exception ex) {
+        return failure(ex);
       }
     } else {
-      return Result.failure(this);
+      return failure(this);
+    }
+  }
+
+  /**
+   * Processes a failed result by applying a function that alters the failure.
+   * <p>
+   * This operation allows post-processing of a result failure.
+   * The specified function represents a conversion to be performed on the failure.
+   * <p>
+   * If this result is a failure, then the specified function is invoked.
+   * The return value of the specified function is returned to the caller
+   * wrapped in a failure result. If an exception is thrown when the function
+   * is invoked, this will be caught and a failure {@code Result} returned.
+   * <p>
+   * If this result is a success, then {@code this} is returned.
+   * The specified function is not invoked.
+   *
+   * @param function  the function to transform the failure with
+   * @return the new result
+   */
+  public Result<T> mapFailure(Function<Failure, Failure> function) {
+    if (isFailure()) {
+      try {
+        return failure(function.apply(failure));
+      } catch (Exception ex) {
+        return failure(ex);
+      }
+    } else {
+      return this;
+    }
+  }
+
+  /**
+   * Processes a failed result by applying a function that alters the failure items.
+   * <p>
+   * This operation allows post-processing of a result failure.
+   * The specified function represents a conversion to be performed on the failure.
+   * <p>
+   * If this result is a failure, then the specified function is invoked.
+   * The return values of the specified function is returned to the caller
+   * wrapped in a failure result. If an exception is thrown when the function
+   * is invoked, this will be caught and a failure {@code Result} returned.
+   * <p>
+   * If this result is a success, then {@code this} is returned.
+   * The specified function is not invoked.
+   *
+   * @param function  the function to transform the failure with
+   * @return the new result
+   */
+  public Result<T> mapFailureItems(Function<FailureItem, FailureItem> function) {
+    if (isFailure()) {
+      try {
+        return failure(failure.mapItems(function));
+      } catch (Exception ex) {
+        return failure(ex);
+      }
+    } else {
+      return this;
     }
   }
 
@@ -724,7 +911,7 @@ public final class Result<T>
    * For example,
    * <blockquote><pre>
    *   result = ...
-   *   return result.flatMap(value -> doSomething(value));
+   *   return result.flatMap(value -&gt; doSomething(value));
    * </pre></blockquote>
    *
    * @param <R>  the type of the value in the returned result
@@ -735,11 +922,11 @@ public final class Result<T>
     if (isSuccess()) {
       try {
         return Objects.requireNonNull(function.apply(value));
-      } catch (Exception e) {
-        return failure(e);
+      } catch (Exception ex) {
+        return failure(ex);
       }
     } else {
-      return Result.failure(this);
+      return failure(this);
     }
   }
 
@@ -757,7 +944,7 @@ public final class Result<T>
    * <blockquote><pre>
    *   result1 = ...
    *   result2 = ...
-   *   return result1.combineWith(result2, (value1, value2) -> doSomething(value1, value2));
+   *   return result1.combineWith(result2, (value1, value2) -&gt; doSomething(value1, value2));
    * </pre></blockquote>
    *
    * @param other  another result
@@ -772,8 +959,8 @@ public final class Result<T>
     if (isSuccess() && other.isSuccess()) {
       try {
         return Objects.requireNonNull(function.apply(value, other.value));
-      } catch (Exception e) {
-        return failure(e);
+      } catch (Exception ex) {
+        return failure(ex);
       }
     } else {
       return failure(this, other);
@@ -793,7 +980,6 @@ public final class Result<T>
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code Result}.
    * @return the meta-bean, not null
@@ -815,7 +1001,7 @@ public final class Result<T>
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(Result.Meta.INSTANCE);
+    MetaBean.register(Result.Meta.INSTANCE);
   }
 
   /**
@@ -835,16 +1021,6 @@ public final class Result<T>
   @Override
   public Result.Meta<T> metaBean() {
     return Result.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -873,7 +1049,7 @@ public final class Result<T>
   public String toString() {
     StringBuilder buf = new StringBuilder(96);
     buf.append("Result{");
-    buf.append("value").append('=').append(value).append(',').append(' ');
+    buf.append("value").append('=').append(JodaBeanUtils.toString(value)).append(',').append(' ');
     buf.append("failure").append('=').append(JodaBeanUtils.toString(failure));
     buf.append('}');
     return buf.toString();
@@ -929,7 +1105,7 @@ public final class Result<T>
 
     @Override
     public BeanBuilder<? extends Result<T>> builder() {
-      return new Result.Builder<T>();
+      return new Result.Builder<>();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes" })
@@ -988,7 +1164,7 @@ public final class Result<T>
    * The bean-builder for {@code Result}.
    * @param <T>  the type
    */
-  private static final class Builder<T> extends DirectFieldsBeanBuilder<Result<T>> {
+  private static final class Builder<T> extends DirectPrivateBeanBuilder<Result<T>> {
 
     private T value;
     private Failure failure;
@@ -1029,32 +1205,8 @@ public final class Result<T>
     }
 
     @Override
-    public Builder<T> set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder<T> setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder<T> setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder<T> setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public Result<T> build() {
-      return new Result<T>(
+      return new Result<>(
           value,
           failure);
     }
@@ -1072,6 +1224,5 @@ public final class Result<T>
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

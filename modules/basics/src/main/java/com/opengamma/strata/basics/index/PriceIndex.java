@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.index;
@@ -8,7 +8,8 @@ package com.opengamma.strata.basics.index;
 import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
-import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.date.DayCount;
+import com.opengamma.strata.basics.date.DayCounts;
 import com.opengamma.strata.basics.location.Country;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.collect.ArgChecker;
@@ -31,7 +32,7 @@ import com.opengamma.strata.collect.named.Named;
  * All implementations of this interface must be immutable and thread-safe.
  */
 public interface PriceIndex
-    extends Index, Named {
+    extends FloatingRateIndex, Named {
 
   /**
    * Obtains an instance from the specified unique name.
@@ -67,21 +68,14 @@ public interface PriceIndex
   public abstract Country getRegion();
 
   /**
-   * Gets the currency of the index.
+   * Gets the day count convention of the index, which is '1/1'.
    * 
-   * @return the currency of the index
+   * @return the day count convention
    */
-  public abstract Currency getCurrency();
-
-  /**
-   * Gets whether the index is active.
-   * <p>
-   * Over time some indices become inactive and are no longer produced.
-   * If this occurs, this method will return false.
-   * 
-   * @return true if the index is active, false if inactive
-   */
-  public abstract boolean isActive();
+  @Override
+  public default DayCount getDayCount() {
+    return DayCounts.ONE_ONE;
+  }
 
   /**
    * Gets the frequency that the index is published.

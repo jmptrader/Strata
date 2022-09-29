@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.JodaBeanUtils;
 import org.joda.beans.MetaBean;
 
 import com.google.common.collect.Sets;
@@ -32,18 +31,18 @@ public class TradeTokenEvaluator extends TokenEvaluator<Trade> {
 
   @Override
   public Set<String> tokens(Trade trade) {
-    MetaBean metaBean = JodaBeanUtils.metaBean(trade.getClass());
+    MetaBean metaBean = MetaBean.of(trade.getClass());
     return Sets.union(metaBean.metaPropertyMap().keySet(), trade.getInfo().propertyNames());
   }
 
   @Override
   public EvaluationResult evaluate(
-      Trade trade, 
+      Trade trade,
       CalculationFunctions functions,
       String firstToken,
       List<String> remainingTokens) {
-    
-    MetaBean metaBean = JodaBeanUtils.metaBean(trade.getClass());
+
+    MetaBean metaBean = MetaBean.of(trade.getClass());
 
     // trade
     Optional<String> tradePropertyName = metaBean.metaPropertyMap().keySet().stream()

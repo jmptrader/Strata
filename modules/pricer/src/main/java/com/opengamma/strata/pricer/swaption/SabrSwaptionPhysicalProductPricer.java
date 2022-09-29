@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -80,7 +80,7 @@ public class SabrSwaptionPhysicalProductPricer
     if (expiry < 0d) { // Option has expired already
       return PointSensitivityBuilder.none();
     }
-    double forward = getSwapPricer().parRate(underlying, ratesProvider);
+    double forward = forwardRate(swaption, ratesProvider);
     double pvbp = getSwapPricer().getLegPricer().pvbp(fixedLeg, ratesProvider);
     double strike = getSwapPricer().getLegPricer().couponEquivalent(fixedLeg, ratesProvider, pvbp);
     double tenor = swaptionVolatilities.tenor(fixedLeg.getStartDate(), fixedLeg.getEndDate());
@@ -128,13 +128,13 @@ public class SabrSwaptionPhysicalProductPricer
     if (expiry < 0d) { // Option has expired already
       return PointSensitivityBuilder.none();
     }
-    double forward = getSwapPricer().parRate(underlying, ratesProvider);
+    double forward = forwardRate(swaption, ratesProvider);
     double volatility = swaptionVolatilities.volatility(expiry, tenor, strike, forward);
     DoubleArray derivative =
         swaptionVolatilities.volatilityAdjoint(expiry, tenor, strike, forward).getDerivatives();
     // Backward sweep
-    double vega = Math.abs(pvbp) * BlackFormulaRepository.vega(forward + shift, strike + shift, expiry, volatility)
-        * swaption.getLongShort().sign();
+    double vega = Math.abs(pvbp) * BlackFormulaRepository.vega(forward + shift, strike + shift, expiry, volatility) *
+        swaption.getLongShort().sign();
     // sensitivities
     Currency ccy = fixedLeg.getCurrency();
     SwaptionVolatilitiesName name = swaptionVolatilities.getName();

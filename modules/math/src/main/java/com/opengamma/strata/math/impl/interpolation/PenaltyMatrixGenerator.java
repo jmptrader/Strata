@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
@@ -26,7 +26,7 @@ public abstract class PenaltyMatrixGenerator {
   private static final MatrixAlgebra MA = new OGMatrixAlgebra();
 
   //*******************************************************************************************
-  // Difference methods 
+  // Difference methods
   //*******************************************************************************************
 
   /**
@@ -83,9 +83,13 @@ public abstract class PenaltyMatrixGenerator {
   }
 
   /**
-   * Assume a tensor has been flattened to a vector as {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
-   *  (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly.  This produces a penalty matrix that acts on a given set of indexes only<P>
-   * To produce a penalty matrix that acts on multiple indexes, produce one for each set of indexes and add them together (scaling if necessary)  
+   * Assume a tensor has been flattened to a vector as
+   * {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
+   * (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly. 
+   * This produces a penalty matrix that acts on a given set of indexes only<P>
+   * To produce a penalty matrix that acts on multiple indexes, produce one for each set of indexes
+   * and add them together (scaling if necessary).
+   * 
    * @param numElements The range of each index. In the example above, this would be {n,m} 
    * @param k Difference order. Require size[indices] > k
    * @param index Which set of indices does the matrix act on 
@@ -99,9 +103,11 @@ public abstract class PenaltyMatrixGenerator {
   }
 
   /**
-   * Assume a tensor has been flattened to a vector as {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
-   * (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly.  This produces the sum of penalty matrices (or order given by k) with each scaled 
-   * by lambda. 
+   * Assume a tensor has been flattened to a vector as
+   * {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
+   * (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly.
+   * This produces the sum of penalty matrices (or order given by k) with each scaled by lambda.
+   * 
    * @param numElements The range of each index. In the example above, this would be {n,m} 
    * @param k The difference order for each dimension 
    * @param lambda The scaling for each dimension 
@@ -124,7 +130,7 @@ public abstract class PenaltyMatrixGenerator {
   }
 
   //*******************************************************************************************
-  // Finite difference methods for non-uniform grids 
+  // Finite difference methods for non-uniform grids
   //*******************************************************************************************
 
   /**
@@ -136,7 +142,7 @@ public abstract class PenaltyMatrixGenerator {
    * @param x A non-uniform set of points
    * @param k The order <b>Only first and second order are currently implemented</b>
    * @param includeEnds If true the matrix includes an estimate for the derivative at the end points; if false
-   * the first and last rows of the matrix are empty 
+   *   the first and last rows of the matrix are empty 
    * @return The derivative matrix
    */
   public static DoubleMatrix getDerivativeMatrix(double[] x, int k, boolean includeEnds) {
@@ -170,7 +176,7 @@ public abstract class PenaltyMatrixGenerator {
         data[i][i] = w[i - 1] * (dx2[i] - dx2[i - 1]);
         data[i][i + 1] = w[i - 1] * dx2[i - 1];
       }
-      //ends 
+      //ends
       if (includeEnds) {
         data[0][0] = -w[0] * dx[1] * (2 * dx[0] + dx[1]);
         data[0][1] = w[0] * (dx2[0] + dx2[1] + 2 * dx[0] * dx[1]);
@@ -186,7 +192,7 @@ public abstract class PenaltyMatrixGenerator {
         data[i][i] = -tmp * (dx[i] + dx[i - 1]);
         data[i][i + 1] = tmp * dx[i - 1];
       }
-      //ends 
+      //ends
       if (includeEnds) {
         data[0] = data[1];
         data[size - 1] = data[size - 2];
@@ -222,7 +228,7 @@ public abstract class PenaltyMatrixGenerator {
   }
 
   /**
-   * Get a kth order penalty matrix for a non-uniform grid whose values have been flattened to a vector 
+   * Get a kth order penalty matrix for a non-uniform grid whose values have been flattened to a vector.
    * @param x the grid positions in each dimension 
    * @param k the (finite difference) order
    * @param index which index to act on 
@@ -267,7 +273,7 @@ public abstract class PenaltyMatrixGenerator {
 
   /**
    * for a matrix {{A_{0,0}, A_{0,1},...._A_{0,m},{A_{1,0}, A_{1,1},...._A_{1,m},...,{A_{n,0}, A_{n,1},...._A_{n,m}}
-   * flattened to a vector {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
+   * flattened to a vector {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}.
    * @param aMatrix A matrix
    * @return a the flattened matrix 
    */
@@ -285,11 +291,13 @@ public abstract class PenaltyMatrixGenerator {
   }
 
   /**
-   * Assume a tensor has been flattened to a vector as {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
-   *  (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly. 
+   * Assume a tensor has been flattened to a vector as
+   * {A_{0,0}, A_{0,1},...._A_{0,m}, A_{1,0}, A_{1,1},...._A_{1,m},...,A_{n,0}, A_{n,1},...._A_{n,m}}
+   * (see {@link #flattenMatrix}) that is, the <b>last</b> index changes most rapidly. 
    * Given a matrix, M, that acts on the elements of one index only, i.e.
    * $$y_{i, i_1, i_2, \dots,i_{k-1}, i_{k+1},\dots, i_n} =  \sum_{i_k=0}^{N_k-1} M_{i,i_k}  x_{i_1, i_2, \dots,i_k,\dots, i_n} $$
    * form the larger matrix that acts on the flattened vector.
+   * 
    * @param numElements The number of elements in each index. In the example above, this would be {n,m} 
    * @param m the matrix M
    * @param index Which index does the matrix act on 
@@ -300,7 +308,9 @@ public abstract class PenaltyMatrixGenerator {
     int dim = numElements.length;
     ArgChecker.notNull(m, "m");
     ArgChecker.isTrue(index >= 0 && index < dim, "indices outside range");
-    ArgChecker.isTrue(m.columnCount() == numElements[index], "columns in m ({}) do not match numElements for index ({})", m.columnCount(), numElements[index]);
+    ArgChecker.isTrue(
+        m.columnCount() == numElements[index],
+        "columns in m ({}) do not match numElements for index ({})", m.columnCount(), numElements[index]);
     int postProduct = 1;
     int preProduct = 1;
     for (int j = index + 1; j < dim; j++) {

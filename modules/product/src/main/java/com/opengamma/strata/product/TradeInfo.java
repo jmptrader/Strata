@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,24 +13,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.StandardId;
-import com.opengamma.strata.collect.Messages;
 
 /**
  * Additional information about a trade.
@@ -40,7 +39,7 @@ import com.opengamma.strata.collect.Messages;
  */
 @BeanDefinition(builderScope = "private", constructorScope = "package")
 public final class TradeInfo
-    implements ImmutableBean, Serializable {
+    implements PortfolioItemInfo, ImmutableBean, Serializable {
 
   /**
    * An empty instance of {@code TradeInfo}.
@@ -57,7 +56,7 @@ public final class TradeInfo
    * Certain uses of the identifier, such as storage in a database, require that the
    * identifier does not change over time, and this should be considered best practice.
    */
-  @PropertyDefinition(get = "optional")
+  @PropertyDefinition(get = "optional", overrideGet = true)
   private final StandardId id;
   /**
    * The counterparty identifier, optional.
@@ -89,11 +88,10 @@ public final class TradeInfo
   /**
    * The trade attributes.
    * <p>
-   * Trade attributes, provide the ability to associate arbitrary information
-   * with a trade in a key-value map.
+   * Trade attributes provide the ability to associate arbitrary information in a key-value map.
    */
   @PropertyDefinition(validate = "notNull")
-  private final ImmutableMap<TradeAttributeType<?>, Object> attributes;
+  private final ImmutableMap<AttributeType<?>, Object> attributes;
 
   //-------------------------------------------------------------------------
   /**
@@ -116,6 +114,19 @@ public final class TradeInfo
   }
 
   /**
+   * Obtains an instance based on the supplied info.
+   *
+   * @param info  the base info
+   * @return the trade information
+   */
+  public static TradeInfo from(PortfolioItemInfo info) {
+    if (info instanceof TradeInfo) {
+      return ((TradeInfo) info);
+    }
+    return empty().combinedWith(info);
+  }
+
+  /**
    * Returns a builder used to create an instance of the bean.
    * 
    * @return the builder, not null
@@ -125,63 +136,86 @@ public final class TradeInfo
   }
 
   //-------------------------------------------------------------------------
-  /**
-   * Gets the attribute associated with the specified type.
-   * <p>
-   * This method obtains the specified attribute.
-   * This allows an attribute about a trade to be obtained if available.
-   * <p>
-   * If the attribute is not found, an exception is thrown.
-   * 
-   * @param <T>  the type of the result
-   * @param type  the type to find
-   * @return the attribute value
-   * @throws IllegalArgumentException if the attribute is not found
-   */
-  public <T> T getAttribute(TradeAttributeType<T> type) {
-    return findAttribute(type).orElseThrow(() -> new IllegalArgumentException(
-        Messages.format("Attribute not found for type '{}'", type)));
+  @Override
+  public TradeInfo withId(StandardId identifier) {
+    return new TradeInfo(identifier, counterparty, tradeDate, tradeTime, zone, settlementDate, attributes);
   }
 
-  /**
-   * Finds the attribute associated with the specified type.
-   * <p>
-   * This method obtains the specified attribute.
-   * This allows an attribute about a trade to be obtained if available.
-   * <p>
-   * If the attribute is not found, optional empty is returned.
-   * 
-   * @param <T>  the type of the result
-   * @param type  the type to find
-   * @return the attribute value
-   */
-  @SuppressWarnings("unchecked")
-  public <T> Optional<T> findAttribute(TradeAttributeType<T> type) {
-    return Optional.ofNullable((T) attributes.get(type));
+  //-------------------------------------------------------------------------
+  @Override
+  public ImmutableSet<AttributeType<?>> getAttributeTypes() {
+    return attributes.keySet();
   }
 
-  /**
-   * Returns a copy of this instance with attribute added.
-   * <p>
-   * This returns a new instance with the specified attribute added.
-   * The attribute is added using {@code Map.put(type, value)} semantics.
-   * 
-   * @param <T> the type of the value
-   * @param type  the type providing meaning to the value
-   * @param value  the value
-   * @return a new instance based on this one with the attribute added
-   */
+  @Override
   @SuppressWarnings("unchecked")
-  public <T> TradeInfo withAttribute(TradeAttributeType<T> type, T value) {
+  public <T> Optional<T> findAttribute(AttributeType<T> type) {
+    return Optional.ofNullable(type.fromStoredForm(attributes.get(type)));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> TradeInfo withAttribute(AttributeType<T> type, T value) {
     // ImmutableMap.Builder would not provide Map.put semantics
-    Map<TradeAttributeType<?>, Object> updatedAttributes = new HashMap<>(attributes);
-    updatedAttributes.put(type, value);
+    Map<AttributeType<?>, Object> updatedAttributes = new HashMap<>(attributes);
+    if (value == null) {
+      updatedAttributes.remove(type);
+    } else {
+      updatedAttributes.put(type, type.toStoredForm(value));
+    }
     return new TradeInfo(id, counterparty, tradeDate, tradeTime, zone, settlementDate, updatedAttributes);
+  }
+
+  @Override
+  public TradeInfo withAttributes(Attributes other) {
+    TradeInfoBuilder builder = toBuilder();
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+    }
+    return builder.build();
+  }
+
+  @Override
+  public TradeInfo combinedWith(PortfolioItemInfo other) {
+    TradeInfoBuilder builder = toBuilder();
+    other.getId().filter(ignored -> this.id == null).ifPresent(builder::id);
+    if (other instanceof TradeInfo) {
+      TradeInfo otherInfo = (TradeInfo) other;
+      otherInfo.getCounterparty().filter(ignored -> this.counterparty == null).ifPresent(builder::counterparty);
+      otherInfo.getTradeDate().filter(ignored -> this.tradeDate == null).ifPresent(builder::tradeDate);
+      otherInfo.getTradeTime().filter(ignored -> this.tradeTime == null).ifPresent(builder::tradeTime);
+      otherInfo.getZone().filter(ignored -> this.zone == null).ifPresent(builder::zone);
+      otherInfo.getSettlementDate().filter(ignored -> this.settlementDate == null).ifPresent(builder::settlementDate);
+    }
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      if (!attributes.keySet().contains(attrType)) {
+        builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+      }
+    }
+    return builder.build();
+  }
+
+  @Override
+  public TradeInfo overrideWith(PortfolioItemInfo other) {
+    TradeInfoBuilder builder = toBuilder();
+    other.getId().ifPresent(builder::id);
+    if (other instanceof TradeInfo) {
+      TradeInfo otherInfo = (TradeInfo) other;
+      otherInfo.getCounterparty().ifPresent(builder::counterparty);
+      otherInfo.getTradeDate().ifPresent(builder::tradeDate);
+      otherInfo.getTradeTime().ifPresent(builder::tradeTime);
+      otherInfo.getZone().ifPresent(builder::zone);
+      otherInfo.getSettlementDate().ifPresent(builder::settlementDate);
+    }
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+    }
+    return builder.build();
   }
 
   /**
    * Returns a builder populated with the values of this instance.
-   * 
+   *
    * @return a builder populated with the values of this instance
    */
   public TradeInfoBuilder toBuilder() {
@@ -189,7 +223,6 @@ public final class TradeInfo
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code TradeInfo}.
    * @return the meta-bean, not null
@@ -199,7 +232,7 @@ public final class TradeInfo
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(TradeInfo.Meta.INSTANCE);
+    MetaBean.register(TradeInfo.Meta.INSTANCE);
   }
 
   /**
@@ -224,7 +257,7 @@ public final class TradeInfo
       LocalTime tradeTime,
       ZoneId zone,
       LocalDate settlementDate,
-      Map<TradeAttributeType<?>, Object> attributes) {
+      Map<AttributeType<?>, Object> attributes) {
     JodaBeanUtils.notNull(attributes, "attributes");
     this.id = id;
     this.counterparty = counterparty;
@@ -240,16 +273,6 @@ public final class TradeInfo
     return TradeInfo.Meta.INSTANCE;
   }
 
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
-  }
-
   //-----------------------------------------------------------------------
   /**
    * Gets the primary identifier for the trade, optional.
@@ -262,6 +285,7 @@ public final class TradeInfo
    * identifier does not change over time, and this should be considered best practice.
    * @return the optional value of the property, not null
    */
+  @Override
   public Optional<StandardId> getId() {
     return Optional.ofNullable(id);
   }
@@ -317,11 +341,10 @@ public final class TradeInfo
   /**
    * Gets the trade attributes.
    * <p>
-   * Trade attributes, provide the ability to associate arbitrary information
-   * with a trade in a key-value map.
+   * Trade attributes provide the ability to associate arbitrary information in a key-value map.
    * @return the value of the property, not null
    */
-  public ImmutableMap<TradeAttributeType<?>, Object> getAttributes() {
+  public ImmutableMap<AttributeType<?>, Object> getAttributes() {
     return attributes;
   }
 
@@ -361,12 +384,12 @@ public final class TradeInfo
   public String toString() {
     StringBuilder buf = new StringBuilder(256);
     buf.append("TradeInfo{");
-    buf.append("id").append('=').append(id).append(',').append(' ');
-    buf.append("counterparty").append('=').append(counterparty).append(',').append(' ');
-    buf.append("tradeDate").append('=').append(tradeDate).append(',').append(' ');
-    buf.append("tradeTime").append('=').append(tradeTime).append(',').append(' ');
-    buf.append("zone").append('=').append(zone).append(',').append(' ');
-    buf.append("settlementDate").append('=').append(settlementDate).append(',').append(' ');
+    buf.append("id").append('=').append(JodaBeanUtils.toString(id)).append(',').append(' ');
+    buf.append("counterparty").append('=').append(JodaBeanUtils.toString(counterparty)).append(',').append(' ');
+    buf.append("tradeDate").append('=').append(JodaBeanUtils.toString(tradeDate)).append(',').append(' ');
+    buf.append("tradeTime").append('=').append(JodaBeanUtils.toString(tradeTime)).append(',').append(' ');
+    buf.append("zone").append('=').append(JodaBeanUtils.toString(zone)).append(',').append(' ');
+    buf.append("settlementDate").append('=').append(JodaBeanUtils.toString(settlementDate)).append(',').append(' ');
     buf.append("attributes").append('=').append(JodaBeanUtils.toString(attributes));
     buf.append('}');
     return buf.toString();
@@ -416,7 +439,7 @@ public final class TradeInfo
      * The meta-property for the {@code attributes} property.
      */
     @SuppressWarnings({"unchecked", "rawtypes" })
-    private final MetaProperty<ImmutableMap<TradeAttributeType<?>, Object>> attributes = DirectMetaProperty.ofImmutable(
+    private final MetaProperty<ImmutableMap<AttributeType<?>, Object>> attributes = DirectMetaProperty.ofImmutable(
         this, "attributes", TradeInfo.class, (Class) ImmutableMap.class);
     /**
      * The meta-properties.
@@ -526,7 +549,7 @@ public final class TradeInfo
      * The meta-property for the {@code attributes} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<ImmutableMap<TradeAttributeType<?>, Object>> attributes() {
+    public MetaProperty<ImmutableMap<AttributeType<?>, Object>> attributes() {
       return attributes;
     }
 
@@ -567,7 +590,7 @@ public final class TradeInfo
   /**
    * The bean-builder for {@code TradeInfo}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<TradeInfo> {
+  private static final class Builder extends DirectPrivateBeanBuilder<TradeInfo> {
 
     private StandardId id;
     private StandardId counterparty;
@@ -575,7 +598,7 @@ public final class TradeInfo
     private LocalTime tradeTime;
     private ZoneId zone;
     private LocalDate settlementDate;
-    private Map<TradeAttributeType<?>, Object> attributes = ImmutableMap.of();
+    private Map<AttributeType<?>, Object> attributes = ImmutableMap.of();
 
     /**
      * Restricted constructor.
@@ -629,35 +652,11 @@ public final class TradeInfo
           this.settlementDate = (LocalDate) newValue;
           break;
         case 405645655:  // attributes
-          this.attributes = (Map<TradeAttributeType<?>, Object>) newValue;
+          this.attributes = (Map<AttributeType<?>, Object>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
-      return this;
-    }
-
-    @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
       return this;
     }
 
@@ -691,6 +690,5 @@ public final class TradeInfo
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

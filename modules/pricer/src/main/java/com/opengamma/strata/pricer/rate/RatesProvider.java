@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,6 +7,7 @@ package com.opengamma.strata.pricer.rate;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
@@ -15,6 +16,7 @@ import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.basics.index.OvernightIndex;
 import com.opengamma.strata.basics.index.PriceIndex;
+import com.opengamma.strata.collect.Guavate;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.data.MarketDataName;
 import com.opengamma.strata.market.curve.Curve;
@@ -36,13 +38,30 @@ import com.opengamma.strata.pricer.fx.FxIndexSensitivity;
  * This provides the environmental information against which pricing occurs.
  * The valuation date, FX rates, discount factors, time-series and forward curves are included.
  * <p>
+ * The standard independent implementation is {@link ImmutableRatesProvider}.
+ * <p>
  * All implementations of this interface must be immutable and thread-safe.
  */
 public interface RatesProvider
     extends BaseProvider {
 
   /**
+   * Gets the forward indices that are available.
+   * <p>
+   * Normally this will only return Ibor, Overnight and Price indices,
+   * however it may return other types of index.
+   *
+   * @return the indices
+   */
+  public default Stream<Index> indices() {
+    return Guavate.<Index>concatToSet(getIborIndices(), getOvernightIndices(), getPriceIndices()).stream();
+  }
+
+  /**
    * Gets the set of Ibor indices that are available.
+   * <p>
+   * If an index is present in the result of this method, then
+   * {@link #iborIndexRates(IborIndex)} should not throw an exception.
    *
    * @return the set of Ibor indices
    */
@@ -50,6 +69,9 @@ public interface RatesProvider
 
   /**
    * Gets the set of Overnight indices that are available.
+   * <p>
+   * If an index is present in the result of this method, then
+   * {@link #overnightIndexRates(OvernightIndex)} should not throw an exception.
    *
    * @return the set of Overnight indices
    */
@@ -57,10 +79,24 @@ public interface RatesProvider
 
   /**
    * Gets the set of Price indices that are available.
+   * <p>
+   * If an index is present in the result of this method, then
+   * {@link #priceIndexValues(PriceIndex)} should not throw an exception.
    *
    * @return the set of Price indices
    */
   public abstract Set<PriceIndex> getPriceIndices();
+
+  /**
+   * Gets the set of indices that have time-series available.
+   * <p>
+   * Note that the method {@link #timeSeries(Index)} returns an empty time-series
+   * when the index is not known, thus this method is useful to determine if there
+   * actually is a time-series in the underlying data.
+   *
+   * @return the set of indices with time-series
+   */
+  public abstract Set<Index> getTimeSeriesIndices();
 
   //-------------------------------------------------------------------------
   /**
@@ -233,7 +269,7 @@ public interface RatesProvider
    * This returns time series for the index.
    * 
    * @param index  the index
-   * @return the time series
+   * @return the time series, empty if time-series not found
    */
   public abstract LocalDateDoubleTimeSeries timeSeries(Index index);
 

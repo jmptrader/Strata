@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
@@ -13,8 +13,10 @@ import com.opengamma.strata.collect.array.DoubleMatrix;
 import com.opengamma.strata.math.impl.function.PiecewisePolynomialFunction1D;
 
 /**
- *  Given a set of data (x0Values_i, x1Values_j, yValues_{ij}), derive the piecewise bicubic function, f(x0,x1) = sum_{i=0}^{3} sum_{j=0}^{3} coefMat_{ij} (x0-x0Values_i)^{3-i} (x1-x1Values_j)^{3-j},
- *  for the region x0Values_i < x0 < x0Values_{i+1}, x1Values_j < x1 < x1Values_{j+1}  such that f(x0Values_a, x1Values_b) = yValues_{ab} where a={i,i+1}, b={j,j+1}. 
+ *  Given a set of data (x0Values_i, x1Values_j, yValues_{ij}), derive the piecewise bicubic function,
+ *  f(x0,x1) = sum_{i=0}^{3} sum_{j=0}^{3} coefMat_{ij} (x0-x0Values_i)^{3-i} (x1-x1Values_j)^{3-j},
+ *  for the region x0Values_i < x0 < x0Values_{i+1}, x1Values_j < x1 < x1Values_{j+1}  such that
+ *  f(x0Values_a, x1Values_b) = yValues_{ab} where a={i,i+1}, b={j,j+1}. 
  *  1D piecewise polynomial interpolation methods are called to determine first derivatives and cross derivative at data points
  *  Note that the value of the cross derivative at {ij} is not "accurate" if yValues_{ij} = 0.
  */
@@ -23,7 +25,7 @@ public class BicubicSplineInterpolator extends PiecewisePolynomialInterpolator2D
   private static final double ERROR = 1.e-13;
 
   private PiecewisePolynomialInterpolator[] _method;
-  private static DoubleMatrix s_invMat;
+  private static DoubleMatrix INV_MAT;
 
   static {
     double[][] invMat = new double[16][16];
@@ -43,11 +45,11 @@ public class BicubicSplineInterpolator extends PiecewisePolynomialInterpolator2D
     invMat[13] = new double[] {0., 0., 0., 0., 2., 0., -2., 0., 0., 0., 0., 0., 1., 0., 1., 0.};
     invMat[14] = new double[] {-6., 6., 6., -6., -4., -2., 4., 2., -3., 3., -3., 3., -2., -1., -2., -1.};
     invMat[15] = new double[] {4., -4., -4., 4., 2., 2., -2., -2., 2., -2., 2., -2., 1., 1., 1., 1.};
-    s_invMat = DoubleMatrix.ofUnsafe(invMat);
+    INV_MAT = DoubleMatrix.ofUnsafe(invMat);
   }
 
   /**
-   * Constructor which can take different methods for x0 and x1
+   * Constructor which can take different methods for x0 and x1.
    * @param method Choose 2 of {@link PiecewisePolynomialInterpolator}
    */
   public BicubicSplineInterpolator(final PiecewisePolynomialInterpolator[] method) {
@@ -61,7 +63,7 @@ public class BicubicSplineInterpolator extends PiecewisePolynomialInterpolator2D
   }
 
   /**
-   * Constructor using the same interpolation method for x0 and x1
+   * Constructor using the same interpolation method for x0 and x1.
    * @param method {@link PiecewisePolynomialInterpolator}
    */
   public BicubicSplineInterpolator(final PiecewisePolynomialInterpolator method) {
@@ -135,7 +137,7 @@ public class BicubicSplineInterpolator extends PiecewisePolynomialInterpolator2D
           }
         }
         final DoubleArray diffs = DoubleArray.copyOf(diffsVec);
-        final DoubleArray ansVec = ((DoubleArray) OG_ALGEBRA.multiply(s_invMat, diffs));
+        final DoubleArray ansVec = ((DoubleArray) OG_ALGEBRA.multiply(INV_MAT, diffs));
 
         double ref = 0.;
         double[][] coefMatTmp = new double[order][order];
@@ -147,7 +149,8 @@ public class BicubicSplineInterpolator extends PiecewisePolynomialInterpolator2D
                     Math.pow((x1Values[j + 1] - x1Values[j]), m);
             ArgChecker.isFalse(Double.isNaN(coefMatTmp[order - l - 1][order - m - 1]), "Too large/small input");
             ArgChecker.isFalse(Double.isInfinite(coefMatTmp[order - l - 1][order - m - 1]), "Too large/small input");
-            ref += coefMatTmp[order - l - 1][order - m - 1] * Math.pow((x0Values[i + 1] - x0Values[i]), l) * Math.pow((x1Values[j + 1] - x1Values[j]), m);
+            ref += coefMatTmp[order - l - 1][order - m - 1] * Math.pow((x0Values[i + 1] - x0Values[i]), l) *
+                Math.pow((x1Values[j + 1] - x1Values[j]), m);
           }
         }
         final double bound = Math.max(Math.abs(ref) + Math.abs(yValues[i + 1][j + 1]), 0.1);

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -25,6 +25,6 @@ public interface CheckedBiConsumer<T, U> {
    * @param u the second input argument
    * @throws Throwable if an error occurs
    */
-  public void accept(T t, U u) throws Throwable;
+  public abstract void accept(T t, U u) throws Throwable;
 
 }

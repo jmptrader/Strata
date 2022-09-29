@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -14,7 +14,8 @@ import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
 import static com.opengamma.strata.basics.index.OvernightIndices.USD_FED_FUND;
 import static com.opengamma.strata.basics.index.PriceIndices.US_CPI_U;
 import static com.opengamma.strata.product.swap.type.FixedOvernightSwapConventions.USD_FIXED_1Y_FED_FUND_OIS;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 import java.time.Period;
@@ -25,7 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.StandardId;
@@ -41,12 +43,12 @@ import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.data.ImmutableMarketData;
 import com.opengamma.strata.data.ImmutableMarketDataBuilder;
 import com.opengamma.strata.market.ValueType;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.CurveNode;
 import com.opengamma.strata.market.curve.CurveNodeDate;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurveDefinition;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolator;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolators;
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolator;
@@ -73,7 +75,6 @@ import com.opengamma.strata.product.swap.type.FixedOvernightSwapTemplate;
  * Test for curve calibration with 2 curves in USD.
  * One curve is Discounting and Fed Fund forward and the other one is USD CPI price index.
  */
-@Test
 public class CalibrationInflationUsdTest {
 
   private static final LocalDate VAL_DATE = LocalDate.of(2015, 7, 21);
@@ -97,7 +98,7 @@ public class CalibrationInflationUsdTest {
   /** Curves associations to currencies and indices. */
   private static final Map<CurveName, Currency> DSC_NAMES = new HashMap<>();
   private static final Map<CurveName, Set<Index>> IDX_NAMES = new HashMap<>();
-  private static final LocalDateDoubleTimeSeries TS_USD_CPI = 
+  private static final LocalDateDoubleTimeSeries TS_USD_CPI =
       LocalDateDoubleTimeSeries.builder().put(LocalDate.of(2015, 6, 30), 123.4).build();
   static {
     DSC_NAMES.put(DSCON_CURVE_NAME, USD);
@@ -112,33 +113,33 @@ public class CalibrationInflationUsdTest {
   /** Data for USD-DSCON curve */
   /* Market values */
   private static final double[] DSC_MARKET_QUOTES = new double[] {
-    0.0005, 0.0005,
-    0.00072000, 0.00082000, 0.00093000, 0.00090000, 0.00105000,
-    0.00118500, 0.00318650, 0.00318650, 0.00704000, 0.01121500, 0.01515000,
-    0.01845500, 0.02111000, 0.02332000, 0.02513500, 0.02668500 };
+      0.0005, 0.0005,
+      0.00072000, 0.00082000, 0.00093000, 0.00090000, 0.00105000,
+      0.00118500, 0.00318650, 0.00318650, 0.00704000, 0.01121500, 0.01515000,
+      0.01845500, 0.02111000, 0.02332000, 0.02513500, 0.02668500};
   private static final int DSC_NB_NODES = DSC_MARKET_QUOTES.length;
   private static final String[] DSC_ID_VALUE = new String[] {
-    "USD-ON", "USD-TN",
-    "USD-OIS-1M", "USD-OIS-2M", "USD-OIS-3M", "USD-OIS-6M", "USD-OIS-9M",
-    "USD-OIS-1Y", "USD-OIS-18M", "USD-OIS-2Y", "USD-OIS-3Y", "USD-OIS-4Y", "USD-OIS-5Y",
-    "USD-OIS-6Y", "USD-OIS-7Y", "USD-OIS-8Y", "USD-OIS-9Y", "USD-OIS-10Y" };
+      "USD-ON", "USD-TN",
+      "USD-OIS-1M", "USD-OIS-2M", "USD-OIS-3M", "USD-OIS-6M", "USD-OIS-9M",
+      "USD-OIS-1Y", "USD-OIS-18M", "USD-OIS-2Y", "USD-OIS-3Y", "USD-OIS-4Y", "USD-OIS-5Y",
+      "USD-OIS-6Y", "USD-OIS-7Y", "USD-OIS-8Y", "USD-OIS-9Y", "USD-OIS-10Y"};
   /* Nodes */
   private static final CurveNode[] DSC_NODES = new CurveNode[DSC_NB_NODES];
   /* Tenors */
   private static final int[] DSC_DEPO_OFFSET = new int[] {0, 1};
-  private static final int DSC_NB_DEPO_NODES = DSC_DEPO_OFFSET.length;  
+  private static final int DSC_NB_DEPO_NODES = DSC_DEPO_OFFSET.length;
   private static final Period[] DSC_OIS_TENORS = new Period[] {
       Period.ofMonths(1), Period.ofMonths(2), Period.ofMonths(3), Period.ofMonths(6), Period.ofMonths(9),
       Period.ofYears(1), Period.ofMonths(18), Period.ofYears(2), Period.ofYears(3), Period.ofYears(4), Period.ofYears(5),
       Period.ofYears(6), Period.ofYears(7), Period.ofYears(8), Period.ofYears(9), Period.ofYears(10)};
   private static final int DSC_NB_OIS_NODES = DSC_OIS_TENORS.length;
   static {
-    for(int i = 0; i < DSC_NB_DEPO_NODES; i++) {
+    for (int i = 0; i < DSC_NB_DEPO_NODES; i++) {
       BusinessDayAdjustment bda = BusinessDayAdjustment.of(FOLLOWING, USNY);
-      TermDepositConvention convention = 
+      TermDepositConvention convention =
           ImmutableTermDepositConvention.of(
               "USD-Dep", USD, bda, ACT_360, DaysAdjustment.ofBusinessDays(DSC_DEPO_OFFSET[i], USNY));
-      DSC_NODES[i] = TermDepositCurveNode.of(TermDepositTemplate.of(Period.ofDays(1), convention), 
+      DSC_NODES[i] = TermDepositCurveNode.of(TermDepositTemplate.of(Period.ofDays(1), convention),
           QuoteId.of(StandardId.of(SCHEME, DSC_ID_VALUE[i])));
     }
     for (int i = 0; i < DSC_NB_OIS_NODES; i++) {
@@ -182,7 +183,6 @@ public class CalibrationInflationUsdTest {
     }
     builder.addTimeSeries(IndexQuoteId.of(US_CPI_U), TS_USD_CPI);
     ALL_QUOTES = builder.build();
-    
   }
 
   /** All nodes by groups. */
@@ -201,7 +201,7 @@ public class CalibrationInflationUsdTest {
   private static final DiscountingTermDepositProductPricer DEPO_PRICER =
       DiscountingTermDepositProductPricer.DEFAULT;
 
-  private static final CurveCalibrator CALIBRATOR = CurveCalibrator.of(1e-9, 1e-9, 100);
+  private static final RatesCurveCalibrator CALIBRATOR = RatesCurveCalibrator.of(1e-9, 1e-9, 100);
 
   // Constants
   private static final double TOLERANCE_PV = 1.0E-6;
@@ -217,7 +217,7 @@ public class CalibrationInflationUsdTest {
           .extrapolatorLeft(EXTRAPOLATOR_FLAT)
           .extrapolatorRight(EXTRAPOLATOR_FLAT)
           .nodes(DSC_NODES).build();
-  private static final InterpolatedNodalCurveDefinition CPI_CURVE_DEFN =
+  private static final InterpolatedNodalCurveDefinition CPI_CURVE_UNDER_DEFN =
       InterpolatedNodalCurveDefinition.builder()
           .name(CPI_CURVE_NAME)
           .xValueType(ValueType.MONTHS)
@@ -227,13 +227,14 @@ public class CalibrationInflationUsdTest {
           .extrapolatorLeft(EXTRAPOLATOR_FLAT)
           .extrapolatorRight(EXTRAPOLATOR_EXP)
           .nodes(CPI_NODES).build();
-  private static final CurveGroupDefinition CURVE_GROUP_CONFIG =
-      CurveGroupDefinition.builder()
+  private static final RatesCurveGroupDefinition CURVE_GROUP_CONFIG =
+      RatesCurveGroupDefinition.builder()
           .name(CURVE_GROUP_NAME)
           .addCurve(DSC_CURVE_DEFN, USD, USD_FED_FUND)
-          .addForwardCurve(CPI_CURVE_DEFN, US_CPI_U).build();
+          .addForwardCurve(CPI_CURVE_UNDER_DEFN, US_CPI_U).build();
 
   //-------------------------------------------------------------------------
+  @Test
   public void calibration_present_value_oneGroup() {
     RatesProvider result = CALIBRATOR.calibrate(CURVE_GROUP_CONFIG, ALL_QUOTES, REF_DATA);
     assertPresentValue(result);
@@ -250,13 +251,13 @@ public class CalibrationInflationUsdTest {
     for (int i = 0; i < DSC_NB_DEPO_NODES; i++) {
       CurrencyAmount pvIrs = DEPO_PRICER.presentValue(
           ((ResolvedTermDepositTrade) dscTrades.get(i)).getProduct(), result);
-      assertEquals(pvIrs.getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvIrs.getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
     // OIS
     for (int i = 0; i < DSC_NB_OIS_NODES; i++) {
       MultiCurrencyAmount pvIrs = SWAP_PRICER.presentValue(
           ((ResolvedSwapTrade) dscTrades.get(DSC_NB_DEPO_NODES + i)).getProduct(), result);
-      assertEquals(pvIrs.getAmount(USD).getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvIrs.getAmount(USD).getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
     // Test PV Infaltion swaps
     CurveNode[] cpiNodes = CURVES_NODES.get(1).get(0);
@@ -268,13 +269,13 @@ public class CalibrationInflationUsdTest {
     for (int i = 0; i < CPI_NB_NODES; i++) {
       MultiCurrencyAmount pvInfl = SWAP_PRICER.presentValue(
           ((ResolvedSwapTrade) cpiTrades.get(i)).getProduct(), result);
-      assertEquals(pvInfl.getAmount(USD).getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvInfl.getAmount(USD).getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
   }
 
   //-------------------------------------------------------------------------
   @SuppressWarnings("unused")
-  @Test(enabled = false)
+  @Disabled
   public void performance() {
     long startTime, endTime;
     int nbTests = 100;

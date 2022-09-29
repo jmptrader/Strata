@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -52,6 +52,11 @@ public abstract class TypedString<T extends TypedString<T>>
    * The name.
    */
   private final String name;
+
+  /**
+   * The cached hash code, using the racy single-check idiom.
+   */
+  private transient int cacheHashCode;
 
   /**
    * Creates an instance.
@@ -153,7 +158,13 @@ public abstract class TypedString<T extends TypedString<T>>
    */
   @Override
   public final int hashCode() {
-    return name.hashCode() ^ getClass().hashCode();
+    // threadsafe via racy single-check
+    int h = cacheHashCode;
+    if (h == 0) {
+      h = name.hashCode() ^ getClass().hashCode();
+      cacheHashCode = h;
+    }
+    return h;
   }
 
   /**

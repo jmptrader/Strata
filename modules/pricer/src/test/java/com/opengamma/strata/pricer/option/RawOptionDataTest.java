@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.option;
@@ -8,14 +8,14 @@ package com.opengamma.strata.pricer.option;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
@@ -25,7 +25,6 @@ import com.opengamma.strata.market.ValueType;
 /**
  * Tests {@link RawOptionData}.
  */
-@Test
 public class RawOptionDataTest {
 
   private static final DoubleArray MONEYNESS = DoubleArray.of(-0.010, 0.00, 0.0100, 0.0200);
@@ -45,27 +44,35 @@ public class RawOptionDataTest {
       new double[][] {{Double.NaN, Double.NaN, Double.NaN, Double.NaN},
           {Double.NaN, 0.10, 0.11, 0.12},
           {0.10, 0.11, 0.12, 0.13}});
+  private static final DoubleMatrix ERROR = DoubleMatrix.ofUnsafe(
+      new double[][] {{1.0e-4, 1.0e-4, 1.0e-4, 1.0e-4},
+          {1.0e-4, 1.0e-4, 1.0e-4, 1.0e-4},
+          {1.0e-3, 1.0e-3, 1.0e-3, 1.0e-3}});
 
   //-------------------------------------------------------------------------
+  @Test
   public void of() {
     RawOptionData test = sut();
-    assertEquals(test.getStrikes(), MONEYNESS);
-    assertEquals(test.getStrikeType(), ValueType.SIMPLE_MONEYNESS);
-    assertEquals(test.getData(), DATA_FULL);
-    assertEquals(test.getDataType(), ValueType.NORMAL_VOLATILITY);
+    assertThat(test.getStrikes()).isEqualTo(MONEYNESS);
+    assertThat(test.getStrikeType()).isEqualTo(ValueType.SIMPLE_MONEYNESS);
+    assertThat(test.getData()).isEqualTo(DATA_FULL);
+    assertThat(test.getDataType()).isEqualTo(ValueType.NORMAL_VOLATILITY);
   }
 
+  @Test
   public void ofBlackVolatility() {
     double shift = 0.0075;
     RawOptionData test =
         RawOptionData.ofBlackVolatility(EXPIRIES, STRIKES, ValueType.STRIKE, DATA_SPARSE, shift);
-    assertEquals(test.getStrikes(), STRIKES);
-    assertEquals(test.getStrikeType(), ValueType.STRIKE);
-    assertEquals(test.getData(), DATA_SPARSE);
-    assertEquals(test.getDataType(), ValueType.BLACK_VOLATILITY);
-    assertEquals(test.getShift(), OptionalDouble.of(shift));
+    assertThat(test.getStrikes()).isEqualTo(STRIKES);
+    assertThat(test.getStrikeType()).isEqualTo(ValueType.STRIKE);
+    assertThat(test.getData()).isEqualTo(DATA_SPARSE);
+    assertThat(test.getDataType()).isEqualTo(ValueType.BLACK_VOLATILITY);
+    assertThat(test.getShift()).isEqualTo(OptionalDouble.of(shift));
+    assertThat(test.getError().isPresent()).isFalse();
   }
 
+  @Test
   public void available_smile_at_expiry() {
     double shift = 0.0075;
     RawOptionData test =
@@ -80,11 +87,35 @@ public class RawOptionDataTest {
     volAvailable[2] = DoubleArray.of(0.10, 0.11, 0.12, 0.13);
     for (int i = 0; i < DATA_SPARSE.rowCount(); i++) {
       Pair<DoubleArray, DoubleArray> smile = test.availableSmileAtExpiry(EXPIRIES.get(i));
-      assertEquals(smile.getFirst(), strikesAvailable[i]);
+      assertThat(smile.getFirst()).isEqualTo(strikesAvailable[i]);
     }
   }
 
+  @Test
+  public void of_error() {
+    RawOptionData test = sut3();
+    assertThat(test.getStrikes()).isEqualTo(MONEYNESS);
+    assertThat(test.getStrikeType()).isEqualTo(ValueType.SIMPLE_MONEYNESS);
+    assertThat(test.getData()).isEqualTo(DATA_FULL);
+    assertThat(test.getDataType()).isEqualTo(ValueType.NORMAL_VOLATILITY);
+    assertThat(test.getError().get()).isEqualTo(ERROR);
+  }
+
+  @Test
+  public void ofBlackVolatility_error() {
+    double shift = 0.0075;
+    RawOptionData test =
+        RawOptionData.ofBlackVolatility(EXPIRIES, STRIKES, ValueType.STRIKE, DATA_SPARSE, ERROR, shift);
+    assertThat(test.getStrikes()).isEqualTo(STRIKES);
+    assertThat(test.getStrikeType()).isEqualTo(ValueType.STRIKE);
+    assertThat(test.getData()).isEqualTo(DATA_SPARSE);
+    assertThat(test.getDataType()).isEqualTo(ValueType.BLACK_VOLATILITY);
+    assertThat(test.getShift()).isEqualTo(OptionalDouble.of(shift));
+    assertThat(test.getError().get()).isEqualTo(ERROR);
+  }
+
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     RawOptionData test = sut();
     coverImmutableBean(test);
@@ -92,6 +123,7 @@ public class RawOptionDataTest {
     coverBeanEquals(test, test2);
   }
 
+  @Test
   public void test_serialization() {
     RawOptionData test =
         RawOptionData.of(EXPIRIES, MONEYNESS, ValueType.SIMPLE_MONEYNESS, DATA_FULL, ValueType.BLACK_VOLATILITY);
@@ -109,8 +141,12 @@ public class RawOptionDataTest {
     expiries2.add(Period.ofYears(1));
     expiries2.add(Period.ofYears(5));
     RawOptionData test2 =
-        RawOptionData.of(expiries2, STRIKES, ValueType.STRIKE, DATA_SPARSE, ValueType.BLACK_VOLATILITY);
+        RawOptionData.of(expiries2, STRIKES, ValueType.STRIKE, DATA_SPARSE, ERROR, ValueType.BLACK_VOLATILITY);
     return test2;
+  }
+
+  static RawOptionData sut3() {
+    return RawOptionData.of(EXPIRIES, MONEYNESS, ValueType.SIMPLE_MONEYNESS, DATA_FULL, ERROR, ValueType.NORMAL_VOLATILITY);
   }
 
 }

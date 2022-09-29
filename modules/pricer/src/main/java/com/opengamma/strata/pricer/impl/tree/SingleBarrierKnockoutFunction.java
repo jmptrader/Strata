@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.impl.tree;
@@ -82,7 +82,8 @@ abstract class SingleBarrierKnockoutFunction implements OptionFunction {
     if (isDown) {
       values[index + 1] = 0.5 * values[index + 1] + 0.5 * (bd * rebate + ub * values[index + 1]) / ud;
     } else {
-      values[index] = barrierLevel == stateValue.get(index) ? rebate :
+      values[index] = barrierLevel == stateValue.get(index) ?
+          rebate :
           0.5 * values[index] + 0.5 * (ub * rebate + bd * values[index]) / ud;
     }
     return DoubleArray.ofUnsafe(values);
@@ -142,10 +143,8 @@ abstract class SingleBarrierKnockoutFunction implements OptionFunction {
       // Fast break out if it's an exact match.
       return index;
     }
-    if (index < 0) {
-      index = -(index + 1);
-      index--;
-    }
+    index = -(index + 1);
+    index--;
     if (value == -0. && index < n - 1 && set.get(index + 1) == 0.) {
       ++index;
     }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -249,7 +249,10 @@ public final class NormalIborFutureOptionMarginedTradePricer {
    */
   private double referencePrice(ResolvedIborFutureOptionTrade trade, LocalDate valuationDate, double lastSettlementPrice) {
     ArgChecker.notNull(valuationDate, "valuationDate");
-    return (trade.getTradeDate().equals(valuationDate) ? trade.getPrice() : lastSettlementPrice);
+    return trade.getTradedPrice()
+        .filter(tp -> tp.getTradeDate().equals(valuationDate))
+        .map(tp -> tp.getPrice())
+        .orElse(lastSettlementPrice);
   }
 
 }

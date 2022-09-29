@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,6 +6,8 @@
 package com.opengamma.strata.basics.currency;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +20,7 @@ import com.google.common.base.CharMatcher;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.Decimal;
 
 /**
  * A unit of currency.
@@ -108,7 +111,7 @@ public final class Currency
    */
   public static final Currency BHD = of("BHD");
   /**
-   * The currency 'BRL' - Brazil Dollar.
+   * The currency 'BRL' - Brazilian Real.
    */
   public static final Currency BRL = of("BRL");
   /**
@@ -116,7 +119,11 @@ public final class Currency
    */
   public static final Currency CLP = of("CLP");
   /**
-   * The currency 'CNY' - Chinese Yuan.
+   * The currency 'CNH' - Chinese Offshore Yuan.
+   */
+  public static final Currency CNH = of("CNH");
+  /**
+   * The currency 'CNY' - Chinese Onshore Yuan.
    */
   public static final Currency CNY = of("CNY");
   /**
@@ -168,6 +175,14 @@ public final class Currency
    */
   public static final Currency KRW = of("KRW");
   /**
+   * The currency 'KZT' = Kazakhstani Tenge.
+   */
+  public static final Currency KZT = of("KZT");
+  /**
+   * The currency 'MAD' - Moroccan Dirham.
+   */
+  public static final Currency MAD = of("MAD");
+  /**
    * The currency 'MXN' - Mexican Peso.
    */
   public static final Currency MXN = of("MXN");
@@ -179,6 +194,10 @@ public final class Currency
    * The currency 'NOK' - Norwegian Krone.
    */
   public static final Currency NOK = of("NOK");
+  /**
+   * The currency 'OMR' - Omani Rial.
+   */
+  public static final Currency OMR = of("OMR");
   /**
    * The currency 'PEN' - Peruvian Nuevo Sol.
    */
@@ -195,6 +214,10 @@ public final class Currency
    * The currency 'PLN' - Polish Zloty.
    */
   public static final Currency PLN = of("PLN");
+  /**
+   * The currency 'QAR' - Qatari Riyal.
+   */
+  public static final Currency QAR = of("QAR");
   /**
    * The currency 'RON' - Romanian New Leu.
    */
@@ -232,6 +255,10 @@ public final class Currency
    */
   public static final Currency UAH = of("UAH");
   /**
+   * The currency 'VND' - Vietnamese Dong.
+   */
+  public static final Currency VND = of("VND");
+  /**
    * The currency 'ZAR' - South African Rand.
    */
   public static final Currency ZAR = of("ZAR");
@@ -265,16 +292,16 @@ public final class Currency
   /**
    * The number of fraction digits, such as 2 for cents in the dollar.
    */
-  private transient final int minorUnitDigits;
+  private final transient int minorUnitDigits;
   /**
    * The triangulation currency.
    * Due to initialization ordering, cannot guarantee that USD/EUR is loaded first, so this must be a string.
    */
-  private transient final String triangulationCurrency;
+  private final transient String triangulationCurrency;
   /**
    * The cached hash code.
    */
-  private transient final int cachedHashCode;
+  private final transient int cachedHashCode;
 
   //-------------------------------------------------------------------------
   /**
@@ -399,6 +426,43 @@ public final class Currency
    */
   public Currency getTriangulationCurrency() {
     return Currency.of(triangulationCurrency);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Rounds the specified amount according to the minor units.
+   * <p>
+   * For example, 'USD' has 2 minor digits, so 63.347 will be rounded to 63.35.
+   * 
+   * @param amount  the amount to round
+   * @return the rounded amount
+   */
+  public double roundMinorUnits(double amount) {
+    return roundMinorUnits(BigDecimal.valueOf(amount)).doubleValue();
+  }
+
+  /**
+   * Rounds the specified amount according to the minor units.
+   * <p>
+   * For example, 'USD' has 2 minor digits, so 63.347 will be rounded to 63.35.
+   * 
+   * @param amount  the amount to round
+   * @return the rounded amount
+   */
+  public BigDecimal roundMinorUnits(BigDecimal amount) {
+    return amount.setScale(minorUnitDigits, RoundingMode.HALF_UP);
+  }
+
+  /**
+   * Rounds the specified amount according to the minor units.
+   * <p>
+   * For example, 'USD' has 2 minor digits, so 63.347 will be rounded to 63.35.
+   * 
+   * @param amount  the amount to round
+   * @return the rounded amount
+   */
+  public Decimal roundMinorUnits(Decimal amount) {
+    return amount.roundToScale(minorUnitDigits, RoundingMode.HALF_UP);
   }
 
   //-------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -14,7 +14,8 @@ import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
 import static com.opengamma.strata.basics.index.OvernightIndices.USD_FED_FUND;
 import static com.opengamma.strata.product.swap.type.FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M;
 import static com.opengamma.strata.product.swap.type.FixedOvernightSwapConventions.USD_FIXED_1Y_FED_FUND_OIS;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 import java.time.Period;
@@ -27,7 +28,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.StandardId;
@@ -35,9 +37,9 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
-import com.opengamma.strata.basics.date.DateSequences;
 import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.date.DaysAdjustment;
+import com.opengamma.strata.basics.date.SequenceDate;
 import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.collect.array.DoubleArray;
@@ -46,13 +48,13 @@ import com.opengamma.strata.data.ImmutableMarketDataBuilder;
 import com.opengamma.strata.data.MarketData;
 import com.opengamma.strata.data.MarketDataId;
 import com.opengamma.strata.market.ValueType;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
 import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.CurveNode;
 import com.opengamma.strata.market.curve.DefaultCurveMetadata;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurveDefinition;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolator;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolators;
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolator;
@@ -82,9 +84,9 @@ import com.opengamma.strata.product.deposit.type.ImmutableTermDepositConvention;
 import com.opengamma.strata.product.deposit.type.TermDepositConvention;
 import com.opengamma.strata.product.deposit.type.TermDepositTemplate;
 import com.opengamma.strata.product.index.ResolvedIborFutureTrade;
-import com.opengamma.strata.product.index.type.IborFutureConvention;
+import com.opengamma.strata.product.index.type.IborFutureContractSpec;
+import com.opengamma.strata.product.index.type.IborFutureContractSpecs;
 import com.opengamma.strata.product.index.type.IborFutureTemplate;
-import com.opengamma.strata.product.index.type.ImmutableIborFutureConvention;
 import com.opengamma.strata.product.swap.ResolvedSwap;
 import com.opengamma.strata.product.swap.ResolvedSwapTrade;
 import com.opengamma.strata.product.swap.SwapTrade;
@@ -97,7 +99,6 @@ import com.opengamma.strata.product.swap.type.FixedOvernightSwapTemplate;
  * One curve is Discounting and Fed Fund forward and the other one is Libor 3M forward.
  * The Forward 3M curve is calibrated in part to Ibor futures with convexity adjustment computed with Hull-White one factor model.
  */
-@Test
 public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
 
   private static final LocalDate VAL_DATE = LocalDate.of(2015, 7, 21);
@@ -132,16 +133,16 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
   /** Data for USD-DSCON curve */
   /* Market values */
   private static final double[] DSC_MARKET_QUOTES = new double[] {
-    0.0005, 0.0005,
-    0.00072000, 0.00082000, 0.00093000, 0.00090000, 0.00105000,
-    0.00118500, 0.00318650, 0.00318650, 0.00704000, 0.01121500, 0.01515000,
-    0.01845500, 0.02111000, 0.02332000, 0.02513500, 0.02668500 };
+      0.0005, 0.0005,
+      0.00072000, 0.00082000, 0.00093000, 0.00090000, 0.00105000,
+      0.00118500, 0.00318650, 0.00318650, 0.00704000, 0.01121500, 0.01515000,
+      0.01845500, 0.02111000, 0.02332000, 0.02513500, 0.02668500};
   private static final int DSC_NB_NODES = DSC_MARKET_QUOTES.length;
   private static final String[] DSC_ID_VALUE = new String[] {
-    "USD-ON", "USD-TN",
-    "USD-OIS-1M", "USD-OIS-2M", "USD-OIS-3M", "USD-OIS-6M", "USD-OIS-9M",
-    "USD-OIS-1Y", "USD-OIS-18M", "USD-OIS-2Y", "USD-OIS-3Y", "USD-OIS-4Y", "USD-OIS-5Y",
-    "USD-OIS-6Y", "USD-OIS-7Y", "USD-OIS-8Y", "USD-OIS-9Y", "USD-OIS-10Y" };
+      "USD-ON", "USD-TN",
+      "USD-OIS-1M", "USD-OIS-2M", "USD-OIS-3M", "USD-OIS-6M", "USD-OIS-9M",
+      "USD-OIS-1Y", "USD-OIS-18M", "USD-OIS-2Y", "USD-OIS-3Y", "USD-OIS-4Y", "USD-OIS-5Y",
+      "USD-OIS-6Y", "USD-OIS-7Y", "USD-OIS-8Y", "USD-OIS-9Y", "USD-OIS-10Y"};
   /* Nodes */
   private static final CurveNode[] DSC_NODES = new CurveNode[DSC_NB_NODES];
   /* Tenors */
@@ -153,7 +154,7 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
       Period.ofYears(6), Period.ofYears(7), Period.ofYears(8), Period.ofYears(9), Period.ofYears(10)};
   private static final int DSC_NB_OIS_NODES = DSC_OIS_TENORS.length;
   static {
-    for(int i = 0; i < DSC_NB_DEPO_NODES; i++) {
+    for (int i = 0; i < DSC_NB_DEPO_NODES; i++) {
       BusinessDayAdjustment bda = BusinessDayAdjustment.of(FOLLOWING, USNY);
       TermDepositConvention convention = 
           ImmutableTermDepositConvention.of(
@@ -171,16 +172,16 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
   /** Data for USD-LIBOR3M curve */
   /* Market values */
   private static final double[] FWD3_MARKET_QUOTES = new double[] {
-    0.00236600,
-    0.9975, 0.9975, 0.9950, 0.9950, 0.9940, 0.9930, 0.9920, 0.9910,
-    0.00939150, 0.01380800, 0.01732000,
-    0.02000000, 0.02396200, 0.02500000, 0.02700000, 0.02930000 };
+      0.00236600,
+      0.9975, 0.9975, 0.9950, 0.9950, 0.9940, 0.9930, 0.9920, 0.9910,
+      0.00939150, 0.01380800, 0.01732000,
+      0.02000000, 0.02396200, 0.02500000, 0.02700000, 0.02930000};
   private static final int FWD3_NB_NODES = FWD3_MARKET_QUOTES.length;
   private static final String[] FWD3_ID_VALUE = new String[] {
-    "USD-Fixing-3M",
-    "USD-ED1", "USD-ED2", "USD-ED3", "USD-ED4", "USD-ED5", "USD-ED6", "USD-ED7", "USD-ED8", 
-    "USD-IRS3M-3Y", "USD-IRS3M-4Y", "USD-IRS3M-5Y",
-    "USD-IRS3M-6Y", "USD-IRS3M-7Y", "USD-IRS3M-8Y", "USD-IRS3M-9Y", "USD-IRS3M-10Y" };
+      "USD-Fixing-3M",
+      "USD-ED1", "USD-ED2", "USD-ED3", "USD-ED4", "USD-ED5", "USD-ED6", "USD-ED7", "USD-ED8",
+      "USD-IRS3M-3Y", "USD-IRS3M-4Y", "USD-IRS3M-5Y",
+      "USD-IRS3M-6Y", "USD-IRS3M-7Y", "USD-IRS3M-8Y", "USD-IRS3M-9Y", "USD-IRS3M-10Y"};
   /* Nodes */
   private static final CurveNode[] FWD3_NODES = new CurveNode[FWD3_NB_NODES];
   /* Tenors */
@@ -193,9 +194,9 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
   static {
     FWD3_NODES[0] = IborFixingDepositCurveNode.of(IborFixingDepositTemplate.of(USD_LIBOR_3M),
         QuoteId.of(StandardId.of(SCHEME, FWD3_ID_VALUE[0])));
-    IborFutureConvention convention = ImmutableIborFutureConvention.of(USD_LIBOR_3M, DateSequences.QUARTERLY_IMM);
+    IborFutureContractSpec spec = IborFutureContractSpecs.USD_LIBOR_3M_IMM_CME;
     for (int i = 0; i < FWD3_NB_FUT_NODES; i++) {
-      IborFutureTemplate template = IborFutureTemplate.of(Period.ofDays(7), FWD3_FUT_SEQ[i], convention);
+      IborFutureTemplate template = IborFutureTemplate.of(SequenceDate.base(Period.ofDays(7), FWD3_FUT_SEQ[i]), spec);
       FWD3_NODES[i + 1] = IborFutureCurveNode.of(template, 
           QuoteId.of(StandardId.of(SCHEME, FWD3_ID_VALUE[i + 1])));
     }
@@ -274,7 +275,7 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
       IBOR_FUT_PAR_SPREAD_HW, TradeCalibrationMeasure.FRA_PAR_SPREAD, TradeCalibrationMeasure.SWAP_PAR_SPREAD,
       TradeCalibrationMeasure.FX_SWAP_PAR_SPREAD, TradeCalibrationMeasure.IBOR_FIXING_DEPOSIT_PAR_SPREAD,
       TradeCalibrationMeasure.TERM_DEPOSIT_PAR_SPREAD);
-  private static final CurveCalibrator CALIBRATOR = CurveCalibrator.of(1e-9, 1e-9, 100, HW_PAR_SPREAD);
+  private static final RatesCurveCalibrator CALIBRATOR = RatesCurveCalibrator.of(1e-9, 1e-9, 100, HW_PAR_SPREAD);
 
   // Constants
   private static final double TOLERANCE_PV = 1.0E-6;
@@ -301,18 +302,20 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
           .extrapolatorLeft(EXTRAPOLATOR_FLAT)
           .extrapolatorRight(EXTRAPOLATOR_FLAT)
           .nodes(FWD3_NODES).build();
-  private static final CurveGroupDefinition CURVE_GROUP_CONFIG =
-      CurveGroupDefinition.builder()
+  private static final RatesCurveGroupDefinition CURVE_GROUP_CONFIG =
+      RatesCurveGroupDefinition.builder()
           .name(CURVE_GROUP_NAME)
           .addCurve(DSC_CURVE_DEFN, USD, USD_FED_FUND)
           .addForwardCurve(FWD3_CURVE_DEFN, USD_LIBOR_3M).build();
 
   //-------------------------------------------------------------------------
+  @Test
   public void calibration_present_value_oneGroup() {
     RatesProvider result = CALIBRATOR.calibrate(CURVE_GROUP_CONFIG, ALL_QUOTES, REF_DATA);
     assertPresentValue(result);
   }
   
+  @Test
   public void calibration_market_quote_sensitivity_one_group() {
     double shift = 1.0E-6;
     Function<MarketData, RatesProvider> f =
@@ -340,7 +343,7 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
       ImmutableMarketData marketData = ImmutableMarketData.of(VAL_DATE, map);
       RatesProvider rpShifted = calibrator.apply(marketData);
       double pvS = SWAP_PRICER.presentValue(product, rpShifted).getAmount(USD).getAmount();
-      assertEquals(mqsDscComputed[i], (pvS - pv0) / shift, TOLERANCE_PV_DELTA, "DSC - node " + i);
+      assertThat(mqsDscComputed[i]).as("DSC - node " + i).isCloseTo((pvS - pv0) / shift, offset(TOLERANCE_PV_DELTA));
     }
     double[] mqsFwd3Computed = mqs.getSensitivity(FWD3_CURVE_NAME, USD).getSensitivity().toArray();
     for (int i = 0; i < FWD3_NB_NODES; i++) {
@@ -349,7 +352,7 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
       ImmutableMarketData marketData = ImmutableMarketData.of(VAL_DATE, map);
       RatesProvider rpShifted = calibrator.apply(marketData);
       double pvS = SWAP_PRICER.presentValue(product, rpShifted).getAmount(USD).getAmount();
-      assertEquals(mqsFwd3Computed[i], (pvS - pv0) / shift, TOLERANCE_PV_DELTA, "FWD3 - node " + i);
+      assertThat(mqsFwd3Computed[i]).as("FWD3 - node " + i).isCloseTo((pvS - pv0) / shift, offset(TOLERANCE_PV_DELTA));
     }
   }
 
@@ -364,13 +367,13 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
     for (int i = 0; i < DSC_NB_DEPO_NODES; i++) {
       CurrencyAmount pvIrs = DEPO_PRICER.presentValue(
           ((ResolvedTermDepositTrade) dscTrades.get(i)).getProduct(), result);
-      assertEquals(pvIrs.getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvIrs.getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
     // OIS
     for (int i = 0; i < DSC_NB_OIS_NODES; i++) {
       MultiCurrencyAmount pvIrs = SWAP_PRICER.presentValue(
           ((ResolvedSwapTrade) dscTrades.get(DSC_NB_DEPO_NODES + i)).getProduct(), result);
-      assertEquals(pvIrs.getAmount(USD).getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvIrs.getAmount(USD).getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
     // Test PV Fwd3
     CurveNode[] fwd3Nodes = CURVES_NODES.get(1).get(0);
@@ -381,24 +384,24 @@ public class CalibrationZeroRateUsd2OisFuturesHWIrsTest {
     // Fixing 
     CurrencyAmount pvFixing3 = FIXING_PRICER.presentValue(
         ((ResolvedIborFixingDepositTrade) fwd3Trades.get(0)).getProduct(), result);
-    assertEquals(pvFixing3.getAmount(), 0.0, TOLERANCE_PV);
+    assertThat(pvFixing3.getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     // Futures
     for (int i = 0; i < FWD3_NB_FUT_NODES; i++) {
       CurrencyAmount pvFut = FUT_PRICER.presentValue(
           ((ResolvedIborFutureTrade) fwd3Trades.get(i + 1)), result, HW_PROVIDER, 0.0);
-      assertEquals(pvFut.getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvFut.getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
     // IRS
     for (int i = 0; i < FWD3_NB_IRS_NODES; i++) {
       MultiCurrencyAmount pvIrs = SWAP_PRICER.presentValue(
           ((ResolvedSwapTrade) fwd3Trades.get(i + 1 + FWD3_NB_FUT_NODES)).getProduct(), result);
-      assertEquals(pvIrs.getAmount(USD).getAmount(), 0.0, TOLERANCE_PV);
+      assertThat(pvIrs.getAmount(USD).getAmount()).isCloseTo(0.0, offset(TOLERANCE_PV));
     }
   }
 
   //-------------------------------------------------------------------------
   @SuppressWarnings("unused")
-  @Test(enabled = false)
+  @Disabled
   void performance() {
     long startTime, endTime;
     int nbTests = 100;

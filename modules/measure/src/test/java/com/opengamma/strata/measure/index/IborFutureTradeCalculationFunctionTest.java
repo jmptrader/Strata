@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -21,6 +21,7 @@ import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.StandardId;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
+import com.opengamma.strata.basics.date.SequenceDate;
 import com.opengamma.strata.basics.index.IborIndex;
 import com.opengamma.strata.calc.Measure;
 import com.opengamma.strata.calc.runner.CalculationParameters;
@@ -44,18 +45,17 @@ import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.SecurityId;
 import com.opengamma.strata.product.index.IborFutureTrade;
 import com.opengamma.strata.product.index.ResolvedIborFutureTrade;
-import com.opengamma.strata.product.index.type.IborFutureConventions;
+import com.opengamma.strata.product.index.type.IborFutureContractSpecs;
 
 /**
  * Test {@link IborFutureTradeCalculationFunction}.
  */
-@Test
 public class IborFutureTradeCalculationFunctionTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
   private static final double MARKET_PRICE = 99.42;
-  public static final IborFutureTrade TRADE = IborFutureConventions.USD_LIBOR_3M_QUARTERLY_IMM.createTrade(
-      LocalDate.of(2014, 9, 12), SecurityId.of("test", "test"), Period.ofMonths(1), 2, 5, 1_000_000, 0.9998, REF_DATA);
+  public static final IborFutureTrade TRADE = IborFutureContractSpecs.USD_LIBOR_3M_IMM_CME.createTrade(
+      LocalDate.of(2014, 9, 12), SecurityId.of("test", "test"), SequenceDate.base(Period.ofMonths(1), 2), 5, 0.9998, REF_DATA);
   public static final ResolvedIborFutureTrade RTRADE = TRADE.resolve(REF_DATA);
 
   private static final StandardId SEC_ID = TRADE.getProduct().getSecurityId().getStandardId();
@@ -71,8 +71,9 @@ public class IborFutureTradeCalculationFunctionTest {
   private static final QuoteId QUOTE_KEY = QuoteId.of(SEC_ID, FieldName.SETTLEMENT_PRICE);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_requirementsAndCurrency() {
-    IborFutureTradeCalculationFunction function = new IborFutureTradeCalculationFunction();
+    IborFutureTradeCalculationFunction<IborFutureTrade> function = IborFutureTradeCalculationFunction.TRADE;
     Set<Measure> measures = function.supportedMeasures();
     FunctionRequirements reqs = function.requirements(TRADE, measures, PARAMS, REF_DATA);
     assertThat(reqs.getOutputCurrencies()).containsOnly(CURRENCY);
@@ -82,8 +83,9 @@ public class IborFutureTradeCalculationFunctionTest {
     assertThat(function.naturalCurrency(TRADE, REF_DATA)).isEqualTo(CURRENCY);
   }
 
+  @Test
   public void test_simpleMeasures() {
-    IborFutureTradeCalculationFunction function = new IborFutureTradeCalculationFunction();
+    IborFutureTradeCalculationFunction<IborFutureTrade> function = IborFutureTradeCalculationFunction.TRADE;
     ScenarioMarketData md = marketData();
     RatesProvider provider = RATES_LOOKUP.ratesProvider(md.scenario(0));
     double expectedPrice = DiscountingIborFutureTradePricer.DEFAULT.price(RTRADE, provider);

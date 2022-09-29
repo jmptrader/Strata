@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -16,6 +16,7 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.collect.ArgChecker;
 
 /**
@@ -153,6 +154,27 @@ public final class CurrencyPair
   }
 
   /**
+   * Finds the other currency in the pair.
+   * <p>
+   * If the pair is AAA/BBB, then passing in AAA will return BBB, and passing in BBB will return AAA.
+   * Passing in CCC will throw an exception.
+   * 
+   * @param currency  the currency to check
+   * @return the other currency in the pair
+   * @throws IllegalArgumentException if the specified currency is not one of those in the pair
+   */
+  public Currency other(Currency currency) {
+    ArgChecker.notNull(currency, "currency");
+    if (currency.equals(base)) {
+      return counter;
+    }
+    if (currency.equals(counter)) {
+      return base;
+    }
+    throw new IllegalArgumentException("Unable to find other currency, " + currency + " is not present in " + toString());
+  }
+
+  /**
    * Checks if this currency pair is an identity pair.
    * <p>
    * The identity pair is one where the base and counter currency are the same..
@@ -240,6 +262,12 @@ public final class CurrencyPair
     if (CONFIGURED.containsKey(this)) {
       return true;
     }
+
+    // If the inverse of the pair is in the configuration file then it is not a market convention pair
+    if (CONFIGURED.containsKey(inverse())) {
+      return false;
+    }
+
     // Get the priorities of the currencies to determine which should be the base
     Integer basePriority = CURRENCY_ORDERING.getOrDefault(base, Integer.MAX_VALUE);
     Integer counterPriority = CURRENCY_ORDERING.getOrDefault(counter, Integer.MAX_VALUE);
@@ -269,6 +297,19 @@ public final class CurrencyPair
    */
   public CurrencyPair toConventional() {
     return isConventional() ? this : inverse();
+  }
+
+  /**
+   * Returns the set of currencies contains in the pair.
+   *
+   * @return the set of currencies, with iteration in conventional order
+   */
+  public ImmutableSet<Currency> toSet() {
+    if (isConventional()) {
+      return ImmutableSet.of(base, counter);
+    } else {
+      return ImmutableSet.of(counter, base);
+    }
   }
 
   /**

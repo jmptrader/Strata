@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,13 +10,14 @@ import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
-import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
+import com.opengamma.strata.collect.TestHelper;
+import com.opengamma.strata.product.PositionInfo;
 import com.opengamma.strata.product.SecurityInfo;
 import com.opengamma.strata.product.SecurityPriceInfo;
 import com.opengamma.strata.product.TradeInfo;
@@ -24,7 +25,6 @@ import com.opengamma.strata.product.TradeInfo;
 /**
  * Test {@link IborFutureSecurity}.
  */
-@Test
 public class IborFutureSecurityTest {
 
   private static final IborFuture PRODUCT = IborFutureTest.sut();
@@ -34,18 +34,20 @@ public class IborFutureSecurityTest {
   private static final SecurityInfo INFO2 = SecurityInfo.of(PRODUCT2.getSecurityId(), PRICE_INFO);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     IborFutureSecurity test = sut();
-    assertEquals(test.getInfo(), INFO);
-    assertEquals(test.getSecurityId(), PRODUCT.getSecurityId());
-    assertEquals(test.getCurrency(), PRODUCT.getCurrency());
-    assertEquals(test.getUnderlyingIds(), ImmutableSet.of());
+    assertThat(test.getInfo()).isEqualTo(INFO);
+    assertThat(test.getSecurityId()).isEqualTo(PRODUCT.getSecurityId());
+    assertThat(test.getCurrency()).isEqualTo(PRODUCT.getCurrency());
+    assertThat(test.getUnderlyingIds()).isEmpty();
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_createProduct() {
     IborFutureSecurity test = sut();
-    assertEquals(test.createProduct(ReferenceData.empty()), PRODUCT);
+    assertThat(test.createProduct(ReferenceData.empty())).isEqualTo(PRODUCT);
     TradeInfo tradeInfo = TradeInfo.of(date(2016, 6, 30));
     IborFutureTrade expectedTrade = IborFutureTrade.builder()
         .info(tradeInfo)
@@ -53,15 +55,32 @@ public class IborFutureSecurityTest {
         .quantity(100)
         .price(0.995)
         .build();
-    assertEquals(test.createTrade(tradeInfo, 100, 0.995, ReferenceData.empty()), expectedTrade);
+    assertThat(test.createTrade(tradeInfo, 100, 0.995, ReferenceData.empty())).isEqualTo(expectedTrade);
+
+    PositionInfo positionInfo = PositionInfo.empty();
+    IborFuturePosition expectedPosition1 = IborFuturePosition.builder()
+        .info(positionInfo)
+        .product(PRODUCT)
+        .longQuantity(100)
+        .build();
+    TestHelper.assertEqualsBean(test.createPosition(positionInfo, 100, ReferenceData.empty()), expectedPosition1);
+    IborFuturePosition expectedPosition2 = IborFuturePosition.builder()
+        .info(positionInfo)
+        .product(PRODUCT)
+        .longQuantity(100)
+        .shortQuantity(50)
+        .build();
+    assertThat(test.createPosition(positionInfo, 100, 50, ReferenceData.empty())).isEqualTo(expectedPosition2);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

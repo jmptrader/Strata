@@ -1,17 +1,14 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.io;
-
-import static com.google.common.base.MoreObjects.firstNonNull;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import org.joda.convert.FromString;
@@ -19,9 +16,8 @@ import org.joda.convert.ToString;
 
 import com.google.common.io.ByteSource;
 import com.google.common.io.CharSource;
-import com.google.common.io.Files;
-import com.google.common.io.Resources;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.Guavate;
 
 /**
  * A locator for a resource, specified as a file, URL, path or classpath resource.
@@ -51,7 +47,7 @@ public final class ResourceLocator {
   /**
    * The source.
    */
-  private final ByteSource source;
+  private final BeanByteSource source;
 
   //-------------------------------------------------------------------------
   /**
@@ -101,7 +97,7 @@ public final class ResourceLocator {
     String filename = file.toString();
     // convert Windows separators to unix
     filename = (File.separatorChar == '\\' ? filename.replace('\\', '/') : filename);
-    return new ResourceLocator(FILE_URL_PREFIX + filename, Files.asByteSource(file));
+    return new ResourceLocator(FILE_URL_PREFIX + filename, FileByteSource.of(file));
   }
 
   /**
@@ -135,22 +131,28 @@ public final class ResourceLocator {
   public static ResourceLocator ofUrl(URL url) {
     ArgChecker.notNull(url, "url");
     String filename = url.toString();
-    return new ResourceLocator(URL_PREFIX + filename, Resources.asByteSource(url));
+    return new ResourceLocator(URL_PREFIX + filename, UriByteSource.of(url));
   }
 
   /**
    * Creates a resource from a fully qualified resource name.
+   * <p>
+   * If the resource name does not start with a slash '/', one will be prepended.
+   * Use {@link #ofClasspath(Class, String)} to get a relative resource.
+   * <p>
+   * In Java 9 and later, resources can be encapsulated due to the module system.
+   * As such, this method is caller sensitive.
+   * It finds the class of the method that called this one, and uses that to search for
+   * resources using {@link Class#getResource(String)}.
    * 
-   * @param resourceName  the classpath resource name
+   * @param resourceName  the resource name, which will have a slash '/' prepended if missing
    * @return the resource locator
    */
   public static ResourceLocator ofClasspath(String resourceName) {
     ArgChecker.notNull(resourceName, "classpathLocator");
-    URL url = classLoader().getResource(resourceName);
-    if (url == null) {
-      throw new IllegalArgumentException("Resource not found: " + resourceName);
-    }
-    return ofClasspathUrl(url);
+    String searchName = resourceName.startsWith("/") ? resourceName : "/" + resourceName;
+    Class<?> caller = Guavate.callerClass(3);
+    return ofClasspath(caller, searchName);
   }
 
   /**
@@ -162,7 +164,7 @@ public final class ResourceLocator {
    *   <li>Otherwise the resource name is treated as a path relative to the package containing the class</li>
    * </ul>
    *
-   * @param cls  the class
+   * @param cls  the class used to find the resource
    * @param resourceName  the resource name
    * @return the resource locator
    */
@@ -184,7 +186,7 @@ public final class ResourceLocator {
   public static ResourceLocator ofClasspathUrl(URL url) {
     ArgChecker.notNull(url, "url");
     String locator = CLASSPATH_URL_PREFIX + url.toString();
-    return new ResourceLocator(locator, Resources.asByteSource(url));
+    return new ResourceLocator(locator, UriByteSource.of(url));
   }
 
   /**
@@ -193,7 +195,11 @@ public final class ResourceLocator {
    * @return the class loader
    */
   static ClassLoader classLoader() {
-    return firstNonNull(Thread.currentThread().getContextClassLoader(), ResourceConfig.class.getClassLoader());
+    ClassLoader loader = ResourceConfig.class.getClassLoader();
+    if (loader != null) {
+      return loader;
+    }
+    return Thread.currentThread().getContextClassLoader();
   }
 
   //-------------------------------------------------------------------------
@@ -203,7 +209,7 @@ public final class ResourceLocator {
    * @param locator  the locator
    * @param source  the byte source
    */
-  private ResourceLocator(String locator, ByteSource source) {
+  private ResourceLocator(String locator, BeanByteSource source) {
     super();
     this.locator = locator;
     this.source = source;
@@ -229,7 +235,7 @@ public final class ResourceLocator {
    * 
    * @return the byte source
    */
-  public ByteSource getByteSource() {
+  public BeanByteSource getByteSource() {
     return source;
   }
 
@@ -238,11 +244,21 @@ public final class ResourceLocator {
    * <p>
    * A char source is a supplier of data.
    * The source itself is neither opened nor closed.
+   * <p>
+   * This method handles Unicode Byte Order Marks.
    * 
    * @return the char source
    */
-  public CharSource getCharSource() {
-    return getCharSource(StandardCharsets.UTF_8);
+  public BeanCharSource getCharSource() {
+    return source.asCharSourceUtf8UsingBom();
+  }
+
+  /**
+   * @hidden
+   * @return the source
+   */
+  public CharSource getCharSource$$bridge() { // CSIGNORE
+    return getCharSource();
   }
 
   /**
@@ -254,8 +270,17 @@ public final class ResourceLocator {
    * @param charset  the character set to use
    * @return the char source
    */
-  public CharSource getCharSource(Charset charset) {
+  public BeanCharSource getCharSource(Charset charset) {
     return source.asCharSource(charset);
+  }
+
+  /**
+   * @hidden
+   * @param charset  the charset
+   * @return the source
+   */
+  public CharSource getCharSource$$bridge(Charset charset) { // CSIGNORE
+    return getCharSource(charset);
   }
 
   //-------------------------------------------------------------------------

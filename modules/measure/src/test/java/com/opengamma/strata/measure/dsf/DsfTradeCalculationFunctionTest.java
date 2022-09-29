@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -52,6 +52,7 @@ import com.opengamma.strata.measure.rate.RatesMarketDataLookup;
 import com.opengamma.strata.pricer.dsf.DiscountingDsfTradePricer;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.product.SecurityId;
+import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.common.PayReceive;
 import com.opengamma.strata.product.dsf.Dsf;
 import com.opengamma.strata.product.dsf.DsfTrade;
@@ -64,7 +65,6 @@ import com.opengamma.strata.product.swap.type.IborRateSwapLegConvention;
 /**
  * Test {@link DsfTradeCalculationFunction}.
  */
-@Test
 public class DsfTradeCalculationFunctionTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -91,6 +91,7 @@ public class DsfTradeCalculationFunctionTest {
   public static final double REF_PRICE = 0.98 + 30.0 / 32.0 / 100.0; // price quoted in 32nd of 1%
   private static final long QUANTITY = 1234L;
   public static final DsfTrade TRADE = DsfTrade.builder()
+      .info(TradeInfo.of(LocalDate.of(2013, 6, 15)))
       .product(FUTURE)
       .quantity(QUANTITY)
       .price(TRADE_PRICE)
@@ -108,8 +109,9 @@ public class DsfTradeCalculationFunctionTest {
   private static final QuoteId QUOTE_KEY = QuoteId.of(DSF_ID, FieldName.SETTLEMENT_PRICE);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_requirementsAndCurrency() {
-    DsfTradeCalculationFunction function = new DsfTradeCalculationFunction();
+    DsfTradeCalculationFunction<DsfTrade> function = DsfTradeCalculationFunction.TRADE;
     Set<Measure> measures = function.supportedMeasures();
     FunctionRequirements reqs = function.requirements(TRADE, measures, PARAMS, REF_DATA);
     assertThat(reqs.getOutputCurrencies()).containsOnly(CURRENCY);
@@ -119,8 +121,9 @@ public class DsfTradeCalculationFunctionTest {
     assertThat(function.naturalCurrency(TRADE, REF_DATA)).isEqualTo(CURRENCY);
   }
 
+  @Test
   public void test_simpleMeasures() {
-    DsfTradeCalculationFunction function = new DsfTradeCalculationFunction();
+    DsfTradeCalculationFunction<DsfTrade> function = DsfTradeCalculationFunction.TRADE;
     ScenarioMarketData md = marketData();
     RatesProvider provider = RATES_LOOKUP.ratesProvider(md.scenario(0));
     DiscountingDsfTradePricer pricer = DiscountingDsfTradePricer.DEFAULT;
@@ -144,8 +147,9 @@ public class DsfTradeCalculationFunctionTest {
             Measures.RESOLVED_TARGET, Result.success(RTRADE));
   }
 
+  @Test
   public void test_pv01() {
-    DsfTradeCalculationFunction function = new DsfTradeCalculationFunction();
+    DsfTradeCalculationFunction<DsfTrade> function = DsfTradeCalculationFunction.TRADE;
     ScenarioMarketData md = marketData();
     RatesProvider provider = RATES_LOOKUP.ratesProvider(md.scenario(0));
     DiscountingDsfTradePricer pricer = DiscountingDsfTradePricer.DEFAULT;

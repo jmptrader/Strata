@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,6 +7,7 @@ package com.opengamma.strata.basics.location;
 
 import java.io.Serializable;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -15,8 +16,13 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.io.PropertiesFile;
+import com.opengamma.strata.collect.io.ResourceLocator;
 
 /**
  * A country or territory.
@@ -33,6 +39,14 @@ public final class Country
   private static final long serialVersionUID = 1L;
 
   /**
+   * Loads the ISO alpha-2 and alpha-3 country codes into a bidirectional map.
+   */
+  private static final Supplier<ImmutableBiMap<String, String>> COUNTRY_CODES = Suppliers.memoize(() ->
+      ImmutableBiMap.copyOf(PropertiesFile.of(
+          ResourceLocator.ofClasspath(Country.class, "country.properties").getCharSource())
+          .getProperties().asMap()));
+
+  /**
    * A cache of instances.
    */
   private static final ConcurrentMap<String, Country> CACHE = new ConcurrentHashMap<>();
@@ -46,6 +60,10 @@ public final class Country
    * The region of 'EU' - Europe (special status in ISO-3166).
    */
   public static final Country EU = of("EU");
+  /**
+   * The country 'AT' - Austria.
+   */
+  public static final Country AT = of("AT");
   /**
    * The country 'BE' - Belgium.
    */
@@ -90,6 +108,10 @@ public final class Country
    * The currency 'HU' = Hungary.
    */
   public static final Country HU = of("HU");
+  /**
+   * The currency 'IE' - Ireland.
+   */
+  public static final Country IE = of("IE");
   /**
    * The currency 'IS' - Iceland.
    */
@@ -283,6 +305,25 @@ public final class Country
 
   //-------------------------------------------------------------------------
   /**
+   * Obtains an instance from the specified ISO-3166-1 alpha-3
+   * three letter country code dynamically creating a country if necessary.
+   * <p>
+   * A country is uniquely identified by ISO-3166-1 alpha-3 three letter code.
+   * This method creates the country if it is not known.
+   *
+   * @param countryCode  the three letter country code, ASCII and upper case
+   * @return the singleton instance
+   * @throws IllegalArgumentException if the country code is invalid
+   */
+  public static Country of3Char(String countryCode) {
+    ArgChecker.matches(CODE_MATCHER, 3, 3, countryCode, "countryCode", "[A-Z][A-Z]");
+    return Optional.ofNullable(COUNTRY_CODES.get().get(countryCode))
+        .map(alpha2Code -> of(alpha2Code.toUpperCase(Locale.ENGLISH)))
+        .orElseThrow(() -> new IllegalArgumentException("Unknown country code: " + countryCode));
+  }
+
+  //-------------------------------------------------------------------------
+  /**
    * Restricted constructor.
    * 
    * @param code  the two letter country code
@@ -308,6 +349,21 @@ public final class Country
    */
   public String getCode() {
     return code;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Gets the ISO-3166-1 alpha-3 three letter country code.
+   *
+   * @return the three letter country code
+   * @throws IllegalArgumentException if the country is invalid
+   */
+  public String getCode3Char() {
+    if (COUNTRY_CODES.get().containsValue(this.getCode())) {
+      return COUNTRY_CODES.get().inverse().get(this.getCode());
+    } else {
+      throw new IllegalArgumentException("Unknown country: " + this.getCode());
+    }
   }
 
   //-------------------------------------------------------------------------

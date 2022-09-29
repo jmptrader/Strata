@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2011 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.impl.option;
@@ -707,8 +707,8 @@ public final class BlackFormulaRepository {
     double d2 = 0d;
 
     double priceLike = Double.NaN;
-    double rt = (timeToExpiry < SMALL && Math.abs(interestRate) > LARGE) ? (interestRate > 0d ? 1d : -1d)
-        : interestRate * timeToExpiry;
+    double rt =
+        (timeToExpiry < SMALL && Math.abs(interestRate) > LARGE) ? (interestRate > 0d ? 1d : -1d) : interestRate * timeToExpiry;
     if (bFwd && bStr) {
       log.info("(large value)/(large value) ambiguous");
       priceLike = isCall ? (forward >= strike ? forward : 0d) : (strike >= forward ? strike : 0d);
@@ -717,8 +717,9 @@ public final class BlackFormulaRepository {
         if (rt > LARGE) {
           priceLike = isCall ? (forward > strike ? forward : 0d) : (forward > strike ? 0d : -forward);
         } else {
-          priceLike = isCall ? (forward > strike ? forward - strike * Math.exp(-rt) : 0d) : (forward > strike ? 0d
-              : -forward + strike * Math.exp(-rt));
+          priceLike = isCall ?
+              (forward > strike ? forward - strike * Math.exp(-rt) : 0d) :
+              (forward > strike ? 0d : -forward + strike * Math.exp(-rt));
         }
       } else {
         if (Math.abs(forward - strike) < SMALL | bSigRt) {
@@ -731,8 +732,9 @@ public final class BlackFormulaRepository {
         double nF = NORMAL.getCDF(sign * d1);
         double nS = NORMAL.getCDF(sign * d2);
         double first = nF == 0d ? 0d : forward * nF;
-        double second = ((nS == 0d) | (Math.exp(-interestRate * timeToExpiry) == 0d)) ? 0d : strike *
-            Math.exp(-interestRate * timeToExpiry) * nS;
+        double second = ((nS == 0d) | (Math.exp(-interestRate * timeToExpiry) == 0d)) ?
+            0d :
+            strike * Math.exp(-interestRate * timeToExpiry) * nS;
         priceLike = sign * (first - second);
       }
     }
@@ -795,8 +797,8 @@ public final class BlackFormulaRepository {
     double d2 = 0d;
 
     double priceLike = Double.NaN;
-    double rt = (timeToExpiry < SMALL && Math.abs(interestRate) > LARGE) ? (interestRate > 0d ? 1d : -1d)
-        : interestRate * timeToExpiry;
+    double rt =
+        (timeToExpiry < SMALL && Math.abs(interestRate) > LARGE) ? (interestRate > 0d ? 1d : -1d) : interestRate * timeToExpiry;
     if (bFwd && bStr) {
       log.info("(large value)/(large value) ambiguous");
       priceLike = isCall ? 0d : (strike >= forward ? strike : 0d);
@@ -859,8 +861,11 @@ public final class BlackFormulaRepository {
       }
       log.info("log(1)/0 ambiguous");
       if (rootT < SMALL) {
-        return forward < SMALL ? -NORMAL.getPDF(0d) * lognormalVol / 2. : (lognormalVol < SMALL ? -forward *
-            NORMAL.getPDF(0d) / 2. : -forward * NORMAL.getPDF(0d) * lognormalVol / 2. / rootT);
+        return forward < SMALL ?
+            -NORMAL.getPDF(0d) * lognormalVol / 2. :
+            (lognormalVol < SMALL ?
+                -forward * NORMAL.getPDF(0d) / 2. :
+                -forward * NORMAL.getPDF(0d) * lognormalVol / 2. / rootT);
       }
       if (lognormalVol < SMALL) {
         return bFwd ? -NORMAL.getPDF(0d) / 2. / rootT : -forward * NORMAL.getPDF(0d) * lognormalVol / 2. / rootT;
@@ -1079,8 +1084,9 @@ public final class BlackFormulaRepository {
       if (bFwd) {
         return rootT < SMALL ? NORMAL.getPDF(0d) / lognormalVol : forward * NORMAL.getPDF(0d) * rootT / lognormalVol;
       }
-      return lognormalVol < SMALL ? forward * NORMAL.getPDF(0d) * rootT / lognormalVol : -forward * NORMAL.getPDF(0d) *
-          timeToExpiry * lognormalVol / 4.;
+      return lognormalVol < SMALL ?
+          forward * NORMAL.getPDF(0d) * rootT / lognormalVol :
+          -forward * NORMAL.getPDF(0d) * timeToExpiry * lognormalVol / 4.;
     }
     if (Math.abs(forward - strike) < SMALL | (bFwd && bStr)) {
       d1 = 0.5 * sigmaRootT;
@@ -1117,7 +1123,7 @@ public final class BlackFormulaRepository {
    * Computes the log-normal implied volatility.
    * 
    * @param price The forward price, which is the market price divided by the numeraire,
-   *  for example the zero bond p(0,T) for the T-forward measure
+   *   for example the zero bond p(0,T) for the T-forward measure
    * @param forward  the forward value of the underlying
    * @param strike  the strike
    * @param timeToExpiry  the time to expiry
@@ -1152,7 +1158,7 @@ public final class BlackFormulaRepository {
    * Computes the log-normal implied volatility and its derivative with respect to price.
    * 
    * @param price The forward price, which is the market price divided by the numeraire,
-   *  for example the zero bond p(0,T) for the T-forward measure
+   *   for example the zero bond p(0,T) for the T-forward measure
    * @param forward  the forward value of the underlying
    * @param strike  the strike
    * @param timeToExpiry  the time to expiry
@@ -1189,8 +1195,8 @@ public final class BlackFormulaRepository {
    * European option starting from an initial guess.
    * 
    * @param otmPrice The forward price, which is the market price divided by the numeraire,
-   *  for example the zero bond p(0,T) for the T-forward measure
-   *  This MUST be an OTM price, i.e. a call price for strike >= forward and a put price otherwise.
+   *   for example the zero bond p(0,T) for the T-forward measure
+   *   This MUST be an OTM price, i.e. a call price for strike >= forward and a put price otherwise.
    * 
    * @param forward  the forward value of the underlying
    * @param strike  the strike
@@ -1252,8 +1258,8 @@ public final class BlackFormulaRepository {
    * from an initial guess and the derivative of the volatility w.r.t. the price.
    * 
    * @param otmPrice The forward price, which is the market price divided by the numeraire,
-   *  for example the zero bond p(0,T) for the T-forward measure
-   *  This MUST be an OTM price, i.e. a call price for strike >= forward and a put price otherwise.
+   *   for example the zero bond p(0,T) for the T-forward measure
+   *   This MUST be an OTM price, i.e. a call price for strike >= forward and a put price otherwise.
    * 
    * @param forward  the forward value of the underlying
    * @param strike  the strike
@@ -1267,6 +1273,7 @@ public final class BlackFormulaRepository {
       double strike,
       double timeToExpiry,
       double volGuess) {
+
     double impliedVolatility = impliedVolatility(otmPrice, forward, strike, timeToExpiry, volGuess);
     boolean isCall = strike >= forward;
     ValueDerivatives price = priceAdjoint(forward, strike, timeToExpiry, impliedVolatility, isCall);
@@ -1307,7 +1314,7 @@ public final class BlackFormulaRepository {
    * @param time  the time to expiry
    * @param volatility  the volatility
    * @param derivatives  the mutated array of derivatives of the implied strike with respect to the input
-   *  Derivatives with respect to: [0] delta, [1] forward, [2] time, [3] volatility.
+   *   Derivatives with respect to: [0] delta, [1] forward, [2] time, [3] volatility.
    * @return the strike
    */
   public static double impliedStrike(
@@ -1389,6 +1396,7 @@ public final class BlackFormulaRepository {
       final double strike,
       final double timeToExpiry,
       final double normalVolatility) {
+
     ArgChecker.isTrue(strike > 0, "strike must be strictly positive");
     ArgChecker.isTrue(forward > 0, "strike must be strictly positive");
     // initial guess

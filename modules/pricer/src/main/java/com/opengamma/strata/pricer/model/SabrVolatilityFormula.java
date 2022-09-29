@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,6 +6,7 @@
 package com.opengamma.strata.pricer.model;
 
 import com.opengamma.strata.basics.value.ValueDerivatives;
+import com.opengamma.strata.market.ValueType;
 import com.opengamma.strata.pricer.impl.volatility.smile.SabrHaganVolatilityFunctionProvider;
 
 /**
@@ -28,6 +29,13 @@ public interface SabrVolatilityFormula {
   public static SabrVolatilityFormula hagan() {
     return SabrHaganVolatilityFunctionProvider.DEFAULT;
   }
+
+  /**
+   * Gets the type of volatility returned by the {@link SabrVolatilityFormula#volatility} method.
+   * 
+   * @return the type
+   */
+  public abstract ValueType getVolatilityType();
 
   //-------------------------------------------------------------------------
   /**
@@ -66,7 +74,7 @@ public interface SabrVolatilityFormula {
    * @param nu  the SABR nu value
    * @return the volatility and associated derivatives
    */
-  public ValueDerivatives volatilityAdjoint(
+  public abstract ValueDerivatives volatilityAdjoint(
       double forward,
       double strike,
       double timeToExpiry,

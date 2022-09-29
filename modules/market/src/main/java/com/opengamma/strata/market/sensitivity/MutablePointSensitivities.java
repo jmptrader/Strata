@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -194,7 +194,8 @@ public final class MutablePointSensitivities
     for (int i = 1; i < sensitivities.size(); i++) {
       PointSensitivity current = sensitivities.get(i);
       if (current.compareKey(previous) == 0) {
-        sensitivities.set(i - 1, previous.withSensitivity(previous.getSensitivity() + current.getSensitivity()));
+        current = previous.withSensitivity(previous.getSensitivity() + current.getSensitivity());
+        sensitivities.set(i - 1, current);
         sensitivities.remove(i);
         i--;
       }

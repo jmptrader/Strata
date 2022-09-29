@@ -1,10 +1,11 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.timeseries;
 
+import static com.opengamma.strata.collect.Guavate.in;
 import static com.opengamma.strata.collect.Guavate.toImmutableList;
 import static java.time.temporal.ChronoField.DAY_OF_WEEK;
 import static java.time.temporal.ChronoUnit.DAYS;
@@ -16,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.OptionalDouble;
-import java.util.Set;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.Function;
 import java.util.function.ObjDoubleConsumer;
@@ -26,17 +26,17 @@ import java.util.stream.Stream;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableConstructor;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Doubles;
@@ -45,7 +45,7 @@ import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.collect.function.ObjDoublePredicate;
 
 /**
- * An immutable implementation of {@code DoubleTimeSeries} where the
+ * An immutable implementation of {@code LocalDateDoubleTimeSeries} where the
  * data stored is expected to be dense. For example, points for every
  * working day in a month. If sparser data is being used then
  * {@link SparseLocalDateDoubleTimeSeries} is likely to be a better
@@ -53,8 +53,8 @@ import com.opengamma.strata.collect.function.ObjDoublePredicate;
  * <p>
  * This implementation uses arrays internally.
  */
-@BeanDefinition(builderScope = "private")
-class DenseLocalDateDoubleTimeSeries
+@BeanDefinition(builderScope = "private", metaScope = "package")
+final class DenseLocalDateDoubleTimeSeries
     implements ImmutableBean, LocalDateDoubleTimeSeries, Serializable {
 
   /**
@@ -198,6 +198,20 @@ class DenseLocalDateDoubleTimeSeries
   private final DenseTimeSeriesCalculation dateCalculation;
 
   /**
+   * Whether this time series is empty.
+   * 0 is unknown, -1 is empty, 1 is non-empty.
+   * Kept separate from size so we don't iterate the whole points array unless necessary. 
+   */
+  private transient int isEmpty; // not a property, derived from points and cached as is an O(n) lookup
+
+  /**
+   * The size of the time series.
+   * The amount of valid values.
+   * Offset by one to account for 0 being the unset value of an int, hence the actual size is size - 1. 
+   */
+  private transient int size; // not a property, derived from points and cached as is an O(n) lookup
+
+  /**
    * Package protected factory method intended to be called
    * by the {@link LocalDateDoubleTimeSeriesBuilder}. As such
    * all the information passed is assumed to be consistent.
@@ -216,22 +230,32 @@ class DenseLocalDateDoubleTimeSeries
 
     double[] points = new double[dateCalculation.calculatePosition(startDate, endDate) + 1];
     Arrays.fill(points, Double.NaN);
-    values.forEach(pt -> points[dateCalculation.calculatePosition(startDate, pt.getDate())] = pt.getValue());
-    return new DenseLocalDateDoubleTimeSeries(startDate, points, dateCalculation, true);
+    int size = 1;
+    for (LocalDateDoublePoint pt : in(values)) {
+      points[dateCalculation.calculatePosition(startDate, pt.getDate())] = pt.getValue();
+      size++;
+    }
+    return new DenseLocalDateDoubleTimeSeries(startDate, points, dateCalculation, true, size);
   }
 
   // Private constructor, the trusted flag indicates whether the
   // points array should be cloned. If trusted, it will not be cloned.
+  // size is the size of the time series + 1 if known, 0 if unknown
   private DenseLocalDateDoubleTimeSeries(
       LocalDate startDate,
       double[] points,
       DenseTimeSeriesCalculation dateCalculation,
-      boolean trusted) {
+      boolean trusted,
+      int size) {
 
     ArgChecker.notNull(points, "points");
     this.startDate = ArgChecker.notNull(startDate, "startDate");
     this.points = trusted ? points : points.clone();
     this.dateCalculation = ArgChecker.notNull(dateCalculation, "dateCalculation");
+    this.size = size;
+    if (size != 0) {
+      this.isEmpty = size > 1 ? 1 : -1;
+    }
   }
 
   @ImmutableConstructor
@@ -239,18 +263,69 @@ class DenseLocalDateDoubleTimeSeries
       LocalDate startDate,
       double[] points,
       DenseTimeSeriesCalculation dateCalculation) {
-    this(startDate, points, dateCalculation, false);
+    this(startDate, points, dateCalculation, false, 0);
   }
 
   //-------------------------------------------------------------------------
   @Override
   public boolean isEmpty() {
-    return !validIndices().findFirst().isPresent();
+    // threadsafe via racy single-check idiom
+    int e = isEmpty;
+    if (e == 0) {
+      e = calculateIsEmpty();
+    }
+    return e < 0;
+  }
+
+  // extracted to aid inlining
+  private int calculateIsEmpty() {
+    int s = size;
+    boolean any = false;
+    // take cached size if already calculated
+    if (s != 0) {
+      any = s > 1;
+    } else {
+      for (double point : points) {
+        if (isValidPoint(point)) {
+          any = true;
+          break;
+        }
+      }
+      if (!any) {
+        // set size to 0 if it wasn't calculated
+        this.size = 1;
+      }
+    }
+    int e = any ? 1 : -1;
+    this.isEmpty = e;
+    return e;
   }
 
   @Override
   public int size() {
-    return (int) validIndices().count();
+    // threadsafe via racy single-check idiom
+    int s = size;
+    if (s == 0) {
+      s = calculateSize();
+    }
+    // size field is the actual size plus 1
+    return s - 1;
+  }
+
+  // extracted to aid inlining
+  private int calculateSize() {
+    int s = 1;
+    // check if we are not known empty
+    if (isEmpty >= 0) {
+      for (double point : points) {
+        if (isValidPoint(point)) {
+          s++;
+        }
+      }
+    }
+    size = s;
+    isEmpty = s > 1 ? 1 : -1;
+    return s;
   }
 
   @Override
@@ -291,8 +366,7 @@ class DenseLocalDateDoubleTimeSeries
     return reversedValidIndices()
         .mapToObj(this::calculateDateFromPosition)
         .findFirst()
-        .orElseThrow(() ->
-            new NoSuchElementException("Unable to return latest date, time-series is empty"));
+        .orElseThrow(() -> new NoSuchElementException("Unable to return latest date, time-series is empty"));
   }
 
   @Override
@@ -300,8 +374,7 @@ class DenseLocalDateDoubleTimeSeries
     return reversedValidIndices()
         .mapToDouble(i -> points[i])
         .findFirst()
-        .orElseThrow(() ->
-            new NoSuchElementException("Unable to return latest value, time-series is empty"));
+        .orElseThrow(() -> new NoSuchElementException("Unable to return latest value, time-series is empty"));
   }
 
   //-------------------------------------------------------------------------
@@ -316,7 +389,8 @@ class DenseLocalDateDoubleTimeSeries
 
     // special case when this is empty or when the dates are the same
     // or the series don't intersect
-    if (isEmpty() || startInclusive.equals(endExclusive) ||
+    if (isEmpty() ||
+        startInclusive.equals(endExclusive) ||
         !startDate.isBefore(endExclusive) ||
         startInclusive.isAfter(getLatestDate())) {
       return LocalDateDoubleTimeSeries.empty();
@@ -329,7 +403,8 @@ class DenseLocalDateDoubleTimeSeries
         resolvedStart,
         Arrays.copyOfRange(points, Math.max(0, startIndex), Math.min(points.length, endIndex)),
         dateCalculation,
-        true);
+        true,
+        0);
   }
 
   @Override
@@ -427,7 +502,7 @@ class DenseLocalDateDoubleTimeSeries
   @Override
   public LocalDateDoubleTimeSeries mapValues(DoubleUnaryOperator mapper) {
     DoubleStream values = DoubleStream.of(points).map(d -> isValidPoint(d) ? applyMapper(mapper, d) : d);
-    return new DenseLocalDateDoubleTimeSeries(startDate, values.toArray(), dateCalculation, true);
+    return new DenseLocalDateDoubleTimeSeries(startDate, values.toArray(), dateCalculation, true, size);
   }
 
   private double applyMapper(DoubleUnaryOperator mapper, double d) {
@@ -444,8 +519,7 @@ class DenseLocalDateDoubleTimeSeries
 
   @Override
   public void forEach(ObjDoubleConsumer<LocalDate> action) {
-    validIndices().forEach(i ->
-        action.accept(calculateDateFromPosition(i), points[i]));
+    validIndices().forEach(i -> action.accept(calculateDateFromPosition(i), points[i]));
   }
 
   @Override
@@ -475,7 +549,6 @@ class DenseLocalDateDoubleTimeSeries
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code DenseLocalDateDoubleTimeSeries}.
    * @return the meta-bean, not null
@@ -485,7 +558,7 @@ class DenseLocalDateDoubleTimeSeries
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(DenseLocalDateDoubleTimeSeries.Meta.INSTANCE);
+    MetaBean.register(DenseLocalDateDoubleTimeSeries.Meta.INSTANCE);
   }
 
   /**
@@ -496,16 +569,6 @@ class DenseLocalDateDoubleTimeSeries
   @Override
   public DenseLocalDateDoubleTimeSeries.Meta metaBean() {
     return DenseLocalDateDoubleTimeSeries.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -568,26 +631,18 @@ class DenseLocalDateDoubleTimeSeries
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("DenseLocalDateDoubleTimeSeries{");
-    int len = buf.length();
-    toString(buf);
-    if (buf.length() > len) {
-      buf.setLength(buf.length() - 2);
-    }
-    buf.append('}');
-    return buf.toString();
-  }
-
-  protected void toString(StringBuilder buf) {
     buf.append("startDate").append('=').append(JodaBeanUtils.toString(startDate)).append(',').append(' ');
     buf.append("points").append('=').append(JodaBeanUtils.toString(points)).append(',').append(' ');
-    buf.append("dateCalculation").append('=').append(JodaBeanUtils.toString(dateCalculation)).append(',').append(' ');
+    buf.append("dateCalculation").append('=').append(JodaBeanUtils.toString(dateCalculation));
+    buf.append('}');
+    return buf.toString();
   }
 
   //-----------------------------------------------------------------------
   /**
    * The meta-bean for {@code DenseLocalDateDoubleTimeSeries}.
    */
-  public static class Meta extends DirectMetaBean {
+  static final class Meta extends DirectMetaBean {
     /**
      * The singleton instance of the meta-bean.
      */
@@ -620,7 +675,7 @@ class DenseLocalDateDoubleTimeSeries
     /**
      * Restricted constructor.
      */
-    protected Meta() {
+    private Meta() {
     }
 
     @Override
@@ -656,7 +711,7 @@ class DenseLocalDateDoubleTimeSeries
      * The meta-property for the {@code startDate} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<LocalDate> startDate() {
+    public MetaProperty<LocalDate> startDate() {
       return startDate;
     }
 
@@ -664,7 +719,7 @@ class DenseLocalDateDoubleTimeSeries
      * The meta-property for the {@code points} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<double[]> points() {
+    public MetaProperty<double[]> points() {
       return points;
     }
 
@@ -672,7 +727,7 @@ class DenseLocalDateDoubleTimeSeries
      * The meta-property for the {@code dateCalculation} property.
      * @return the meta-property, not null
      */
-    public final MetaProperty<DenseTimeSeriesCalculation> dateCalculation() {
+    public MetaProperty<DenseTimeSeriesCalculation> dateCalculation() {
       return dateCalculation;
     }
 
@@ -705,7 +760,7 @@ class DenseLocalDateDoubleTimeSeries
   /**
    * The bean-builder for {@code DenseLocalDateDoubleTimeSeries}.
    */
-  private static class Builder extends DirectFieldsBeanBuilder<DenseLocalDateDoubleTimeSeries> {
+  private static final class Builder extends DirectPrivateBeanBuilder<DenseLocalDateDoubleTimeSeries> {
 
     private LocalDate startDate;
     private double[] points;
@@ -714,7 +769,7 @@ class DenseLocalDateDoubleTimeSeries
     /**
      * Restricted constructor.
      */
-    protected Builder() {
+    private Builder() {
     }
 
     //-----------------------------------------------------------------------
@@ -751,30 +806,6 @@ class DenseLocalDateDoubleTimeSeries
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public DenseLocalDateDoubleTimeSeries build() {
       return new DenseLocalDateDoubleTimeSeries(
           startDate,
@@ -787,23 +818,14 @@ class DenseLocalDateDoubleTimeSeries
     public String toString() {
       StringBuilder buf = new StringBuilder(128);
       buf.append("DenseLocalDateDoubleTimeSeries.Builder{");
-      int len = buf.length();
-      toString(buf);
-      if (buf.length() > len) {
-        buf.setLength(buf.length() - 2);
-      }
+      buf.append("startDate").append('=').append(JodaBeanUtils.toString(startDate)).append(',').append(' ');
+      buf.append("points").append('=').append(JodaBeanUtils.toString(points)).append(',').append(' ');
+      buf.append("dateCalculation").append('=').append(JodaBeanUtils.toString(dateCalculation));
       buf.append('}');
       return buf.toString();
     }
 
-    protected void toString(StringBuilder buf) {
-      buf.append("startDate").append('=').append(JodaBeanUtils.toString(startDate)).append(',').append(' ');
-      buf.append("points").append('=').append(JodaBeanUtils.toString(points)).append(',').append(' ');
-      buf.append("dateCalculation").append('=').append(JodaBeanUtils.toString(dateCalculation)).append(',').append(' ');
-    }
-
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

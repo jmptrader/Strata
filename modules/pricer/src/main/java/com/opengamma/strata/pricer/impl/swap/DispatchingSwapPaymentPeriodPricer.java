@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,8 +12,8 @@ import com.opengamma.strata.market.sensitivity.PointSensitivityBuilder;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.pricer.swap.SwapPaymentPeriodPricer;
 import com.opengamma.strata.product.swap.KnownAmountSwapPaymentPeriod;
-import com.opengamma.strata.product.swap.SwapPaymentPeriod;
 import com.opengamma.strata.product.swap.RatePaymentPeriod;
+import com.opengamma.strata.product.swap.SwapPaymentPeriod;
 
 /**
  * Pricer implementation for payment periods using multiple dispatch.
@@ -66,8 +66,7 @@ public class DispatchingSwapPaymentPeriodPricer
   }
 
   @Override
-  public PointSensitivityBuilder presentValueSensitivity(SwapPaymentPeriod paymentPeriod,
-      RatesProvider provider) {
+  public PointSensitivityBuilder presentValueSensitivity(SwapPaymentPeriod paymentPeriod, RatesProvider provider) {
     // dispatch by runtime type
     if (paymentPeriod instanceof RatePaymentPeriod) {
       return ratePaymentPeriodPricer.presentValueSensitivity((RatePaymentPeriod) paymentPeriod, provider);
@@ -92,8 +91,7 @@ public class DispatchingSwapPaymentPeriodPricer
   }
 
   @Override
-  public PointSensitivityBuilder forecastValueSensitivity(SwapPaymentPeriod paymentPeriod,
-      RatesProvider provider) {
+  public PointSensitivityBuilder forecastValueSensitivity(SwapPaymentPeriod paymentPeriod, RatesProvider provider) {
     // dispatch by runtime type
     if (paymentPeriod instanceof RatePaymentPeriod) {
       return ratePaymentPeriodPricer.forecastValueSensitivity((RatePaymentPeriod) paymentPeriod, provider);

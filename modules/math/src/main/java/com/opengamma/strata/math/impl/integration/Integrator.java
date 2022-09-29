@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -23,6 +23,6 @@ public interface Integrator<T, U, V> {
    * @param upper The array of upper bounds of integration, not null or empty 
    * @return The result of the integral
    */
-  T integrate(V f, U[] lower, U[] upper);
+  public abstract T integrate(V f, U[] lower, U[] upper);
 
 }

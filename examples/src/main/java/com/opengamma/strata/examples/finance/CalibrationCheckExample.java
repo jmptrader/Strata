@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -32,8 +32,8 @@ import com.opengamma.strata.data.ImmutableMarketData;
 import com.opengamma.strata.data.MarketData;
 import com.opengamma.strata.loader.csv.QuotesCsvLoader;
 import com.opengamma.strata.loader.csv.RatesCalibrationCsvLoader;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.curve.node.IborFixingDepositCurveNode;
 import com.opengamma.strata.market.observable.QuoteId;
 import com.opengamma.strata.measure.Measures;
@@ -119,14 +119,14 @@ public class CalibrationCheckExample {
     // optionally test performance
     if (args.length > 0) {
       if (args[0].equals("-p")) {
-        performance_calibration_pricing();
+        performanceCalibrationPricing();
       }
     }
     System.out.println("Checked PV for all instruments used in the calibration set are near to zero");
   }
 
   // Example of performance: loading data from file, calibration and PV
-  private static void performance_calibration_pricing() {
+  private static void performanceCalibrationPricing() {
     int nbTests = 10;
     int nbRep = 3;
     int count = 0;
@@ -138,8 +138,8 @@ public class CalibrationCheckExample {
         count += r.getColumnCount() + r.getRowCount();
       }
       long endTime = System.currentTimeMillis();
-      System.out.println("Performance: " + nbTests + " config load + curve calibrations + pv check (1 thread) in "
-          + (endTime - startTime) + " ms");
+      System.out.println("Performance: " + nbTests + " config load + curve calibrations + pv check (1 thread) in " +
+          (endTime - startTime) + " ms");
       // Previous run: 400 ms for 10 cycles
     }
     if (count == 0) {
@@ -168,9 +168,9 @@ public class CalibrationCheckExample {
     MarketData marketData = ImmutableMarketData.of(VAL_DATE, quotes);
 
     // load the curve definition
-    Map<CurveGroupName, CurveGroupDefinition> defns =
+    Map<CurveGroupName, RatesCurveGroupDefinition> defns =
         RatesCalibrationCsvLoader.load(GROUPS_RESOURCE, SETTINGS_RESOURCE, CALIBRATION_RESOURCE);
-    CurveGroupDefinition curveGroupDefinition = defns.get(CURVE_GROUP_NAME).filtered(VAL_DATE, refData);
+    RatesCurveGroupDefinition curveGroupDefinition = defns.get(CURVE_GROUP_NAME).filtered(VAL_DATE, refData);
 
     // extract the trades used for calibration
     List<Trade> trades = curveGroupDefinition.getCurveDefinitions().stream()

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -80,7 +80,9 @@ public interface LocalDateDoubleTimeSeries {
    *
    * @return the time-series collector
    */
-  public static Collector<LocalDateDoublePoint, LocalDateDoubleTimeSeriesBuilder, LocalDateDoubleTimeSeries> collector() {
+  public static Collector<LocalDateDoublePoint, LocalDateDoubleTimeSeriesBuilder, LocalDateDoubleTimeSeries>
+      collector() {
+
     return Collector.of(
         LocalDateDoubleTimeSeriesBuilder::new,
         LocalDateDoubleTimeSeriesBuilder::put,
@@ -133,8 +135,8 @@ public interface LocalDateDoubleTimeSeries {
    * @throws NoSuchElementException if the time-series is empty
    */
   public default LocalDate getEarliestDate() {
-    return dates().findFirst().orElseThrow(() ->
-        new NoSuchElementException("Unable to return earliest date, time-series is empty"));
+    return dates().findFirst()
+        .orElseThrow(() -> new NoSuchElementException("Unable to return earliest date, time-series is empty"));
   }
 
   /**
@@ -146,8 +148,8 @@ public interface LocalDateDoubleTimeSeries {
    * @throws NoSuchElementException if the time-series is empty
    */
   public default double getEarliestValue() {
-    return values().findFirst().orElseThrow(() ->
-        new NoSuchElementException("Unable to return earliest value, time-series is empty"));
+    return values().findFirst()
+        .orElseThrow(() -> new NoSuchElementException("Unable to return earliest value, time-series is empty"));
   }
 
   /**
@@ -250,7 +252,7 @@ public interface LocalDateDoubleTimeSeries {
    * This is generally used to apply a mathematical operation to the values.
    * For example, the operator could multiply each value by a constant, or take the inverse.
    * <pre>
-   *   base.forEach((date, value) -> System.out.println(date + "=" + value));
+   *   base.forEach((date, value) -&gt; System.out.println(date + "=" + value));
    * </pre>
    *
    * @param action  the action to be applied to each pair
@@ -266,7 +268,7 @@ public interface LocalDateDoubleTimeSeries {
    * The operation must not change the dates in a way that reorders them. The mapped dates must be in ascending
    * order or an exception is thrown.
    * <pre>
-   *   updatedSeries = timeSeries.mapDates(date -> date.plusYears(1));
+   *   updatedSeries = timeSeries.mapDates(date -&gt; date.plusYears(1));
    * </pre>
    *
    * @param mapper  the operation applied to each date in the time series
@@ -280,7 +282,7 @@ public interface LocalDateDoubleTimeSeries {
    * This is generally used to apply a mathematical operation to the values.
    * For example, the operator could multiply each value by a constant, or take the inverse.
    * <pre>
-   *   multiplied = base.mapValues(value -> value * 3);
+   *   multiplied = base.mapValues(value -&gt; value * 3);
    * </pre>
    *
    * @param mapper  the operator to be applied to the values
@@ -310,7 +312,7 @@ public interface LocalDateDoubleTimeSeries {
    * @param other  the time-series to combine with
    * @param mapper  the function to be used to combine the values
    * @return a new time-series containing the dates in common between the
-   *  input series with their values combined together using the function
+   *   input series with their values combined together using the function
    */
   public default LocalDateDoubleTimeSeries intersection(LocalDateDoubleTimeSeries other, DoubleBinaryOperator mapper) {
     ArgChecker.notNull(other, "other");
@@ -332,7 +334,7 @@ public interface LocalDateDoubleTimeSeries {
    * @param other  the time-series to combine with
    * @param mapper  the function to be used to combine the values
    * @return a new time-series containing the dates in common between the
-   *  input series with their values combined together using the function
+   *   input series with their values combined together using the function
    */
   public default LocalDateDoubleTimeSeries union(LocalDateDoubleTimeSeries other, DoubleBinaryOperator mapper) {
     ArgChecker.notNull(other, "other");

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,7 +13,7 @@ public class SampleInvalid6 implements Named {
   /**
    * Non-static - Error.
    */
-  NamedLookup<SampleInvalid6> INSTANCE = null;
+  NamedLookup<SampleInvalid6> INSTANCE = null;  // CSIGNORE
 
   @Override
   public String getName() {

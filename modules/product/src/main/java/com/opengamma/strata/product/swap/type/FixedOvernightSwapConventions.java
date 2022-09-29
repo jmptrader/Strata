@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,7 +10,7 @@ import com.opengamma.strata.collect.named.ExtendedEnum;
 /**
  * Market standard Fixed-Overnight swap conventions.
  * <p>
- * http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+ * https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
  */
 public final class FixedOvernightSwapConventions {
 
@@ -41,6 +41,49 @@ public final class FixedOvernightSwapConventions {
       FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.USD_FIXED_1Y_FED_FUND_OIS.getName());
 
   //-------------------------------------------------------------------------
+
+  /**
+   * The 'USD-FIXED-TERM-SOFR-OIS' swap convention.
+   * <p>
+   * USD fixed vs SOFR OIS swap for terms less than or equal to one year.
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention USD_FIXED_TERM_SOFR_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.USD_FIXED_TERM_SOFR_OIS.getName());
+
+  /**
+   * The 'USD-FIXED-1Y-SOFR-OIS' swap convention.
+   * <p>
+   * USD fixed vs SOFR OIS swap for terms greater than one year.
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention USD_FIXED_1Y_SOFR_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.USD_FIXED_1Y_SOFR_OIS.getName());
+
+  //-------------------------------------------------------------------------
+  /**
+   * The 'CHF-FIXED-TERM-SARON-OIS' swap convention.
+   * <p>
+   * CHF fixed vs SARON OIS swap for terms less than or equal to one year.
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention CHF_FIXED_TERM_SARON_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.CHF_FIXED_TERM_SARON_OIS.getName());
+
+  /**
+   * The 'CHF-FIXED-1Y-SARON-OIS' swap convention.
+   * <p>
+   * CHF fixed vs SARON OIS swap for terms greater than one year.
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention CHF_FIXED_1Y_SARON_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.CHF_FIXED_1Y_SARON_OIS.getName());
+
+  //-------------------------------------------------------------------------
   /**
    * The 'EUR-FIXED-TERM-EONIA-OIS' swap convention.
    * <p>
@@ -52,7 +95,7 @@ public final class FixedOvernightSwapConventions {
       FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.EUR_FIXED_TERM_EONIA_OIS.getName());
 
   /**
-   * The 'EUR-FIXED-1Y-EONIA_OIS' swap convention.
+   * The 'EUR-FIXED-1Y-EONIA-OIS' swap convention.
    * <p>
    * EUR fixed vs EONIA OIS swap for terms greater than one year.
    * Both legs pay annually and use day count 'Act/360'.
@@ -60,6 +103,26 @@ public final class FixedOvernightSwapConventions {
    */
   public static final FixedOvernightSwapConvention EUR_FIXED_1Y_EONIA_OIS =
       FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.EUR_FIXED_1Y_EONIA_OIS.getName());
+  
+  /**
+   * The 'EUR-FIXED-TERM-ESTR-OIS' swap convention.
+   * <p>
+   * EUR fixed vs ESTR OIS swap for terms less than or equal to one year.
+   * Both legs pay once at the end and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention EUR_FIXED_TERM_ESTR_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.EUR_FIXED_TERM_ESTR_OIS.getName());
+
+  /**
+   * The 'EUR-FIXED-1Y-ESTR-OIS' swap convention.
+   * <p>
+   * EUR fixed vs ESTR OIS swap for terms greater than one year.
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention EUR_FIXED_1Y_ESTR_OIS =
+      FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.EUR_FIXED_1Y_ESTR_OIS.getName());
 
   //-------------------------------------------------------------------------
   /**
@@ -88,7 +151,7 @@ public final class FixedOvernightSwapConventions {
    * <p>
    * JPY fixed vs TONAR OIS swap for terms less than or equal to one year.
    * Both legs pay once at the end and use day count 'Act/365F'.
-   * The spot date offset is 2 days and there is no payment date offset.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
    */
   public static final FixedOvernightSwapConvention JPY_FIXED_TERM_TONAR_OIS =
       FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.JPY_FIXED_TERM_TONAR_OIS.getName());
@@ -98,7 +161,7 @@ public final class FixedOvernightSwapConventions {
    * <p>
    * JPY fixed vs TONAR OIS swap for terms greater than one year.
    * Both legs pay annually and use day count 'Act/365F'.
-   * The spot date offset is 2 days and there is no payment date offset.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
    */
   public static final FixedOvernightSwapConvention JPY_FIXED_1Y_TONAR_OIS =
       FixedOvernightSwapConvention.of(StandardFixedOvernightSwapConventions.JPY_FIXED_1Y_TONAR_OIS.getName());

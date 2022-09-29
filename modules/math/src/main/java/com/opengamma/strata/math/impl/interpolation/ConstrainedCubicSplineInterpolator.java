@@ -1,11 +1,12 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 import com.google.common.primitives.Doubles;
 import com.opengamma.strata.collect.ArgChecker;
@@ -39,15 +40,10 @@ public class ConstrainedCubicSplineInterpolator extends PiecewisePolynomialInter
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yValues containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts - 1; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
-
     double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
     double[] yValuesSrt = Arrays.copyOf(yValues, nDataPts);
     DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
 
     final double[] intervals = _solver.intervalsCalculator(xValuesSrt);
     final double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
@@ -90,19 +86,15 @@ public class ConstrainedCubicSplineInterpolator extends PiecewisePolynomialInter
         ArgChecker.isFalse(Double.isInfinite(yValuesMatrix[j][i]), "yValuesMatrix containing Infinity");
       }
     }
-    for (int i = 0; i < nDataPts; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
 
-    double[] xValuesSrt = new double[nDataPts];
     DoubleMatrix[] coefMatrix = new DoubleMatrix[dim];
+    double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
+    int[] sortedPositions = IntStream.range(0, nDataPts).toArray();
+    DoubleArrayMath.sortPairs(xValuesSrt, sortedPositions);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
 
     for (int i = 0; i < dim; ++i) {
-      xValuesSrt = Arrays.copyOf(xValues, nDataPts);
-      double[] yValuesSrt = Arrays.copyOf(yValuesMatrix[i], nDataPts);
-      DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
+      double[] yValuesSrt = DoubleArrayMath.reorderedCopy(yValuesMatrix[i], sortedPositions);
 
       final double[] intervals = _solver.intervalsCalculator(xValuesSrt);
       final double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
@@ -152,11 +144,7 @@ public class ConstrainedCubicSplineInterpolator extends PiecewisePolynomialInter
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yValues containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts - 1; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
+    ArgChecker.noDuplicates(xValues, "xValues");
 
     final double[] intervals = _solver.intervalsCalculator(xValues);
     final double[] slopes = _solver.slopesCalculator(yValues, intervals);
@@ -196,7 +184,9 @@ public class ConstrainedCubicSplineInterpolator extends PiecewisePolynomialInter
     double[] res = new double[nData];
 
     for (int i = 1; i < nData - 1; ++i) {
-      res[i] = Math.signum(slopes[i - 1]) * Math.signum(slopes[i]) <= 0. ? 0. : 2. * slopes[i] * slopes[i - 1] / (slopes[i] + slopes[i - 1]);
+      res[i] = Math.signum(slopes[i - 1]) * Math.signum(slopes[i]) <= 0. ?
+          0. :
+          2. * slopes[i] * slopes[i - 1] / (slopes[i] + slopes[i - 1]);
     }
     res[0] = 1.5 * slopes[0] - 0.5 * res[1];
     res[nData - 1] = 1.5 * slopes[nData - 2] - 0.5 * res[nData - 2];
@@ -225,11 +215,11 @@ public class ConstrainedCubicSplineInterpolator extends PiecewisePolynomialInter
             Arrays.fill(sense[i], 0.);
           } else {
             if (sign == 0.) {
-              sense[i][k] = (slopes[i] * slopes[i] * slopeSensitivity[i - 1][k] + slopes[i - 1] * slopes[i - 1] * slopeSensitivity[i][k]) / (slopes[i] + slopes[i - 1]) /
-                  (slopes[i] + slopes[i - 1]);
+              sense[i][k] = (slopes[i] * slopes[i] * slopeSensitivity[i - 1][k] + slopes[i - 1] * slopes[i - 1] *
+                  slopeSensitivity[i][k]) / (slopes[i] + slopes[i - 1]) / (slopes[i] + slopes[i - 1]);
             } else {
-              sense[i][k] = 2. * (slopes[i] * slopes[i] * slopeSensitivity[i - 1][k] + slopes[i - 1] * slopes[i - 1] * slopeSensitivity[i][k]) / (slopes[i] + slopes[i - 1]) /
-                  (slopes[i] + slopes[i - 1]);
+              sense[i][k] = 2. * (slopes[i] * slopes[i] * slopeSensitivity[i - 1][k] + slopes[i - 1] * slopes[i - 1] *
+                  slopeSensitivity[i][k]) / (slopes[i] + slopes[i - 1]) / (slopes[i] + slopes[i - 1]);
             }
           }
         }

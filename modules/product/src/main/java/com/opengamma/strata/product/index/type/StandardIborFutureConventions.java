@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -14,8 +14,11 @@ import static com.opengamma.strata.basics.index.IborIndices.USD_LIBOR_3M;
 /**
  * Market standard Fixed-Ibor swap conventions.
  * <p>
- * http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+ * https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
+ * 
+ * @deprecated Use {@link StandardIborFutureContractSpecs}
  */
+@Deprecated
 final class StandardIborFutureConventions {
 
   /**

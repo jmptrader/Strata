@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,19 +8,19 @@ package com.opengamma.strata.pricer;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
 import static com.opengamma.strata.pricer.CompoundedRateType.CONTINUOUS;
 import static com.opengamma.strata.pricer.CompoundedRateType.PERIODIC;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.ValueType;
@@ -38,11 +38,11 @@ import com.opengamma.strata.market.param.CurrencyParameterSensitivity;
 /**
  * Test {@link ZeroRatePeriodicDiscountFactors}.
  */
-@Test
 public class ZeroRatePeriodicDiscountFactorsTest {
 
   private static final LocalDate DATE_VAL = date(2015, 6, 4);
   private static final LocalDate DATE_AFTER = date(2016, 7, 21);
+  private static final LocalDate DATE_BEFORE = date(2015, 5, 6);
 
   private static final CurveInterpolator INTERPOLATOR = CurveInterpolators.LINEAR;
   private static final CurveName NAME = CurveName.of("TestCurve");
@@ -66,22 +66,25 @@ public class ZeroRatePeriodicDiscountFactorsTest {
   private static final double TOLERANCE_DF = 1.0e-12;
   private static final double TOLERANCE_DELTA = 1.0e-10;
   private static final double TOLERANCE_DELTA_FD = 1.0e-8;
+  private static final double EPS = 1.0e-6;
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
-    assertEquals(test.getCurrency(), GBP);
-    assertEquals(test.getValuationDate(), DATE_VAL);
-    assertEquals(test.getCurve(), CURVE);
-    assertEquals(test.getParameterCount(), CURVE.getParameterCount());
-    assertEquals(test.getParameter(0), CURVE.getParameter(0));
-    assertEquals(test.getParameterMetadata(0), CURVE.getParameterMetadata(0));
-    assertEquals(test.withParameter(0, 1d).getCurve(), CURVE.withParameter(0, 1d));
-    assertEquals(test.withPerturbation((i, v, m) -> v + 1d).getCurve(), CURVE.withPerturbation((i, v, m) -> v + 1d));
-    assertEquals(test.findData(CURVE.getName()), Optional.of(CURVE));
-    assertEquals(test.findData(CurveName.of("Rubbish")), Optional.empty());
+    assertThat(test.getCurrency()).isEqualTo(GBP);
+    assertThat(test.getValuationDate()).isEqualTo(DATE_VAL);
+    assertThat(test.getCurve()).isEqualTo(CURVE);
+    assertThat(test.getParameterCount()).isEqualTo(CURVE.getParameterCount());
+    assertThat(test.getParameter(0)).isEqualTo(CURVE.getParameter(0));
+    assertThat(test.getParameterMetadata(0)).isEqualTo(CURVE.getParameterMetadata(0));
+    assertThat(test.withParameter(0, 1d).getCurve()).isEqualTo(CURVE.withParameter(0, 1d));
+    assertThat(test.withPerturbation((i, v, m) -> v + 1d).getCurve()).isEqualTo(CURVE.withPerturbation((i, v, m) -> v + 1d));
+    assertThat(test.findData(CURVE.getName())).isEqualTo(Optional.of(CURVE));
+    assertThat(test.findData(CurveName.of("Rubbish"))).isEqualTo(Optional.empty());
   }
 
+  @Test
   public void test_of_badCurve() {
     InterpolatedNodalCurve notYearFraction = InterpolatedNodalCurve.of(
         Curves.prices(NAME), DoubleArray.of(0, 10), DoubleArray.of(1, 2), INTERPOLATOR);
@@ -112,40 +115,77 @@ public class ZeroRatePeriodicDiscountFactorsTest {
         .build();
     InterpolatedNodalCurve curveNegativeNb = InterpolatedNodalCurve.of(
         metaNegativeNb, DoubleArray.of(0, 10), DoubleArray.of(1, 2), INTERPOLATOR);
-    assertThrowsIllegalArg(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notYearFraction));
-    assertThrowsIllegalArg(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notZeroRate));
-    assertThrowsIllegalArg(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notDayCount));
-    assertThrowsIllegalArg(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notCompoundPerYear));
-    assertThrowsIllegalArg(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, curveNegativeNb));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notYearFraction));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notZeroRate));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notDayCount));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, notCompoundPerYear));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, curveNegativeNb));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_discountFactor() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double expected = Math.pow(1.0d + CURVE.yValue(relativeYearFraction) / CMP_PERIOD,
         -CMP_PERIOD * relativeYearFraction);
-    assertEquals(test.discountFactor(DATE_AFTER), expected);
+    assertThat(test.discountFactor(DATE_AFTER)).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_discountFactor_beforeValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    assertThat(test.discountFactor(DATE_BEFORE)).isEqualTo(1d);
+  }
+  
+  @Test
+  public void test_discountFactorTimeDerivative() {
+    DiscountFactors test = DiscountFactors.of(GBP, DATE_VAL, CURVE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
+    double expectedP = test.discountFactor(relativeYearFraction + EPS);
+    double expectedM = test.discountFactor(relativeYearFraction - EPS);
+    assertThat(test.discountFactorTimeDerivative(relativeYearFraction)).isCloseTo((expectedP - expectedM) / (2 * EPS), offset(TOLERANCE_DELTA_FD));
+  }
+
+  @Test
+  public void test_discountFactorTimeDerivative_beforeValDate() {
+    DiscountFactors test = DiscountFactors.of(GBP, DATE_VAL, CURVE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_BEFORE);
+    assertThat(test.discountFactorTimeDerivative(relativeYearFraction)).isEqualTo(0d);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_zeroRate() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double discountFactor = test.discountFactor(DATE_AFTER);
     double zeroRate = test.zeroRate(DATE_AFTER);
-    assertEquals(Math.exp(-zeroRate * relativeYearFraction), discountFactor);
+    assertThat(Math.exp(-zeroRate * relativeYearFraction)).isEqualTo(discountFactor);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_discountFactorWithSpread_continuous() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactor(DATE_AFTER);
     double expected = df * Math.exp(-SPREAD * relativeYearFraction);
-    assertEquals(test.discountFactorWithSpread(DATE_AFTER, SPREAD, CONTINUOUS, 0), expected, TOLERANCE_DF);
+    assertThat(test.discountFactorWithSpread(DATE_AFTER, SPREAD, CONTINUOUS, 0)).isCloseTo(expected, offset(TOLERANCE_DF));
   }
 
+  @Test
+  public void test_discountFactor_withSpread_continuous_beforeValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    assertThat(test.discountFactorWithSpread(DATE_BEFORE, SPREAD, CONTINUOUS, 0)).isEqualTo(1d);
+  }
+
+  @Test
   public void test_discountFactorWithSpread_periodic() {
     int periodPerYear = 4;
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
@@ -153,58 +193,87 @@ public class ZeroRatePeriodicDiscountFactorsTest {
     double discountFactorBase = test.discountFactor(DATE_AFTER);
     double onePlus = Math.pow(discountFactorBase, -1.0d / (periodPerYear * relativeYearFraction));
     double expected = Math.pow(onePlus + SPREAD / periodPerYear, -periodPerYear * relativeYearFraction);
-    assertEquals(test.discountFactorWithSpread(DATE_AFTER, SPREAD, PERIODIC, periodPerYear), expected, TOLERANCE_DF);
+    assertThat(test.discountFactorWithSpread(DATE_AFTER, SPREAD, PERIODIC, periodPerYear)).isCloseTo(expected, offset(TOLERANCE_DF));
   }
 
+  @Test
+  public void test_discountFactor_withSpread_periodic_beforeValDate() {
+    int periodPerYear = 4;
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    assertThat(test.discountFactorWithSpread(DATE_BEFORE, SPREAD, PERIODIC, periodPerYear)).isEqualTo(1d);
+  }
+
+  @Test
   public void test_discountFactorWithSpread_smallYearFraction() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
-    assertEquals(test.discountFactorWithSpread(DATE_VAL, SPREAD, PERIODIC, 1), 1d, TOLERANCE_DF);
+    assertThat(test.discountFactorWithSpread(DATE_VAL, SPREAD, PERIODIC, 1)).isCloseTo(1d, offset(TOLERANCE_DF));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_zeroRatePointSensitivity() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactor(DATE_AFTER);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, -df * relativeYearFraction);
-    assertEquals(test.zeroRatePointSensitivity(DATE_AFTER), expected);
+    assertThat(test.zeroRatePointSensitivity(DATE_AFTER)).isEqualTo(expected);
   }
 
+  @Test
+  public void test_zeroRatePointSensitivity_beforeValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_BEFORE);
+    ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, 0d);
+    assertThat(test.zeroRatePointSensitivity(DATE_BEFORE)).isEqualTo(expected);
+  }
+
+  @Test
   public void test_zeroRatePointSensitivity_sensitivityCurrency() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactor(DATE_AFTER);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, USD, -df * relativeYearFraction);
-    assertEquals(test.zeroRatePointSensitivity(DATE_AFTER, USD), expected);
+    assertThat(test.zeroRatePointSensitivity(DATE_AFTER, USD)).isEqualTo(expected);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_continous() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactorWithSpread(DATE_AFTER, SPREAD, CONTINUOUS, 0);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, -df * relativeYearFraction);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_AFTER, SPREAD, CONTINUOUS, 0);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA));
   }
 
+  @Test
+  public void test_zeroRatePointSensitivityWithSpread_continuous_beforeValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_BEFORE);
+    ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, 0d);
+    assertThat(test.zeroRatePointSensitivityWithSpread(DATE_BEFORE, SPREAD, CONTINUOUS, 0)).isEqualTo(expected);
+  }
+
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_sensitivityCurrency_continous() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactorWithSpread(DATE_AFTER, SPREAD, CONTINUOUS, 0);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, USD, -df * relativeYearFraction);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_AFTER, USD, SPREAD, CONTINUOUS, 0);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA));
   }
 
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_periodic() {
     int periodPerYear = 4;
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactor(DATE_AFTER);
-    double z = -1.0/relativeYearFraction*Math.log(df);
+    double z = -1.0 / relativeYearFraction * Math.log(df);
     double shift = 1.0E-6;
     double zP = z + shift;
     double zM = z - shift;
@@ -219,16 +288,30 @@ public class ZeroRatePeriodicDiscountFactorsTest {
     double ddfSdz = (dfSP - dfSM) / (2 * shift);    
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, ddfSdz);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_AFTER, SPREAD, PERIODIC, periodPerYear);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA_FD);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA_FD));
   }
 
+  @Test
+  public void test_zeroRatePointSensitivityWithSpread_periodic_beforeValDate() {
+    int periodPerYear = 4;
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_BEFORE);
+    ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(
+        DATE_BEFORE, SPREAD, PERIODIC, periodPerYear);
+    assertThat(computed.getSensitivity()).isCloseTo(0d, offset(EPS));
+    assertThat(computed.getCurrency()).isEqualTo(GBP);
+    assertThat(computed.getCurveCurrency()).isEqualTo(GBP);
+    assertThat(computed.getYearFraction()).isEqualTo(relativeYearFraction);
+  }
+
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_sensitivityCurrency_periodic() {
     int periodPerYear = 4;
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_AFTER);
     double df = test.discountFactor(DATE_AFTER);
-    double z = -1.0/relativeYearFraction*Math.log(df);
+    double z = -1.0 / relativeYearFraction * Math.log(df);
     double shift = 1.0E-6;
     double zP = z + shift;
     double zM = z - shift;
@@ -243,47 +326,73 @@ public class ZeroRatePeriodicDiscountFactorsTest {
     double ddfSdz = (dfSP - dfSM) / (2 * shift);    
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, relativeYearFraction, USD, ddfSdz);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_AFTER, USD, SPREAD, PERIODIC, periodPerYear);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA_FD);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA_FD));
   }
 
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_smallYearFraction() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, 0d, 0.0d);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_VAL, SPREAD, CONTINUOUS, 0);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA_FD);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA_FD));
   }
 
+  @Test
   public void test_zeroRatePointSensitivityWithSpread_sensitivityCurrency_smallYearFraction() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     ZeroRateSensitivity expected = ZeroRateSensitivity.of(GBP, 0d, USD, 0.0d);
     ZeroRateSensitivity computed = test.zeroRatePointSensitivityWithSpread(DATE_VAL, USD, SPREAD, CONTINUOUS, 0);
-    assertTrue(computed.compareKey(expected) == 0);
-    assertEquals(computed.getSensitivity(), expected.getSensitivity(), TOLERANCE_DELTA_FD);
+    assertThat(computed.compareKey(expected) == 0).isTrue();
+    assertThat(computed.getSensitivity()).isCloseTo(expected.getSensitivity(), offset(TOLERANCE_DELTA_FD));
+  }
+
+  @Test
+  public void test_currencyParameterSensitivity_onValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    ZeroRateSensitivity sens = test.zeroRatePointSensitivity(DATE_VAL);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_VAL);
+    CurrencyParameterSensitivities expected = CurrencyParameterSensitivities.of(
+        CURVE.yValueParameterSensitivity(relativeYearFraction)
+            .multipliedBy(sens.getCurrency(), 0d));
+    assertThat(test.parameterSensitivity(sens)).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_currencyParameterSensitivity_beforeValDate() {
+    ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
+    ZeroRateSensitivity sens = test.zeroRatePointSensitivity(DATE_BEFORE);
+    double relativeYearFraction = ACT_365F.relativeYearFraction(DATE_VAL, DATE_BEFORE);
+    CurrencyParameterSensitivities expected = CurrencyParameterSensitivities.of(
+        CURVE.yValueParameterSensitivity(relativeYearFraction)
+            .multipliedBy(sens.getCurrency(), 0d));
+    assertThat(test.parameterSensitivity(sens)).isEqualTo(expected);
   }
 
   //-------------------------------------------------------------------------
   //-------------------------------------------------------------------------
+  @Test
   public void test_parameterSensitivity() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double sensiValue = 25d;
     ZeroRateSensitivity point = test.zeroRatePointSensitivity(DATE_AFTER);
     point = point.multipliedBy(sensiValue);
     CurrencyParameterSensitivities sensiObject = test.parameterSensitivity(point);
-    assertEquals(sensiObject.size(), 1);
+    assertThat(sensiObject.size()).isEqualTo(1);
     CurrencyParameterSensitivity sensi1 = sensiObject.getSensitivities().get(0);
-    assertEquals(sensi1.getCurrency(), GBP);
+    assertThat(sensi1.getCurrency()).isEqualTo(GBP);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_parameterSensitivity_full() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     double sensiValue = 25d;
     ZeroRateSensitivity point = test.zeroRatePointSensitivity(DATE_AFTER);
     point = point.multipliedBy(sensiValue);
     CurrencyParameterSensitivities sensiObject = test.parameterSensitivity(point);
-    assertEquals(sensiObject.getSensitivities().size(), 1);
+    assertThat(sensiObject.getSensitivities()).hasSize(1);
     DoubleArray sensi0 =  sensiObject.getSensitivities().get(0).getSensitivity();
     double shift = 1.0E-6;
     for (int i = 0; i < X.size(); i++) {
@@ -295,10 +404,11 @@ public class ZeroRatePeriodicDiscountFactorsTest {
       InterpolatedNodalCurve curveM =
           InterpolatedNodalCurve.of(META_ZERO_PERIODIC, X, yM, INTERPOLATOR);
       double dfM = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, curveM).discountFactor(DATE_AFTER);
-      assertEquals(sensi0.get(i), sensiValue * (dfP - dfM) / (2 * shift), TOLERANCE_DELTA_FD);
+      assertThat(sensi0.get(i)).isCloseTo(sensiValue * (dfP - dfM) / (2 * shift), offset(TOLERANCE_DELTA_FD));
     }    
   }
   
+  @Test
   public void test_parameterSensitivity_withSpread_full() {
     int periodPerYear = 2;
     double spread = 0.0011; // 11 bp
@@ -307,7 +417,7 @@ public class ZeroRatePeriodicDiscountFactorsTest {
     ZeroRateSensitivity point = test.zeroRatePointSensitivityWithSpread(DATE_AFTER, spread, PERIODIC, periodPerYear);
     point = point.multipliedBy(sensiValue);
     CurrencyParameterSensitivities sensiObject = test.parameterSensitivity(point);
-    assertEquals(sensiObject.getSensitivities().size(), 1);
+    assertThat(sensiObject.getSensitivities()).hasSize(1);
     DoubleArray sensi0 =  sensiObject.getSensitivities().get(0).getSensitivity();
     double shift = 1.0E-6;
     for (int i = 0; i < X.size(); i++) {
@@ -321,25 +431,28 @@ public class ZeroRatePeriodicDiscountFactorsTest {
           InterpolatedNodalCurve.of(META_ZERO_PERIODIC, X, yM, INTERPOLATOR);
       double dfM = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, curveM)
           .discountFactorWithSpread(DATE_AFTER, spread, PERIODIC, periodPerYear);
-      assertEquals(sensi0.get(i), sensiValue * (dfP - dfM) / (2 * shift), TOLERANCE_DELTA_FD, "With spread - " + i);
+      assertThat(sensi0.get(i)).as("With spread - " + i).isCloseTo(sensiValue * (dfP - dfM) / (2 * shift), offset(TOLERANCE_DELTA_FD));
     }    
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_createParameterSensitivity() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     DoubleArray sensitivities = DoubleArray.of(0.12, 0.15, 0.16);
     CurrencyParameterSensitivities sens = test.createParameterSensitivity(USD, sensitivities);
-    assertEquals(sens.getSensitivities().get(0), CURVE.createParameterSensitivity(USD, sensitivities));
+    assertThat(sens.getSensitivities().get(0)).isEqualTo(CURVE.createParameterSensitivity(USD, sensitivities));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withCurve() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE).withCurve(CURVE2);
-    assertEquals(test.getCurve(), CURVE2);
+    assertThat(test.getCurve()).isEqualTo(CURVE2);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     ZeroRatePeriodicDiscountFactors test = ZeroRatePeriodicDiscountFactors.of(GBP, DATE_VAL, CURVE);
     coverImmutableBean(test);

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -23,5 +23,15 @@ public interface ProductTrade
    * @return the product
    */
   public abstract Product getProduct();
+
+  //-------------------------------------------------------------------------
+  /**
+   * Returns an instance with the specified info.
+   * 
+   * @param info  the new info
+   * @return the instance with the specified info
+   */
+  @Override
+  public abstract ProductTrade withInfo(PortfolioItemInfo info);
 
 }

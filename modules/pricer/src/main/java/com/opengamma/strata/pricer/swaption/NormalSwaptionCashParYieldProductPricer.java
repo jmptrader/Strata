@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -77,7 +77,7 @@ public class NormalSwaptionCashParYieldProductPricer
     double expiry = dayCount.yearFraction(valuationDate, expiryDate);
     ResolvedSwap underlying = swaption.getUnderlying();
     ResolvedSwapLeg fixedLeg = fixedLeg(underlying);
-    double forward = getSwapPricer().parRate(underlying, ratesProvider);
+    double forward = forwardRate(swaption, ratesProvider);
     double numeraire = calculateNumeraire(swaption, fixedLeg, forward, ratesProvider);
     double strike = calculateStrike(fixedLeg);
     PutCall putCall = PutCall.ofPut(fixedLeg.getPayReceive().isReceive());

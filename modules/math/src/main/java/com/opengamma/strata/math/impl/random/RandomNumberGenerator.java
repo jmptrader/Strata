@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.random;
@@ -18,7 +18,7 @@ public interface RandomNumberGenerator {
    * @param size  the size of the resulting array
    * @return the array of random numbers
    */
-  double[] getVector(int size);
+  public abstract double[] getVector(int size);
 
   /**
    * Gets a list of random number arrays.
@@ -27,6 +27,6 @@ public interface RandomNumberGenerator {
    * @param listSize  the size of the list
    * @return the list of random number arrays
    */
-  List<double[]> getVectors(int arraySize, int listSize);
+  public abstract List<double[]> getVectors(int arraySize, int listSize);
 
 }

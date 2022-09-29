@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,13 +6,13 @@
 package com.opengamma.strata.product.swap.type;
 
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.date.BusinessDayConvention;
@@ -32,15 +32,13 @@ import com.opengamma.strata.product.swap.SwapTrade;
  * Test {@link FixedIborSwapConventions}.
  * <p>
  * These tests  match the table 18.1 in the following guide:
- * http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+ * https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
  */
-@Test
 public class FixedIborSwapConventionsTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
 
-  @DataProvider(name = "spotLag")
-  static Object[][] data_spot_lag() {
+  public static Object[][] data_spot_lag() {
     return new Object[][] {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, 2},
         {FixedIborSwapConventions.USD_FIXED_1Y_LIBOR_3M, 2},
@@ -56,14 +54,14 @@ public class FixedIborSwapConventionsTest {
     };
   }
 
-  @Test(dataProvider = "spotLag")
+  @ParameterizedTest
+  @MethodSource("data_spot_lag")
   public void test_spot_lag(ImmutableFixedIborSwapConvention convention, int lag) {
-    assertEquals(convention.getSpotDateOffset().getDays(), lag);
+    assertThat(convention.getSpotDateOffset().getDays()).isEqualTo(lag);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "period")
-  static Object[][] data_period() {
+  public static Object[][] data_period() {
     return new Object[][] {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, Frequency.P6M},
         {FixedIborSwapConventions.USD_FIXED_1Y_LIBOR_3M, Frequency.P12M},
@@ -79,14 +77,14 @@ public class FixedIborSwapConventionsTest {
     };
   }
 
-  @Test(dataProvider = "period")
+  @ParameterizedTest
+  @MethodSource("data_period")
   public void test_period(FixedIborSwapConvention convention, Frequency frequency) {
-    assertEquals(convention.getFixedLeg().getAccrualFrequency(), frequency);
+    assertThat(convention.getFixedLeg().getAccrualFrequency()).isEqualTo(frequency);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "dayCount")
-  static Object[][] data_day_count() {
+  public static Object[][] data_day_count() {
     return new Object[][] {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, DayCounts.THIRTY_U_360},
         {FixedIborSwapConventions.USD_FIXED_1Y_LIBOR_3M, DayCounts.ACT_360},
@@ -102,14 +100,14 @@ public class FixedIborSwapConventionsTest {
     };
   }
 
-  @Test(dataProvider = "dayCount")
+  @ParameterizedTest
+  @MethodSource("data_day_count")
   public void test_day_count(FixedIborSwapConvention convention, DayCount dayCount) {
-    assertEquals(convention.getFixedLeg().getDayCount(), dayCount);
+    assertThat(convention.getFixedLeg().getDayCount()).isEqualTo(dayCount);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "floatLeg")
-  static Object[][] data_float_leg() {
+  public static Object[][] data_float_leg() {
     return new Object[][] {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, IborIndices.USD_LIBOR_3M},
         {FixedIborSwapConventions.USD_FIXED_1Y_LIBOR_3M, IborIndices.USD_LIBOR_3M},
@@ -125,23 +123,23 @@ public class FixedIborSwapConventionsTest {
     };
   }
 
-  @Test(dataProvider = "floatLeg")
+  @ParameterizedTest
+  @MethodSource("data_float_leg")
   public void test_float_leg(FixedIborSwapConvention convention, IborIndex floatLeg) {
-    assertEquals(convention.getFloatingLeg().getIndex(), floatLeg);
+    assertThat(convention.getFloatingLeg().getIndex()).isEqualTo(floatLeg);
   }
 
   // For vanilla swaps the holidays calendars on the fixed leg should be
   // consistent with the maturity calendars on the floating leg
-  @Test(dataProvider = "floatLeg")
+  @ParameterizedTest
+  @MethodSource("data_float_leg")
   public void test_holiday_calendars_match(FixedIborSwapConvention convention, IborIndex floatLeg) {
-    assertEquals(
-        convention.getFixedLeg().getAccrualBusinessDayAdjustment().getCalendar(),
-        floatLeg.getMaturityDateOffset().getAdjustment().getCalendar());
+    assertThat(convention.getFixedLeg().getAccrualBusinessDayAdjustment().getCalendar())
+        .isEqualTo(floatLeg.getMaturityDateOffset().getAdjustment().getCalendar());
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "dayConvention")
-  static Object[][] data_day_convention() {
+  public static Object[][] data_day_convention() {
     return new Object[][] {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING},
         {FixedIborSwapConventions.USD_FIXED_1Y_LIBOR_3M, BusinessDayConventions.MODIFIED_FOLLOWING},
@@ -157,14 +155,14 @@ public class FixedIborSwapConventionsTest {
     };
   }
 
-  @Test(dataProvider = "dayConvention")
+  @ParameterizedTest
+  @MethodSource("data_day_convention")
   public void test_day_convention(FixedIborSwapConvention convention, BusinessDayConvention dayConvention) {
-    assertEquals(convention.getFixedLeg().getAccrualBusinessDayAdjustment().getConvention(), dayConvention);
+    assertThat(convention.getFixedLeg().getAccrualBusinessDayAdjustment().getConvention()).isEqualTo(dayConvention);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "stubIbor")
-  static Object[][] data_stub_ibor() {
+  public static Object[][] data_stub_ibor() {
     return new Object[][] {
         {FixedIborSwapConventions.EUR_FIXED_1Y_EURIBOR_3M, Tenor.TENOR_18M},
         {FixedIborSwapConventions.EUR_FIXED_1Y_EURIBOR_6M, Tenor.TENOR_18M},
@@ -177,17 +175,19 @@ public class FixedIborSwapConventionsTest {
         {FixedIborSwapConventions.USD_FIXED_6M_LIBOR_3M, Tenor.TENOR_9M},
     };
   }
-  
-  @Test(dataProvider = "stubIbor")
+
+  @ParameterizedTest
+  @MethodSource("data_stub_ibor")
   public void test_stub_ibor(FixedIborSwapConvention convention, Tenor tenor) {
     LocalDate tradeDate = LocalDate.of(2015, 10, 20);
     SwapTrade swap = convention.createTrade(tradeDate, tenor, BuySell.BUY, 1, 0.01, REF_DATA);
     ResolvedSwap swapResolved = swap.getProduct().resolve(REF_DATA);
     LocalDate endDate = swapResolved.getLeg(PayReceive.PAY).get().getEndDate();
-    assertTrue(endDate.isAfter(tradeDate.plus(tenor).minusMonths(1)));
-    assertTrue(endDate.isBefore(tradeDate.plus(tenor).plusMonths(1)));
+    assertThat(endDate.isAfter(tradeDate.plus(tenor).minusMonths(1))).isTrue();
+    assertThat(endDate.isBefore(tradeDate.plus(tenor).plusMonths(1))).isTrue();
   }
 
+  @Test
   public void coverage() {
     coverPrivateConstructor(FixedIborSwapConventions.class);
     coverPrivateConstructor(StandardFixedIborSwapConventions.class);

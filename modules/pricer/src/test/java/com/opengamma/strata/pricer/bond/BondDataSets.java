@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -25,6 +25,7 @@ import com.opengamma.strata.basics.date.HolidayCalendarIds;
 import com.opengamma.strata.basics.schedule.Frequency;
 import com.opengamma.strata.basics.schedule.PeriodicSchedule;
 import com.opengamma.strata.basics.schedule.StubConvention;
+import com.opengamma.strata.product.LegalEntityId;
 import com.opengamma.strata.product.SecurityId;
 import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.bond.BondFuture;
@@ -42,7 +43,7 @@ public final class BondDataSets {
 
   //      =====     Fixed coupon bonds, bond future, USD   =====      
   // Fixed coupon bonds
-  private static final StandardId ISSUER_ID_USD = StandardId.of("OG-Ticker", "GOVT1");
+  private static final LegalEntityId ISSUER_ID_USD = LegalEntityId.of("OG-Ticker", "GOVT1");
   private static final FixedCouponBondYieldConvention YIELD_CONVENTION_USD = FixedCouponBondYieldConvention.US_STREET;
   /** Notional of underlying bond */
   public static final double NOTIONAL_USD = 100000.0;
@@ -106,7 +107,7 @@ public final class BondDataSets {
   public static final LocalDate TRADE_DATE_USD = LocalDate.of(2011, 6, 19);
   private static final TradeInfo TRADE_INFO_USD = TradeInfo.builder().tradeDate(TRADE_DATE_USD).build();
   /** Quantity of bond future trade */
-  public static final long QUANTITY_USD = 1234l;
+  public static final long QUANTITY_USD = 1234L;
   /** Bond future trade */
   public static final BondFutureTrade FUTURE_TRADE_USD = BondFutureTrade.builder()
       .info(TRADE_INFO_USD)
@@ -119,7 +120,7 @@ public final class BondDataSets {
 
   //      =====     Fixed coupon bonds, bond future, EUR   =====      
   // bond basket
-  private static final StandardId ISSUER_ID_EUR = StandardId.of("OG-Ticker", "GOVT2");
+  private static final LegalEntityId ISSUER_ID_EUR = LegalEntityId.of("OG-Ticker", "GOVT2");
   private static final FixedCouponBondYieldConvention YIELD_CONVENTION_EUR = FixedCouponBondYieldConvention.DE_BONDS;
   /** Notional of underlying bond */
   public static final double NOTIONAL_EUR = 100000d;

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -62,13 +62,17 @@ public final class ValueType
    */
   public static final ValueType DISCOUNT_FACTOR = of("DiscountFactor");
   /**
+   * Type used when each value is a dividend yield - 'DividendYield'.
+   */
+  public static final ValueType DIVIDEND_YIELD = of("DividendYield");
+  /**
    * Type used when each value is a price index, as used for inflation products - 'PriceIndex'.
    */
   public static final ValueType PRICE_INDEX = of("PriceIndex");
   /**
-   * Type used when each value is an ISDA credit curve value - 'IsdaCredit'.
+   * Type used when each value is a recovery rate - 'RecoveryRate'.
    */
-  public static final ValueType ISDA_CREDIT = of("IsdaCredit");
+  public static final ValueType RECOVERY_RATE = of("RecoveryRate");
 
   /**
    * Type used when each value is a Black model implied volatility - 'BlackVolatility'.
@@ -114,6 +118,22 @@ public final class ValueType
    * Type used when each value is the SABR nu parameter - 'SabrNu'.
    */
   public static final ValueType SABR_NU = of("SabrNu");
+  /**
+   * Type used when each value is the SABR shift parameter - 'SabrShift'.
+   */
+  public static final ValueType SABR_SHIFT = of("SabrShift");
+  /**
+   * Type used when each value is a risk reversal - 'RiskReversal'.
+   */
+  public static final ValueType RISK_REVERSAL = of("RiskReversal");
+  /**
+   * Type used when each value is a strangle - 'Strangle'.
+   */
+  public static final ValueType STRANGLE = of("Strangle");
+  /**
+   * Type used when each value is a correlation - 'CORRELATION'.
+   */
+  public static final ValueType CORRELATION = of("CORRELATION");
 
   //-------------------------------------------------------------------------
   /**

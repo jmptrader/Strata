@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -69,16 +69,21 @@ public class MockRatesProvider
 
   @Override
   public ImmutableSet<IborIndex> getIborIndices() {
-    throw new UnsupportedOperationException();
+    return ImmutableSet.of();
   }
 
   @Override
   public ImmutableSet<OvernightIndex> getOvernightIndices() {
-    throw new UnsupportedOperationException();
+    return ImmutableSet.of();
   }
 
   @Override
   public ImmutableSet<PriceIndex> getPriceIndices() {
+    return ImmutableSet.of();
+  }
+
+  @Override
+  public ImmutableSet<Index> getTimeSeriesIndices() {
     throw new UnsupportedOperationException();
   }
 

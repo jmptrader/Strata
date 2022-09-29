@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -68,7 +68,8 @@ public class IborCapFloorDataSet {
       PutCall putCall,
       PayReceive payRec) {
 
-    IborCapFloorLeg leg = createCapFloorLegUnresolved(index, startDate, endDate, strikeSchedule, notionalSchedule, putCall, payRec);
+    IborCapFloorLeg leg =
+        createCapFloorLegUnresolved(index, startDate, endDate, strikeSchedule, notionalSchedule, putCall, payRec);
     return leg.resolve(REF_DATA);
   }
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -14,17 +14,17 @@ import java.util.function.Function;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
-import com.opengamma.strata.math.impl.linearalgebra.Decomposition;
-import com.opengamma.strata.math.impl.linearalgebra.DecompositionResult;
 import com.opengamma.strata.math.impl.linearalgebra.QRDecompositionCommons;
 import com.opengamma.strata.math.impl.linearalgebra.QRDecompositionResult;
 import com.opengamma.strata.math.impl.regression.LeastSquaresRegressionResult;
 import com.opengamma.strata.math.impl.statistics.descriptive.MeanCalculator;
 import com.opengamma.strata.math.impl.statistics.descriptive.SampleStandardDeviationCalculator;
+import com.opengamma.strata.math.linearalgebra.Decomposition;
+import com.opengamma.strata.math.linearalgebra.DecompositionResult;
 
 /**
  * Derive coefficients of n-degree polynomial that minimizes least squares error of fit by
- * using QR decomposition and back substitution
+ * using QR decomposition and back substitution.
  */
 public class PolynomialsLeastSquaresFitter {
 
@@ -32,12 +32,12 @@ public class PolynomialsLeastSquaresFitter {
   private final double[] _renorm = new double[2];
 
   /**
-   * Given a set of data (X_i, Y_i) and degrees of a polynomial, determines optimal coefficients of the polynomial
+   * Given a set of data (X_i, Y_i) and degrees of a polynomial, determines optimal coefficients of the polynomial.
    * @param xData X values of data
    * @param yData Y values of data
    * @param degree Degree of polynomial which fits the given data
    * @return LeastSquaresRegressionResult Containing optimal coefficients of the polynomial and difference between yData[i] and f(xData[i]),
-   * where f() is the polynomial with the derived coefficients
+   *   where f() is the polynomial with the derived coefficients
    */
   public LeastSquaresRegressionResult regress(double[] xData, double[] yData, int degree) {
 
@@ -45,12 +45,13 @@ public class PolynomialsLeastSquaresFitter {
   }
 
   /**
-   * Alternative regression method with different output
+   * Alternative regression method with different output.
    * @param xData X values of data
    * @param yData Y values of data
    * @param degree Degree of polynomial which fits the given data
    * @param normalize Normalize xData by mean and standard deviation if normalize == true
-   * @return PolynomialsLeastSquaresRegressionResult containing coefficients, rMatrix, degrees of freedom, norm of residuals, and mean, standard deviation
+   * @return PolynomialsLeastSquaresRegressionResult containing coefficients, rMatrix, degrees of freedom,
+   *  norm of residuals, and mean, standard deviation
    */
   public PolynomialsLeastSquaresFitterResult regressVerbose(
       double[] xData,
@@ -146,7 +147,7 @@ public class PolynomialsLeastSquaresFitter {
    * @param xDataMatrix _nData x (_degree + 1) matrix whose low vector is (xData[i]^0, xData[i]^1, ..., xData[i]^{_degree})
    * @param yDataVector the y-values
    * @param nData Number of data points
-   * @param degree
+   * @param degree  the degree
    */
   private LeastSquaresRegressionResult regress(
       DoubleMatrix xDataMatrix,
@@ -179,10 +180,10 @@ public class PolynomialsLeastSquaresFitter {
   /**
    * Under the QR decomposition, xDataMatrix = qMatrix * rMatrix, optimal coefficients of the
    * polynomial are computed by back substitution
-   * @param qMatrix
-   * @param rMatrix
-   * @param yDataVector
-   * @param degree
+   * @param qMatrix  the q-matrix
+   * @param rMatrix  the r-matrix
+   * @param yDataVector  the y-values
+   * @param degree  the degree
    * @return Coefficients of the polynomial which minimize least square
    */
   private double[] backSubstitution(
@@ -210,9 +211,9 @@ public class PolynomialsLeastSquaresFitter {
 
   /**
    *
-   * @param xDataMatrix
+   * @param xDataMatrix  the x-matrix
    * @param betas Optimal coefficients of the polynomial
-   * @param yDataVector
+   * @param yDataVector  the y-vlaues
    * @return Difference between yData[i] and f(xData[i]), where f() is the polynomial with derived coefficients
    */
   private double[] residualsSolver(DoubleMatrix xDataMatrix, double[] betas, DoubleArray yDataVector) {

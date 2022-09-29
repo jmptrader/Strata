@@ -1,17 +1,18 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.report.framework.expression;
 
+import static com.opengamma.strata.basics.StandardSchemes.OG_POSITION_SCHEME;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.collect.CollectProjectAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -29,7 +30,6 @@ import com.opengamma.strata.product.SecurityInfo;
 /**
  * Test {@link PositionTokenEvaluator}.
  */
-@Test
 public class PositionTokenEvaluatorTest {
 
   private static final CalculationFunctions FUNCTIONS = StandardComponents.calculationFunctions();
@@ -37,6 +37,7 @@ public class PositionTokenEvaluatorTest {
   private static final GenericSecurity SECURITY = GenericSecurity.of(
       SecurityInfo.of(SecurityId.of("OG-Test", "1"), 20, CurrencyAmount.of(USD, 10)));
 
+  @Test
   public void tokens() {
     PositionTokenEvaluator evaluator = new PositionTokenEvaluator();
     Set<String> tokens = evaluator.tokens(trade());
@@ -51,6 +52,7 @@ public class PositionTokenEvaluatorTest {
     assertThat(tokens).isEqualTo(expected);
   }
 
+  @Test
   public void evaluate() {
     PositionTokenEvaluator evaluator = new PositionTokenEvaluator();
     Position pos = trade();
@@ -71,7 +73,7 @@ public class PositionTokenEvaluatorTest {
   }
 
   private static Position trade() {
-    PositionInfo info = PositionInfo.of(StandardId.of("OG-Position", "1"));
+    PositionInfo info = PositionInfo.of(StandardId.of(OG_POSITION_SCHEME, "1"));
     return GenericSecurityPosition.ofNet(info, SECURITY, 6);
   }
 

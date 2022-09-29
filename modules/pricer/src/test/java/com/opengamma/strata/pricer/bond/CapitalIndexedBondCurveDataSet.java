@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -16,8 +16,6 @@ import static com.opengamma.strata.basics.index.PriceIndices.US_CPI_U;
 import java.time.LocalDate;
 
 import com.google.common.collect.ImmutableMap;
-import com.opengamma.strata.basics.StandardId;
-import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.FxMatrix;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
@@ -27,27 +25,30 @@ import com.opengamma.strata.market.curve.CurveMetadata;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
+import com.opengamma.strata.market.curve.LegalEntityGroup;
+import com.opengamma.strata.market.curve.RepoGroup;
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolator;
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolators;
 import com.opengamma.strata.pricer.DiscountFactors;
 import com.opengamma.strata.pricer.ZeroRateDiscountFactors;
 import com.opengamma.strata.pricer.rate.ImmutableRatesProvider;
+import com.opengamma.strata.product.LegalEntityId;
 
 /**
  * The data set for testing capital indexed bonds.
  */
 public class CapitalIndexedBondCurveDataSet {
 
-  private static final StandardId ISSUER_ID = StandardId.of("OG-Ticker", "GOVT");
-  private static final LegalEntityGroup GROUP_ISSUER = LegalEntityGroup.of("GOVT");
-  private static final BondGroup GROUP_REPO = BondGroup.of("GOVT BONDS");
+  public static final LegalEntityId ISSUER_ID = LegalEntityId.of("OG-Ticker", "GOVT");
+  public static final LegalEntityGroup GROUP_ISSUER = LegalEntityGroup.of("GOVT");
+  public static final RepoGroup GROUP_REPO = RepoGroup.of("GOVT BONDS");
   private static final CurveInterpolator INTERPOLATOR = CurveInterpolators.LINEAR;
   private static final CurveName ISSUER_CURVE_NAME = CurveName.of("issuerCurve");
   private static final CurveName REPO_CURVE_NAME = CurveName.of("repoCurve");
 
-  private static final InterpolatedNodalCurve ISSUER_CURVE;
-  private static final InterpolatedNodalCurve REPO_CURVE;
-  private static final InterpolatedNodalCurve CPI_CURVE;
+  public static final InterpolatedNodalCurve ISSUER_CURVE;
+  public static final InterpolatedNodalCurve REPO_CURVE;
+  public static final InterpolatedNodalCurve CPI_CURVE;
   private static final InterpolatedNodalCurve RPI_CURVE;
   private static final InterpolatedNodalCurve CPIJ_CURVE;
   static {
@@ -150,13 +151,11 @@ public class CapitalIndexedBondCurveDataSet {
   public static LegalEntityDiscountingProvider getLegalEntityDiscountingProvider(LocalDate valuationDate) {
     DiscountFactors dscIssuer = ZeroRateDiscountFactors.of(USD, valuationDate, ISSUER_CURVE);
     DiscountFactors dscRepo = ZeroRateDiscountFactors.of(USD, valuationDate, REPO_CURVE);
-    return LegalEntityDiscountingProvider.builder()
-        .issuerCurves(ImmutableMap.<Pair<LegalEntityGroup, Currency>, DiscountFactors>of(
-            Pair.<LegalEntityGroup, Currency>of(GROUP_ISSUER, USD), dscIssuer))
-        .legalEntityMap(ImmutableMap.<StandardId, LegalEntityGroup>of(ISSUER_ID, GROUP_ISSUER))
-        .repoCurves(ImmutableMap.<Pair<BondGroup, Currency>, DiscountFactors>of(
-            Pair.<BondGroup, Currency>of(GROUP_REPO, USD), dscRepo))
-        .bondMap(ImmutableMap.<StandardId, BondGroup>of(ISSUER_ID, GROUP_REPO))
+    return ImmutableLegalEntityDiscountingProvider.builder()
+        .issuerCurves(ImmutableMap.of(Pair.of(GROUP_ISSUER, USD), dscIssuer))
+        .issuerCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_ISSUER))
+        .repoCurves(ImmutableMap.of(Pair.of(GROUP_REPO, USD), dscRepo))
+        .repoCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_REPO))
         .build();
   }
 
@@ -169,13 +168,11 @@ public class CapitalIndexedBondCurveDataSet {
   public static LegalEntityDiscountingProvider getLegalEntityDiscountingProviderGb(LocalDate valuationDate) {
     DiscountFactors dscIssuer = ZeroRateDiscountFactors.of(GBP, valuationDate, ISSUER_CURVE);
     DiscountFactors dscRepo = ZeroRateDiscountFactors.of(GBP, valuationDate, REPO_CURVE);
-    return LegalEntityDiscountingProvider.builder()
-        .issuerCurves(ImmutableMap.<Pair<LegalEntityGroup, Currency>, DiscountFactors>of(
-            Pair.<LegalEntityGroup, Currency>of(GROUP_ISSUER, GBP), dscIssuer))
-        .legalEntityMap(ImmutableMap.<StandardId, LegalEntityGroup>of(ISSUER_ID, GROUP_ISSUER))
-        .repoCurves(ImmutableMap.<Pair<BondGroup, Currency>, DiscountFactors>of(
-            Pair.<BondGroup, Currency>of(GROUP_REPO, GBP), dscRepo))
-        .bondMap(ImmutableMap.<StandardId, BondGroup>of(ISSUER_ID, GROUP_REPO))
+    return ImmutableLegalEntityDiscountingProvider.builder()
+        .issuerCurves(ImmutableMap.of(Pair.of(GROUP_ISSUER, GBP), dscIssuer))
+        .issuerCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_ISSUER))
+        .repoCurves(ImmutableMap.of(Pair.of(GROUP_REPO, GBP), dscRepo))
+        .repoCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_REPO))
         .build();
   }
 
@@ -188,13 +185,11 @@ public class CapitalIndexedBondCurveDataSet {
   public static LegalEntityDiscountingProvider getLegalEntityDiscountingProviderJp(LocalDate valuationDate) {
     DiscountFactors dscIssuer = ZeroRateDiscountFactors.of(JPY, valuationDate, ISSUER_CURVE);
     DiscountFactors dscRepo = ZeroRateDiscountFactors.of(JPY, valuationDate, REPO_CURVE);
-    return LegalEntityDiscountingProvider.builder()
-        .issuerCurves(ImmutableMap.<Pair<LegalEntityGroup, Currency>, DiscountFactors>of(
-            Pair.<LegalEntityGroup, Currency>of(GROUP_ISSUER, JPY), dscIssuer))
-        .legalEntityMap(ImmutableMap.<StandardId, LegalEntityGroup>of(ISSUER_ID, GROUP_ISSUER))
-        .repoCurves(ImmutableMap.<Pair<BondGroup, Currency>, DiscountFactors>of(
-            Pair.<BondGroup, Currency>of(GROUP_REPO, JPY), dscRepo))
-        .bondMap(ImmutableMap.<StandardId, BondGroup>of(ISSUER_ID, GROUP_REPO))
+    return ImmutableLegalEntityDiscountingProvider.builder()
+        .issuerCurves(ImmutableMap.of(Pair.of(GROUP_ISSUER, JPY), dscIssuer))
+        .issuerCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_ISSUER))
+        .repoCurves(ImmutableMap.of(Pair.of(GROUP_REPO, JPY), dscRepo))
+        .repoCurveGroups(ImmutableMap.of(ISSUER_ID, GROUP_REPO))
         .build();
   }
 
@@ -214,7 +209,7 @@ public class CapitalIndexedBondCurveDataSet {
    * 
    * @return the issuer ID
    */
-  public static StandardId getIssuerId() {
+  public static LegalEntityId getIssuerId() {
     return ISSUER_ID;
   }
 
@@ -260,17 +255,17 @@ public class CapitalIndexedBondCurveDataSet {
       LocalDate.of(2015, 8, 31), LocalDate.of(2015, 9, 30), LocalDate.of(2015, 10, 31), LocalDate.of(2015, 11, 30),
       LocalDate.of(2015, 12, 31), LocalDate.of(2016, 1, 31) };
     double[] values = new double[] {211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
-      216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
-      216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
-      216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
-      216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
-      216.177, 216.33, 215.949, 216.687, 216.741, 217.631, 218.009, 218.178, 217.965, 218.011, 218.312, 218.439,
-      218.711, 218.803, 219.179, 220.223, 221.309, 223.467, 224.906, 225.964, 225.722, 225.922, 226.545, 226.889,
-      226.421, 226.23, 225.672, 226.655, 227.663, 229.392, 230.085, 229.815, 229.478, 229.104, 230.379, 231.407,
-      231.317, 230.221, 229.601, 230.28, 232.166, 232.773, 232.531, 232.945, 233.504, 233.596, 233.877, 234.149,
-      233.546, 233.069, 233.049, 233.916, 234.781, 236.293, 237.072, 237.9, 238.343, 238.25, 237.852, 238.031, 237.433,
-      236.151, 234.812, 233.707, 234.722, 236.119, 236.599, 237.805, 238.638, 238.654, 238.316, 237.945, 237.838,
-      237.336, 236.525, 236.916 };
+        216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
+        216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
+        216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
+        216.177, 216.33, 215.949, 211.143, 212.193, 212.709, 213.24, 213.856, 215.693, 215.351, 215.834, 215.969,
+        216.177, 216.33, 215.949, 216.687, 216.741, 217.631, 218.009, 218.178, 217.965, 218.011, 218.312, 218.439,
+        218.711, 218.803, 219.179, 220.223, 221.309, 223.467, 224.906, 225.964, 225.722, 225.922, 226.545, 226.889,
+        226.421, 226.23, 225.672, 226.655, 227.663, 229.392, 230.085, 229.815, 229.478, 229.104, 230.379, 231.407,
+        231.317, 230.221, 229.601, 230.28, 232.166, 232.773, 232.531, 232.945, 233.504, 233.596, 233.877, 234.149,
+        233.546, 233.069, 233.049, 233.916, 234.781, 236.293, 237.072, 237.9, 238.343, 238.25, 237.852, 238.031, 237.433,
+        236.151, 234.812, 233.707, 234.722, 236.119, 236.599, 237.805, 238.638, 238.654, 238.316, 237.945, 237.838,
+        237.336, 236.525, 236.916};
     LocalDateDoubleTimeSeriesBuilder builder = LocalDateDoubleTimeSeries.builder();
     for (int i = 0; i < values.length; ++i) {
       if (dates[i].isBefore(valuationDate)) {
@@ -293,7 +288,7 @@ public class CapitalIndexedBondCurveDataSet {
       LocalDate.of(2015, 8, 31), LocalDate.of(2015, 9, 30), LocalDate.of(2015, 10, 31), LocalDate.of(2015, 11, 30),
       LocalDate.of(2015, 12, 31), LocalDate.of(2016, 1, 31) };
     double[] values = new double[] {
-      255.4, 256.7, 257.1, 258.0, 258.5, 258.9, 258.6, 259.8, 259.6, 259.5, 259.8, 260.6, 258.8 };
+        255.4, 256.7, 257.1, 258.0, 258.5, 258.9, 258.6, 259.8, 259.6, 259.5, 259.8, 260.6, 258.8};
 
     LocalDateDoubleTimeSeriesBuilder builder = LocalDateDoubleTimeSeries.builder();
     for (int i = 0; i < values.length; ++i) {
@@ -322,9 +317,9 @@ public class CapitalIndexedBondCurveDataSet {
       LocalDate.of(2015, 7, 31), LocalDate.of(2015, 8, 31), LocalDate.of(2015, 9, 30), LocalDate.of(2015, 10, 31),
       LocalDate.of(2015, 11, 30), LocalDate.of(2015, 12, 31), LocalDate.of(2016, 1, 31) };
     double[] values = new double[] {
-      99.1, 99.2, 99.5, 99.8, 100, 100, 100.1, 100.4, 100.5, 100.7, 100.7, 100.6, 100.4, 100.5, 100.8, 103, 103.4,
-      103.4, 103.5, 103.5, 103.5, 103.6, 103.4, 103.2, 102.6, 102.5, 103, 103.3, 103.4, 103.4, 103.4, 103.4, 103.4,
-      103.5, 103.4, 103.3 };
+        99.1, 99.2, 99.5, 99.8, 100, 100, 100.1, 100.4, 100.5, 100.7, 100.7, 100.6, 100.4, 100.5, 100.8, 103, 103.4,
+        103.4, 103.5, 103.5, 103.5, 103.6, 103.4, 103.2, 102.6, 102.5, 103, 103.3, 103.4, 103.4, 103.4, 103.4, 103.4,
+        103.5, 103.4, 103.3};
 
     LocalDateDoubleTimeSeriesBuilder builder = LocalDateDoubleTimeSeries.builder();
     for (int i = 0; i < values.length; ++i) {

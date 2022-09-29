@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -17,6 +17,6 @@ public interface QuadratureWeightAndAbscissaFunction {
    * @param n The number of weights and abscissas to generate, not negative or zero
    * @return An object containing the weights and abscissas
    */
-  GaussianQuadratureData generate(int n);
+  public abstract GaussianQuadratureData generate(int n);
 
 }

@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.date;
@@ -10,28 +10,32 @@ import static com.opengamma.strata.basics.date.PeriodAdditionConventions.LAST_DA
 import static com.opengamma.strata.basics.date.PeriodAdditionConventions.NONE;
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static com.opengamma.strata.collect.TestHelper.date;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Locale;
+import java.util.Optional;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.google.common.collect.ImmutableMap;
+import com.opengamma.strata.collect.named.ExtendedEnum;
 
 /**
  * Test {@link PeriodAdditionConvention}.
  */
-@Test
 public class PeriodAdditionConventionTest {
 
-  @DataProvider(name = "types")
-  static Object[][] data_types() {
+  public static Object[][] data_types() {
     StandardPeriodAdditionConventions[] conv = StandardPeriodAdditionConventions.values();
     Object[][] result = new Object[conv.length][];
     for (int i = 0; i < conv.length; i++) {
@@ -40,17 +44,21 @@ public class PeriodAdditionConventionTest {
     return result;
   }
 
-  @Test(dataProvider = "types")
+  @ParameterizedTest
+  @MethodSource("data_types")
   public void test_null(PeriodAdditionConvention type) {
-    assertThrowsIllegalArg(() -> type.adjust(null, Period.ofMonths(3), HolidayCalendars.NO_HOLIDAYS));
-    assertThrowsIllegalArg(() -> type.adjust(date(2014, 7, 11), null, HolidayCalendars.NO_HOLIDAYS));
-    assertThrowsIllegalArg(() -> type.adjust(date(2014, 7, 11), Period.ofMonths(3), null));
-    assertThrowsIllegalArg(() -> type.adjust(null, null, null));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> type.adjust(null, Period.ofMonths(3), HolidayCalendars.NO_HOLIDAYS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> type.adjust(date(2014, 7, 11), null, HolidayCalendars.NO_HOLIDAYS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> type.adjust(date(2014, 7, 11), Period.ofMonths(3), null));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> type.adjust(null, null, null));
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "convention")
-  static Object[][] data_convention() {
+  public static Object[][] data_convention() {
     return new Object[][] {
         // None
         {NONE, date(2014, 7, 11), 1, date(2014, 8, 11)},  // Fri, Mon
@@ -67,14 +75,14 @@ public class PeriodAdditionConventionTest {
     };
   }
 
-  @Test(dataProvider = "convention")
+  @ParameterizedTest
+  @MethodSource("data_convention")
   public void test_convention(PeriodAdditionConvention convention, LocalDate input, int months, LocalDate expected) {
-    assertEquals(convention.adjust(input, Period.ofMonths(months), HolidayCalendars.SAT_SUN), expected);
+    assertThat(convention.adjust(input, Period.ofMonths(months), HolidayCalendars.SAT_SUN)).isEqualTo(expected);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "name")
-  static Object[][] data_name() {
+  public static Object[][] data_name() {
     return new Object[][] {
         {NONE, "None"},
         {LAST_DAY, "LastDay"},
@@ -82,45 +90,72 @@ public class PeriodAdditionConventionTest {
     };
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_name(PeriodAdditionConvention convention, String name) {
-    assertEquals(convention.getName(), name);
+    assertThat(convention.getName()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_toString(PeriodAdditionConvention convention, String name) {
-    assertEquals(convention.toString(), name);
+    assertThat(convention.toString()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_of_lookup(PeriodAdditionConvention convention, String name) {
-    assertEquals(PeriodAdditionConvention.of(name), convention);
+    assertThat(PeriodAdditionConvention.of(name)).isEqualTo(convention);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_extendedEnum(PeriodAdditionConvention convention, String name) {
     ImmutableMap<String, PeriodAdditionConvention> map = PeriodAdditionConvention.extendedEnum().lookupAll();
-    assertEquals(map.get(name), convention);
+    assertThat(map.get(name)).isEqualTo(convention);
   }
 
+  @Test
   public void test_of_lookup_notFound() {
-    assertThrowsIllegalArg(() -> PeriodAdditionConvention.of("Rubbish"));
+    assertThatIllegalArgumentException().isThrownBy(() -> PeriodAdditionConvention.of("Rubbish"));
   }
 
+  @Test
   public void test_of_lookup_null() {
-    assertThrowsIllegalArg(() -> PeriodAdditionConvention.of(null));
+    assertThatIllegalArgumentException().isThrownBy(() -> PeriodAdditionConvention.of(null));
   }
 
   //-------------------------------------------------------------------------
+  @Test
+  public void test_lenientLookup_constants() throws IllegalAccessException {
+    Field[] fields = PeriodAdditionConventions.class.getDeclaredFields();
+    for (Field field : fields) {
+      if (Modifier.isPublic(field.getModifiers()) &&
+          Modifier.isStatic(field.getModifiers()) &&
+          Modifier.isFinal(field.getModifiers())) {
+
+        String name = field.getName();
+        Object value = field.get(null);
+        ExtendedEnum<PeriodAdditionConvention> ext = PeriodAdditionConvention.extendedEnum();
+        assertThat(ext.findLenient(name)).isEqualTo(Optional.of(value));
+        assertThat(ext.findLenient(name.toLowerCase(Locale.ENGLISH))).isEqualTo(Optional.of(value));
+      }
+    }
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverPrivateConstructor(PeriodAdditionConventions.class);
     coverEnum(StandardPeriodAdditionConventions.class);
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(LAST_DAY);
   }
 
+  @Test
   public void test_jodaConvert() {
     assertJodaConvert(PeriodAdditionConvention.class, NONE);
     assertJodaConvert(PeriodAdditionConvention.class, LAST_BUSINESS_DAY);

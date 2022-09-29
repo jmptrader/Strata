@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -33,7 +33,7 @@ public class ForwardInflationEndInterpolatedRateComputationFn
    */
   public static final ForwardInflationEndInterpolatedRateComputationFn DEFAULT =
       new ForwardInflationEndInterpolatedRateComputationFn();
-  
+
   /**
    * Creates an instance.
    */

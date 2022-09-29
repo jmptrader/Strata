@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
@@ -10,25 +10,33 @@ import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 
 /**
- * Abstract class for interpolations based on piecewise polynomial functions 
+ * Abstract class for interpolations based on piecewise polynomial functions .
  */
 public abstract class PiecewisePolynomialInterpolator {
 
   /**
+   * Interpolate.
+   * 
    * @param xValues X values of data
    * @param yValues Y values of data
-   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials, number of intervals, degree of polynomials, dimension of spline
+   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials,
+   *  number of intervals, degree of polynomials, dimension of spline
    */
   public abstract PiecewisePolynomialResult interpolate(final double[] xValues, final double[] yValues);
 
   /**
+   * Interpolate.
+   * 
    * @param xValues X values of data
    * @param yValuesMatrix Y values of data
-   * @return Coefficient matrix whose i-th row vector is {a_n, a_{n-1}, ... } of f(x) = a_n * (x-x_i)^n + a_{n-1} * (x-x_i)^{n-1} +... for the i-th interval
+   * @return Coefficient matrix whose i-th row vector is {a_n, a_{n-1}, ... } 
+   *  of f(x) = a_n * (x-x_i)^n + a_{n-1} * (x-x_i)^{n-1} +... for the i-th interval
    */
   public abstract PiecewisePolynomialResult interpolate(final double[] xValues, final double[][] yValuesMatrix);
 
   /**
+   * Interpolate.
+   * 
    * @param xValues X values of data
    * @param yValues Y values of data
    * @param xKey  the key
@@ -65,6 +73,8 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
+   * Interpolate.
+   * 
    * @param xValues X values of data
    * @param yValues Y values of data
    * @param xKeys  the keys
@@ -107,6 +117,8 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
+   * Interpolate.
+   * 
    * @param xValues  the values
    * @param yValues  the values
    * @param xMatrix  the matrix
@@ -124,6 +136,8 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
+   * Interpolate.
+   * 
    * @param xValues  the values
    * @param yValuesMatrix  the matrix
    * @param x  the x
@@ -135,6 +149,8 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
+   * Interpolate.
+   * 
    * @param xValues  the values
    * @param yValuesMatrix  the matrix
    * @param x  the s
@@ -151,6 +167,8 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
+   * Interpolate.
+   * 
    * @param xValues  the values
    * @param yValuesMatrix  the matrix
    * @param xMatrix  the matrix
@@ -173,7 +191,7 @@ public abstract class PiecewisePolynomialInterpolator {
   }
 
   /**
-   * Derive interpolant on {xValues_i, yValues_i} and (yValues) node sensitivity 
+   * Derive interpolant on {xValues_i, yValues_i} and (yValues) node sensitivity.
    * @param xValues X values of data
    * @param yValues Y values of data
    * @return {@link PiecewisePolynomialResultsWithSensitivity}
@@ -181,7 +199,7 @@ public abstract class PiecewisePolynomialInterpolator {
   public abstract PiecewisePolynomialResultsWithSensitivity interpolateWithSensitivity(final double[] xValues, final double[] yValues);
 
   /**
-   * Hyman filter modifies derivative values at knot points which are initially computed by a "primary" interpolator
+   * Hyman filter modifies derivative values at knot points which are initially computed by a "primary" interpolator.
    * @return The primary interpolator for Hyman filter, interpolation method itself for other interpolators
    */
   public PiecewisePolynomialInterpolator getPrimaryMethod() {

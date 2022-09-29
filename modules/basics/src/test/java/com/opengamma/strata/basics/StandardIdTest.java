@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,45 +8,45 @@ package com.opengamma.strata.basics;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Test {@link StandardId}.
  */
-@Test
 public class StandardIdTest {
 
   private static final String SCHEME = "Scheme";
   private static final String OTHER_SCHEME = "Other";
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_factory_String_String() {
     StandardId test = StandardId.of("scheme:/+foo", "value");
-    assertEquals(test.getScheme(), "scheme:/+foo");
-    assertEquals(test.getValue(), "value");
-    assertEquals(test.toString(), "scheme:/+foo~value");
+    assertThat(test.getScheme()).isEqualTo("scheme:/+foo");
+    assertThat(test.getValue()).isEqualTo("value");
+    assertThat(test.toString()).isEqualTo("scheme:/+foo~value");
   }
 
-  @Test(expectedExceptions = IllegalArgumentException.class)
+  @Test
   public void test_factory_String_String_nullScheme() {
-    StandardId.of(null, "value");
+    assertThatIllegalArgumentException().isThrownBy(() -> StandardId.of(null, "value"));
   }
 
-  @Test(expectedExceptions = IllegalArgumentException.class)
+  @Test
   public void test_factory_String_String_nullValue() {
-    StandardId.of("Scheme", null);
+    assertThatIllegalArgumentException().isThrownBy(() -> StandardId.of("Scheme", null));
   }
 
-  @Test(expectedExceptions = IllegalArgumentException.class)
+  @Test
   public void test_factory_String_String_emptyValue() {
-    StandardId.of("Scheme", "");
+    assertThatIllegalArgumentException().isThrownBy(() -> StandardId.of("Scheme", ""));
   }
 
-  @DataProvider(name = "factoryValid")
-  Object[][] data_factoryValid() {
+  public static Object[][] data_factoryValid() {
     return new Object[][] {
         {"ABCDEFGHIJKLMNOPQRSTUVWXYZ", "123"},
         {"abcdefghijklmnopqrstuvwxyz", "123"},
@@ -55,13 +55,13 @@ public class StandardIdTest {
     };
   }
 
-  @Test(dataProvider = "factoryValid")
+  @ParameterizedTest
+  @MethodSource("data_factoryValid")
   public void test_factory_String_String_valid(String scheme, String value) {
     StandardId.of(scheme, value);
   }
 
-  @DataProvider(name = "factoryInvalid")
-  Object[][] data_factoryInvalid() {
+  public static Object[][] data_factoryInvalid() {
     return new Object[][] {
         {"", ""},
         {" ", "123"},
@@ -72,49 +72,56 @@ public class StandardIdTest {
     };
   }
 
-  @Test(dataProvider = "factoryInvalid", expectedExceptions = IllegalArgumentException.class)
+  @ParameterizedTest
+  @MethodSource("data_factoryInvalid")
   public void test_factory_String_String_invalid(String scheme, String value) {
-    StandardId.of(scheme, value);
+    assertThatIllegalArgumentException().isThrownBy(() -> StandardId.of(scheme, value));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_encodeScheme() {
-    String test = StandardId.encodeScheme("http://www.opengamma.com/foo/../~bar#test");
-    assertEquals(test, "http://www.opengamma.com/foo/../%7Ebar%23test");
+    String testScheme = StandardId.encodeScheme("https://opengamma.com/foo/../~bar#test");
+    String expectedScheme = "https://opengamma.com/foo/../%7Ebar%23test";
+
+    assertThat(testScheme).isEqualTo(expectedScheme);
+    // Test use of the encoded scheme
+    assertThat(StandardId.of(testScheme, "value").getScheme()).isEqualTo(expectedScheme);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "formats")
-  Object[][] data_formats() {
+  public static Object[][] data_formats() {
     return new Object[][] {
         {"Value", "A~Value"},
         {"a+b", "A~a+b"},
     };
   }
 
-  @Test(dataProvider = "formats")
+  @ParameterizedTest
+  @MethodSource("data_formats")
   public void test_formats_toString(String value, String expected) {
     StandardId test = StandardId.of("A", value);
-    assertEquals(test.toString(), expected);
+    assertThat(test.toString()).isEqualTo(expected);
   }
 
-  @Test(dataProvider = "formats")
+  @ParameterizedTest
+  @MethodSource("data_formats")
   public void test_formats_parse(String value, String text) {
     StandardId test = StandardId.parse(text);
-    assertEquals(test.getScheme(), "A");
-    assertEquals(test.getValue(), value);
+    assertThat(test.getScheme()).isEqualTo("A");
+    assertThat(test.getValue()).isEqualTo(value);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_parse() {
     StandardId test = StandardId.parse("Scheme~value");
-    assertEquals(test.getScheme(), SCHEME);
-    assertEquals(test.getValue(), "value");
-    assertEquals(test.toString(), "Scheme~value");
+    assertThat(test.getScheme()).isEqualTo(SCHEME);
+    assertThat(test.getValue()).isEqualTo("value");
+    assertThat(test.toString()).isEqualTo("Scheme~value");
   }
 
-  @DataProvider(name = "parseInvalidFormat")
-  Object[][] data_parseInvalidFormat() {
+  public static Object[][] data_parseInvalidFormat() {
     return new Object[][] {
         {"Scheme"},
         {"Scheme~"},
@@ -124,39 +131,30 @@ public class StandardIdTest {
     };
   }
 
-  @Test(dataProvider = "parseInvalidFormat", expectedExceptions = IllegalArgumentException.class)
+  @ParameterizedTest
+  @MethodSource("data_parseInvalidFormat")
   public void test_parse_invalidFormat(String text) {
-    StandardId.parse(text);
+    assertThatIllegalArgumentException().isThrownBy(() -> StandardId.parse(text));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_equals() {
     StandardId d1a = StandardId.of(SCHEME, "d1");
     StandardId d1b = StandardId.of(SCHEME, "d1");
     StandardId d2 = StandardId.of(SCHEME, "d2");
     StandardId d3 = StandardId.of("Different", "d1");
-    assertEquals((Object) d1a.equals(d1a), true);
-    assertEquals((Object) d1a.equals(d1b), true);
-    assertEquals((Object) d1a.equals(d2), false);
-    assertEquals((Object) d1b.equals(d1a), true);
-    assertEquals((Object) d1b.equals(d1b), true);
-    assertEquals((Object) d1b.equals(d2), false);
-    assertEquals((Object) d2.equals(d1a), false);
-    assertEquals((Object) d2.equals(d1b), false);
-    assertEquals((Object) d2.equals(d2), true);
-    assertEquals((Object) d3.equals(d1a), false);
-    assertEquals((Object) d3.equals(d2), false);
-    assertEquals((Object) d3.equals(d3), true);
-    assertEquals((Object) d1b.equals("d1"), false);
-    assertEquals((Object) d1b.equals(null), false);
+    assertThat(d1a)
+        .isEqualTo(d1a)
+        .isEqualTo(d1b)
+        .isNotEqualTo(d2)
+        .isNotEqualTo(d3)
+        .isNotEqualTo("")
+        .isNotEqualTo(null)
+        .hasSameHashCodeAs(d1b);
   }
 
-  public void test_hashCode() {
-    StandardId d1a = StandardId.of(SCHEME, "d1");
-    StandardId d1b = StandardId.of(SCHEME, "d1");
-    assertEquals((Object) d1b.hashCode(), d1a.hashCode());
-  }
-
+  @Test
   public void test_comparisonByScheme() {
     StandardId id1 = StandardId.of(SCHEME, "123");
     StandardId id2 = StandardId.of(OTHER_SCHEME, "234");
@@ -164,6 +162,7 @@ public class StandardIdTest {
     assertThat(id1).isGreaterThan(id2);
   }
 
+  @Test
   public void test_comparisonWithSchemeSame() {
     StandardId id1 = StandardId.of(SCHEME, "123");
     StandardId id2 = StandardId.of(SCHEME, "234");
@@ -171,10 +170,12 @@ public class StandardIdTest {
     assertThat(id1).isLessThan(id2);
   }
 
+  @Test
   public void coverage() {
     coverImmutableBean(StandardId.of(SCHEME, "123"));
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(StandardId.of(SCHEME, "123"));
   }

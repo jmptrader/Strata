@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -19,6 +19,6 @@ public interface IntIntConsumer {
    * @param intValue1  the first argument
    * @param intValue2  the second argument
    */
-  void accept(int intValue1, int intValue2);
+  public abstract void accept(int intValue1, int intValue2);
 
 }

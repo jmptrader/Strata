@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -242,6 +242,6 @@ public interface MarketDataBox<T> {
    *
    * @return a stream over the contents of the box
    */
-  public Stream<T> stream();
+  public abstract Stream<T> stream();
 
 }

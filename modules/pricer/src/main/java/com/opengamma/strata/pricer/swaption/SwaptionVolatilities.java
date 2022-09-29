@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -16,7 +16,7 @@ import com.opengamma.strata.market.param.ParameterizedData;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
 import com.opengamma.strata.market.sensitivity.PointSensitivity;
 import com.opengamma.strata.product.common.PutCall;
-import com.opengamma.strata.product.swap.type.FixedIborSwapConvention;
+import com.opengamma.strata.product.swap.type.FixedFloatSwapConvention;
 
 /**
  * Volatilities for pricing swaptions.
@@ -39,7 +39,7 @@ public interface SwaptionVolatilities
    * 
    * @return the convention
    */
-  public abstract FixedIborSwapConvention getConvention();
+  public abstract FixedFloatSwapConvention getConvention();
 
   /**
    * Gets the type of volatility returned by the {@link SwaptionVolatilities#volatility} method.
@@ -149,7 +149,7 @@ public interface SwaptionVolatilities
    * @return the price
    * @throws RuntimeException if the value cannot be obtained
    */
-  public double price(
+  public abstract double price(
       double expiry,
       double tenor,
       PutCall putCall,

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -25,6 +25,6 @@ public interface SingleRootFinder<S, T> {
    * @return a root lying between x1 and x2
    */
   @SuppressWarnings("unchecked")
-  S getRoot(Function<S, T> function, S... roots);
+  public abstract S getRoot(Function<S, T> function, S... roots);
 
 }

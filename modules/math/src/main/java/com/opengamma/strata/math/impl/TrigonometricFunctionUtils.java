@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl;
@@ -13,6 +13,7 @@ import com.opengamma.strata.collect.ArgChecker;
  * Trigonometric utilities.
  */
 public class TrigonometricFunctionUtils {
+// CSOFF: JavadocMethod
 
   private static final ComplexNumber NEGATIVE_I = new ComplexNumber(0, -1);
 
@@ -21,7 +22,7 @@ public class TrigonometricFunctionUtils {
   }
 
   /**
-   * arccos - the inverse of cos
+   * arccos - the inverse of cos.
    * @param z A complex number
    * @return acos(z)
    */
@@ -160,6 +161,11 @@ public class TrigonometricFunctionUtils {
     ComplexNumber z2 = ComplexMathUtils.exp(z);
     ComplexNumber z3 = ComplexMathUtils.exp(ComplexMathUtils.multiply(z, -1));
     return ComplexMathUtils.divide(ComplexMathUtils.subtract(z2, z3), ComplexMathUtils.add(z2, z3));
+  }
+
+  //-------------------------------------------------------------------------
+  // restricted constructor
+  private TrigonometricFunctionUtils() {
   }
 
 }

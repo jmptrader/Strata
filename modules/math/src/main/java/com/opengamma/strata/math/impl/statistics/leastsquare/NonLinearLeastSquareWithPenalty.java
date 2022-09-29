@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.leastsquare;
@@ -12,12 +12,12 @@ import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 import com.opengamma.strata.math.MathException;
 import com.opengamma.strata.math.impl.differentiation.VectorFieldFirstOrderDifferentiator;
-import com.opengamma.strata.math.impl.linearalgebra.Decomposition;
 import com.opengamma.strata.math.impl.linearalgebra.DecompositionFactory;
-import com.opengamma.strata.math.impl.linearalgebra.DecompositionResult;
 import com.opengamma.strata.math.impl.matrix.MatrixAlgebra;
 import com.opengamma.strata.math.impl.matrix.MatrixAlgebraFactory;
 import com.opengamma.strata.math.impl.matrix.OGMatrixAlgebra;
+import com.opengamma.strata.math.linearalgebra.Decomposition;
+import com.opengamma.strata.math.linearalgebra.DecompositionResult;
 
 /**
  * Modification to NonLinearLeastSquare to use a penalty function add to the normal chi^2 term of the form $a^TPa$ where
@@ -160,9 +160,9 @@ public class NonLinearLeastSquareWithPenalty {
    * @param startPos Initial value of the parameters
    * @param penalty Penalty matrix
    * @param allowedValue a function which returned true if the new trial position is allowed by the model. An example
-   * would be to enforce positive parameters
-   * without resorting to a non-linear parameter transform. In some circumstances this approach will lead to slow
-   * convergence.
+   *   would be to enforce positive parameters
+   *   without resorting to a non-linear parameter transform. In some circumstances this approach will lead to slow
+   *   convergence.
    * @return value of the fitted parameters
    */
   public LeastSquareWithPenaltyResults solve(
@@ -210,9 +210,9 @@ public class NonLinearLeastSquareWithPenalty {
    * @param startPos Initial value of the parameters
    * @param penalty Penalty matrix (must be positive semi-definite)
    * @param allowedValue a function which returned true if the new trial position is allowed by the model. An example
-   * would be to enforce positive parameters
-   * without resorting to a non-linear parameter transform. In some circumstances this approach will lead to slow
-   * convergence.
+   *   would be to enforce positive parameters
+   *   without resorting to a non-linear parameter transform. In some circumstances this approach will lead to slow
+   *   convergence.
    * @return the least-square results
    */
   public LeastSquareWithPenaltyResults solve(

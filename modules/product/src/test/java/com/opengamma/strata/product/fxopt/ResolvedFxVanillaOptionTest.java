@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -9,20 +9,20 @@ import static com.opengamma.strata.basics.currency.Currency.EUR;
 import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.common.LongShort.LONG;
 import static com.opengamma.strata.product.common.LongShort.SHORT;
 import static com.opengamma.strata.product.common.PutCall.CALL;
 import static com.opengamma.strata.product.common.PutCall.PUT;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.currency.CurrencyAmount;
 import com.opengamma.strata.product.fx.ResolvedFxSingle;
@@ -30,7 +30,6 @@ import com.opengamma.strata.product.fx.ResolvedFxSingle;
 /**
  * Test {@link ResolvedFxVanillaOption}.
  */
-@Test
 public class ResolvedFxVanillaOptionTest {
 
   private static final ZonedDateTime EXPIRY_DATE_TIME = ZonedDateTime.of(2015, 2, 14, 12, 15, 0, 0, ZoneOffset.UTC);
@@ -45,42 +44,49 @@ public class ResolvedFxVanillaOptionTest {
       CurrencyAmount.of(EUR, -NOTIONAL), CurrencyAmount.of(GBP, NOTIONAL * STRIKE_RE), PAYMENT_DATE);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     ResolvedFxVanillaOption test = sut();
-    assertEquals(test.getExpiry(), EXPIRY_DATE_TIME);
-    assertEquals(test.getExpiryDate(), EXPIRY_DATE_TIME.toLocalDate());
-    assertEquals(test.getLongShort(), LONG);
-    assertEquals(test.getCounterCurrency(), USD);
-    assertEquals(test.getPutCall(), CALL);
-    assertEquals(test.getStrike(), STRIKE);
-    assertEquals(test.getUnderlying(), FX);
+    assertThat(test.getExpiry()).isEqualTo(EXPIRY_DATE_TIME);
+    assertThat(test.getExpiryDate()).isEqualTo(EXPIRY_DATE_TIME.toLocalDate());
+    assertThat(test.getLongShort()).isEqualTo(LONG);
+    assertThat(test.getCounterCurrency()).isEqualTo(USD);
+    assertThat(test.getPutCall()).isEqualTo(CALL);
+    assertThat(test.getStrike()).isEqualTo(STRIKE);
+    assertThat(test.getUnderlying()).isEqualTo(FX);
+    assertThat(test.getCurrencyPair()).isEqualTo(FX.getCurrencyPair());
   }
 
+  @Test
   public void test_builder_inverseFx() {
     ResolvedFxVanillaOption test = sut2();
-    assertEquals(test.getExpiry(), EXPIRY_DATE_TIME.plusSeconds(1));
-    assertEquals(test.getExpiryDate(), EXPIRY_DATE_TIME.toLocalDate());
-    assertEquals(test.getLongShort(), SHORT);
-    assertEquals(test.getCounterCurrency(), GBP);
-    assertEquals(test.getPutCall(), PUT);
-    assertEquals(test.getStrike(), STRIKE_RE);
-    assertEquals(test.getUnderlying(), FX_RE);
+    assertThat(test.getExpiry()).isEqualTo(EXPIRY_DATE_TIME.plusSeconds(1));
+    assertThat(test.getExpiryDate()).isEqualTo(EXPIRY_DATE_TIME.toLocalDate());
+    assertThat(test.getLongShort()).isEqualTo(SHORT);
+    assertThat(test.getCounterCurrency()).isEqualTo(GBP);
+    assertThat(test.getPutCall()).isEqualTo(PUT);
+    assertThat(test.getStrike()).isEqualTo(STRIKE_RE);
+    assertThat(test.getUnderlying()).isEqualTo(FX_RE);
   }
 
+  @Test
   public void test_builder_earlyPaymentDate() {
-    assertThrowsIllegalArg(() -> ResolvedFxVanillaOption.builder()
-        .longShort(LONG)
-        .expiry(LocalDate.of(2015, 2, 21).atStartOfDay(ZoneOffset.UTC))
-        .underlying(FX)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> ResolvedFxVanillaOption.builder()
+            .longShort(LONG)
+            .expiry(LocalDate.of(2015, 2, 21).atStartOfDay(ZoneOffset.UTC))
+            .underlying(FX)
+            .build());
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

@@ -1,23 +1,23 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.minimization;
 
-import static org.testng.AssertJUnit.assertTrue;
+import static com.opengamma.strata.math.MathUtils.pow2;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.function.Function;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.math.MathException;
-import com.opengamma.strata.math.impl.FunctionUtils;
 
 /**
  * Test.
  */
-@Test
 public class ParabolicMinimumBracketerTest extends MinimumBracketerTestCase {
   private static final MinimumBracketer BRACKETER = new ParabolicMinimumBracketer();
   private static final Function<Double, Double> LINEAR = new Function<Double, Double>() {
@@ -48,7 +48,7 @@ public class ParabolicMinimumBracketerTest extends MinimumBracketerTestCase {
 
     @Override
     public Double apply(final Double x) {
-      return FunctionUtils.square((x - 50) / 50.0);
+      return pow2((x - 50) / 50.0);
     }
   };
 
@@ -57,9 +57,10 @@ public class ParabolicMinimumBracketerTest extends MinimumBracketerTestCase {
     return BRACKETER;
   }
 
-  @Test(expectedExceptions = MathException.class)
+  @Test
   public void test() {
-    BRACKETER.getBracketedPoints(LINEAR, 0., 1.);
+    assertThatExceptionOfType(MathException.class)
+        .isThrownBy(() -> BRACKETER.getBracketedPoints(LINEAR, 0., 1.));
   }
 
   @Test
@@ -84,12 +85,12 @@ public class ParabolicMinimumBracketerTest extends MinimumBracketerTestCase {
   private void assertFunction(final Function<Double, Double> f, final double xLower, final double xUpper) {
     final double[] result = BRACKETER.getBracketedPoints(f, xLower, xUpper);
     if (result[0] < result[1]) {
-      assertTrue(result[1] < result[2]);
+      assertThat(result[1] < result[2]).isTrue();
     } else {
-      assertTrue(result[2] < result[1]);
+      assertThat(result[2] < result[1]).isTrue();
     }
     final double f2 = f.apply(result[1]);
-    assertTrue(f.apply(result[0]) > f2);
-    assertTrue(f.apply(result[2]) > f2);
+    assertThat(f.apply(result[0]) > f2).isTrue();
+    assertThat(f.apply(result[2]) > f2).isTrue();
   }
 }

@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
@@ -11,7 +11,8 @@ import com.opengamma.strata.collect.array.DoubleMatrix;
 /**
  * Result of interpolation by piecewise polynomial containing
  * _knots: Positions of knots
- * _coefMatrix: Coefficient matrix whose i-th row vector is { a_n, a_{n-1}, ...} for the i-th interval, where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + ....
+ * _coefMatrix: Coefficient matrix whose i-th row vector is { a_n, a_{n-1}, ...}
+ * for the i-th interval, where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + ....
  * In multidimensional cases, coefficients for the i-th interval of the j-th spline is in (j*(i-1) + i) -th row vector.
  * _nIntervals: Number of intervals, which should be (Number of knots) - 1
  * _order: Number of coefficients in polynomial, which is equal to (polynomial degree) + 1
@@ -26,7 +27,7 @@ public class PiecewisePolynomialResult {
   private int _dim;
 
   /**
-   * Constructor
+   * Creates an instance.
    * @param knots  the knots
    * @param coefMatrix  the coefMatrix
    * @param order  the order
@@ -43,7 +44,7 @@ public class PiecewisePolynomialResult {
   }
 
   /**
-   * Access _knots
+   * Access _knots.
    * @return the knots
    */
   public DoubleArray getKnots() {
@@ -51,7 +52,7 @@ public class PiecewisePolynomialResult {
   }
 
   /**
-   * Access _coefMatrix
+   * Access _coefMatrix.
    * @return Coefficient Matrix
    */
   public DoubleMatrix getCoefMatrix() {
@@ -59,7 +60,7 @@ public class PiecewisePolynomialResult {
   }
 
   /**
-   * Access _nIntervals
+   * Access _nIntervals.
    * @return Number of Intervals
    */
   public int getNumberOfIntervals() {
@@ -67,7 +68,7 @@ public class PiecewisePolynomialResult {
   }
 
   /**
-   * Access _order
+   * Access _order.
    * @return Number of coefficients in polynomial; 2 if _nIntervals=1, 3 if _nIntervals=2, 4 otherwise
    */
   public int getOrder() {
@@ -75,7 +76,7 @@ public class PiecewisePolynomialResult {
   }
 
   /**
-   * Access _dim
+   * Access _dim.
    * @return Dimension of spline 
    */
   public int getDimensions() {

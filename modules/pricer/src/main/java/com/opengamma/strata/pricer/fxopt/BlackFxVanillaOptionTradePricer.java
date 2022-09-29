@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,6 +8,7 @@ package com.opengamma.strata.pricer.fxopt;
 import java.time.LocalDate;
 
 import com.opengamma.strata.basics.currency.CurrencyAmount;
+import com.opengamma.strata.basics.currency.FxRate;
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount;
 import com.opengamma.strata.basics.currency.Payment;
 import com.opengamma.strata.collect.ArgChecker;
@@ -20,7 +21,7 @@ import com.opengamma.strata.product.fxopt.ResolvedFxVanillaOption;
 import com.opengamma.strata.product.fxopt.ResolvedFxVanillaOptionTrade;
 
 /**
- * Pricer for foreign exchange vanilla option trades with a lognormal model.
+ * Pricer for FX vanilla option trades with a lognormal model.
  * <p>
  * This function provides the ability to price an {@link FxVanillaOptionTrade}.
  */
@@ -57,7 +58,7 @@ public class BlackFxVanillaOptionTradePricer {
 
   //-------------------------------------------------------------------------
   /**
-   * Calculates the present value of the foreign exchange vanilla option trade.
+   * Calculates the present value of the FX vanilla option trade.
    * <p>
    * The present value of the trade is the value on the valuation date.
    * 
@@ -75,12 +76,12 @@ public class BlackFxVanillaOptionTradePricer {
     CurrencyAmount pvProduct = productPricer.presentValue(product, ratesProvider, volatilities);
     Payment premium = trade.getPremium();
     CurrencyAmount pvPremium = paymentPricer.presentValue(premium, ratesProvider);
-    return MultiCurrencyAmount.of(pvProduct, pvPremium);
+    return MultiCurrencyAmount.of(pvProduct).plus(pvPremium);
   }
 
   //-------------------------------------------------------------------------
   /**
-   * Calculates the present value sensitivity of the foreign exchange vanilla option trade.
+   * Calculates the present value sensitivity of the FX vanilla option trade.
    * <p>
    * The present value sensitivity of the trade is the sensitivity of the present value to
    * the underlying curves.
@@ -92,14 +93,14 @@ public class BlackFxVanillaOptionTradePricer {
    * @param volatilities  the Black volatility provider
    * @return the present value curve sensitivity of the trade
    */
-  public PointSensitivities presentValueSensitivityRates(
+  public PointSensitivities presentValueSensitivityRatesStickyStrike(
       ResolvedFxVanillaOptionTrade trade,
       RatesProvider ratesProvider,
       BlackFxOptionVolatilities volatilities) {
 
     ResolvedFxVanillaOption product = trade.getProduct();
     PointSensitivities pvcsProduct =
-        productPricer.presentValueSensitivityRates(product, ratesProvider, volatilities);
+        productPricer.presentValueSensitivityRatesStickyStrike(product, ratesProvider, volatilities);
     Payment premium = trade.getPremium();
     PointSensitivities pvcsPremium = paymentPricer.presentValueSensitivity(premium, ratesProvider).build();
     return pvcsProduct.combinedWith(pvcsPremium);
@@ -127,7 +128,7 @@ public class BlackFxVanillaOptionTradePricer {
 
   //-------------------------------------------------------------------------
   /**
-   * Calculates the currency exposure of the foreign exchange vanilla option trade.
+   * Calculates the currency exposure of the FX vanilla option trade.
    * 
    * @param trade  the option trade
    * @param ratesProvider  the rates provider
@@ -145,8 +146,9 @@ public class BlackFxVanillaOptionTradePricer {
     return productPricer.currencyExposure(product, ratesProvider, volatilities).plus(pvPremium);
   }
 
+  //-------------------------------------------------------------------------
   /**
-   * Calculates the current of the foreign exchange vanilla option trade.
+   * Calculates the current of the FX vanilla option trade.
    * 
    * @param trade  the option trade
    * @param valuationDate  the valuation date
@@ -158,6 +160,38 @@ public class BlackFxVanillaOptionTradePricer {
       return CurrencyAmount.of(premium.getCurrency(), premium.getAmount());
     }
     return CurrencyAmount.of(premium.getCurrency(), 0d);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the forward exchange rate.
+   *
+   * @param trade  the option trade
+   * @param ratesProvider  the rates provider
+   * @return the forward rate
+   */
+  public FxRate forwardFxRate(ResolvedFxVanillaOptionTrade trade, RatesProvider ratesProvider) {
+    ResolvedFxVanillaOption product = trade.getProduct();
+    return productPricer.forwardFxRate(product, ratesProvider);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the implied Black volatility of the foreign exchange vanilla option trade.
+   *
+   * @param trade  the option trade
+   * @param ratesProvider  the rates provider
+   * @param volatilities  the Black volatility provider
+   * @return the implied volatility of the product
+   * @throws IllegalArgumentException if the option has expired
+   */
+  public double impliedVolatility(
+      ResolvedFxVanillaOptionTrade trade,
+      RatesProvider ratesProvider,
+      BlackFxOptionVolatilities volatilities) {
+
+    ResolvedFxVanillaOption option = trade.getProduct();
+    return productPricer.impliedVolatility(option, ratesProvider, volatilities);
   }
 
 }

@@ -1,11 +1,12 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 import com.google.common.primitives.Doubles;
 import com.opengamma.strata.collect.ArgChecker;
@@ -16,11 +17,14 @@ import com.opengamma.strata.math.impl.function.PiecewisePolynomialWithSensitivit
 
 /**
  * Filter for nonnegativity of cubic spline interpolation based on 
- * R. L. Dougherty, A. Edelman, and J. M. Hyman, "Nonnegativity-, Monotonicity-, or Convexity-Preserving Cubic and Quintic Hermite Interpolation" 
+ * R. L. Dougherty, A. Edelman, and J. M. Hyman, "Nonnegativity-, Monotonicity-,
+ * or Convexity-Preserving Cubic and Quintic Hermite Interpolation" 
  * Mathematics Of Computation, v. 52, n. 186, April 1989, pp. 471-494. 
  * 
- * First, interpolant is computed by another cubic interpolation method. Then the first derivatives are modified such that non-negativity conditions are satisfied. 
- * Note that shape-preserving three-point formula is used at endpoints in order to ensure positivity of an interpolant in the first interval and the last interval 
+ * First, interpolant is computed by another cubic interpolation method. Then the first derivatives are
+ * modified such that non-negativity conditions are satisfied. 
+ * Note that shape-preserving three-point formula is used at endpoints in order to ensure positivity of an
+ * interpolant in the first interval and the last interval 
  */
 public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePolynomialInterpolator {
 
@@ -31,7 +35,7 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
   private PiecewisePolynomialInterpolator _method;
 
   /**
-   * Primary interpolation method should be passed
+   * Primary interpolation method should be passed.
    * @param method PiecewisePolynomialInterpolator
    */
   public NonnegativityPreservingCubicSplineInterpolator(final PiecewisePolynomialInterpolator method) {
@@ -43,7 +47,9 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
     ArgChecker.notNull(xValues, "xValues");
     ArgChecker.notNull(yValues, "yValues");
 
-    ArgChecker.isTrue(xValues.length == yValues.length | xValues.length + 2 == yValues.length, "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
+    ArgChecker.isTrue(
+        xValues.length == yValues.length | xValues.length + 2 == yValues.length,
+        "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
     ArgChecker.isTrue(xValues.length > 2, "Data points should be more than 2");
 
     final int nDataPts = xValues.length;
@@ -58,20 +64,16 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yValues containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts - 1; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
-
     double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
-    double[] yValuesSrt = new double[nDataPts];
+    double[] yValuesSrt;
     if (nDataPts == yValuesLen) {
       yValuesSrt = Arrays.copyOf(yValues, nDataPts);
     } else {
       yValuesSrt = Arrays.copyOfRange(yValues, 1, nDataPts + 1);
     }
     DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
+
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
 
     final double[] intervals = _solver.intervalsCalculator(xValuesSrt);
     final double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
@@ -116,24 +118,23 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
         ArgChecker.isFalse(Double.isInfinite(yValuesMatrix[j][i]), "yValuesMatrix containing Infinity");
       }
     }
-    for (int i = 0; i < nDataPts; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
 
-    double[] xValuesSrt = new double[nDataPts];
+    double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
+    int[] sortedPositions = IntStream.range(0, nDataPts).toArray();
+    DoubleArrayMath.sortPairs(xValuesSrt, sortedPositions);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
+
     DoubleMatrix[] coefMatrix = new DoubleMatrix[dim];
 
     for (int i = 0; i < dim; ++i) {
-      xValuesSrt = Arrays.copyOf(xValues, nDataPts);
-      double[] yValuesSrt = new double[nDataPts];
+      double[] yValuesSrt;
       if (nDataPts == yValuesLen) {
-        yValuesSrt = Arrays.copyOf(yValuesMatrix[i], nDataPts);
+        yValuesSrt = DoubleArrayMath.reorderedCopy(yValuesMatrix[i], sortedPositions);
       } else {
-        yValuesSrt = Arrays.copyOfRange(yValuesMatrix[i], 1, nDataPts + 1);
+        yValuesSrt = DoubleArrayMath.reorderedCopy(
+            Arrays.copyOfRange(yValuesMatrix[i], 1, nDataPts + 1),
+            sortedPositions);
       }
-      DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
 
       final double[] intervals = _solver.intervalsCalculator(xValuesSrt);
       final double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
@@ -172,7 +173,9 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
     ArgChecker.notNull(xValues, "xValues");
     ArgChecker.notNull(yValues, "yValues");
 
-    ArgChecker.isTrue(xValues.length == yValues.length | xValues.length + 2 == yValues.length, "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
+    ArgChecker.isTrue(
+        xValues.length == yValues.length | xValues.length + 2 == yValues.length,
+        "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
     ArgChecker.isTrue(xValues.length > 2, "Data points should be more than 2");
 
     final int nDataPts = xValues.length;
@@ -187,30 +190,26 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yValues containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts - 1; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
+    ArgChecker.noDuplicates(xValues, "xValues");
 
-    double[] yValuesSrt = new double[nDataPts];
+    double[] yValuesSrt;
     if (nDataPts == yValuesLen) {
       yValuesSrt = Arrays.copyOf(yValues, nDataPts);
     } else {
       yValuesSrt = Arrays.copyOfRange(yValues, 1, nDataPts + 1);
     }
 
-    final double[] intervals = _solver.intervalsCalculator(xValues);
-    final double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
-    final PiecewisePolynomialResultsWithSensitivity resultWithSensitivity = _method.interpolateWithSensitivity(xValues, yValues);
+    double[] intervals = _solver.intervalsCalculator(xValues);
+    double[] slopes = _solver.slopesCalculator(yValuesSrt, intervals);
+    PiecewisePolynomialResultsWithSensitivity resultWithSensitivity = _method.interpolateWithSensitivity(xValues, yValues);
 
     ArgChecker.isTrue(resultWithSensitivity.getOrder() == 4, "Primary interpolant is not cubic");
 
-    final double[] initialFirst = _function.differentiate(resultWithSensitivity, xValues).rowArray(0);
-    final double[][] slopeSensitivity = _solver.slopeSensitivityCalculator(intervals);
-    final DoubleArray[] initialFirstSense = _function.differentiateNodeSensitivity(resultWithSensitivity, xValues);
-    final DoubleArray[] firstWithSensitivity = firstDerivativeWithSensitivityCalculator(yValuesSrt, intervals, initialFirst, initialFirstSense);
-    final DoubleMatrix[] resMatrix = _solver.solveWithSensitivity(yValuesSrt, intervals, slopes, slopeSensitivity, firstWithSensitivity);
+    double[] initialFirst = _function.differentiate(resultWithSensitivity, xValues).rowArray(0);
+    double[][] slopeSensitivity = _solver.slopeSensitivityCalculator(intervals);
+    DoubleArray[] initialFirstSense = _function.differentiateNodeSensitivity(resultWithSensitivity, xValues);
+    DoubleArray[] firstWithSensitivity = firstDerivativeWithSensitivityCalculator(yValuesSrt, intervals, initialFirst, initialFirstSense);
+    DoubleMatrix[] resMatrix = _solver.solveWithSensitivity(yValuesSrt, intervals, slopes, slopeSensitivity, firstWithSensitivity);
 
     for (int k = 0; k < nDataPts; k++) {
       DoubleMatrix m = resMatrix[k];
@@ -223,10 +222,10 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
       }
     }
 
-    final DoubleMatrix coefMatrix = resMatrix[0];
-    final DoubleMatrix[] coefSenseMatrix = new DoubleMatrix[nDataPts - 1];
+    DoubleMatrix coefMatrix = resMatrix[0];
+    DoubleMatrix[] coefSenseMatrix = new DoubleMatrix[nDataPts - 1];
     System.arraycopy(resMatrix, 1, coefSenseMatrix, 0, nDataPts - 1);
-    final int nCoefs = coefMatrix.columnCount();
+    int nCoefs = coefMatrix.columnCount();
 
     return new PiecewisePolynomialResultsWithSensitivity(DoubleArray.copyOf(xValues), coefMatrix, nCoefs, 1, coefSenseMatrix);
   }
@@ -236,25 +235,23 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
     return _method;
   }
 
-  /**
-   * First derivatives are modified such that cubic interpolant has the same sign as linear interpolator 
-   * @param yValues 
-   * @param intervals 
-   * @param slopes 
-   * @param initialFirst 
-   * @return first derivative 
-   */
-  private double[] firstDerivativeCalculator(final double[] yValues, final double[] intervals, final double[] slopes, final double[] initialFirst) {
+  // First derivatives are modified such that cubic interpolant has the same sign as linear interpolator 
+  private double[] firstDerivativeCalculator(double[] yValues, double[] intervals, double[] slopes, double[] initialFirst) {
     final int nDataPts = yValues.length;
     double[] res = new double[nDataPts];
 
     for (int i = 1; i < nDataPts - 1; ++i) {
       final double tau = Math.signum(yValues[i]);
-      res[i] = tau == 0. ? initialFirst[i] : Math.min(3. * tau * yValues[i] / intervals[i - 1], Math.max(-3. * tau * yValues[i] / intervals[i], tau * initialFirst[i])) / tau;
+      res[i] = tau == 0. ?
+          initialFirst[i] :
+          Math.min(3. * tau * yValues[i] / intervals[i - 1], Math.max(-3. * tau * yValues[i] / intervals[i], tau * initialFirst[i])) / tau;
     }
     final double tauIni = Math.signum(yValues[0]);
     final double tauFin = Math.signum(yValues[nDataPts - 1]);
-    res[0] = tauIni == 0. ? initialFirst[0] : Math.min(3. * tauIni * yValues[0] / intervals[0], Math.max(-3. * tauIni * yValues[0] / intervals[0], tauIni * initialFirst[0])) / tauIni;
+    res[0] = tauIni == 0. ?
+        initialFirst[0] :
+        Math.min(3. * tauIni * yValues[0] / intervals[0], Math.max(-3. * tauIni * yValues[0] / intervals[0], tauIni * initialFirst[0])) /
+            tauIni;
     res[nDataPts - 1] = tauFin == 0. ? initialFirst[nDataPts - 1] : Math.min(3. * tauFin * yValues[nDataPts - 1] / intervals[nDataPts - 2],
         Math.max(-3. * tauFin * yValues[nDataPts - 1] / intervals[nDataPts - 2], tauFin * initialFirst[nDataPts - 1])) /
         tauFin;
@@ -262,8 +259,12 @@ public class NonnegativityPreservingCubicSplineInterpolator extends PiecewisePol
     return res;
   }
 
-  private DoubleArray[] firstDerivativeWithSensitivityCalculator(final double[] yValues, final double[] intervals, final double[] initialFirst,
-      final DoubleArray[] initialFirstSense) {
+  private DoubleArray[] firstDerivativeWithSensitivityCalculator(
+      double[] yValues,
+      double[] intervals,
+      double[] initialFirst,
+      DoubleArray[] initialFirstSense) {
+
     final int nDataPts = yValues.length;
     final DoubleArray[] res = new DoubleArray[nDataPts + 1];
     final double[] newFirst = new double[nDataPts];

@@ -1,10 +1,11 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.product;
 
+import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.currency.Currency;
 
 /**
@@ -40,5 +41,10 @@ public interface SecuritizedProduct
    * @return the trading currency
    */
   public abstract Currency getCurrency();
+
+  @Override
+  public default ImmutableSet<Currency> allCurrencies() {
+    return ImmutableSet.of(getCurrency());
+  }
 
 }

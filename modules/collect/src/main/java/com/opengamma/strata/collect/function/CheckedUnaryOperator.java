@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -15,6 +15,6 @@ import com.opengamma.strata.collect.Unchecked;
  * @param <T> the type of the object parameter
  */
 @FunctionalInterface
-public interface CheckedUnaryOperator<T> extends CheckedFunction<T, T> {
+public abstract interface CheckedUnaryOperator<T> extends CheckedFunction<T, T> {
 
 }

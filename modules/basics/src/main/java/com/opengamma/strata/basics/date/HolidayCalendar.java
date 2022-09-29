@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.date;
@@ -11,8 +11,10 @@ import java.time.LocalDate;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAdjuster;
 import java.time.temporal.TemporalAdjusters;
+import java.util.stream.Stream;
 
 import com.opengamma.strata.basics.ReferenceData;
+import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.Named;
 
 /**
@@ -182,7 +184,7 @@ public interface HolidayCalendar
    * 
    * @param date  the date to adjust
    * @return the input date if it is a business day, the next business day if within the same month
-   * or the last business day of the month
+   *   or the last business day of the month
    * @throws IllegalArgumentException if the calculation is outside the supported range
    */
   public default LocalDate nextSameOrLastInMonth(LocalDate date) {
@@ -210,7 +212,7 @@ public interface HolidayCalendar
    * Given a date, this method returns the date of the last business day of the month.
    * 
    * @param date  the date to check
-   * @return true if the specified date is the last business day of the month
+   * @return the date of the last business day of the month
    * @throws IllegalArgumentException if the date is outside the supported range
    */
   public default LocalDate lastBusinessDayOfMonth(LocalDate date) {
@@ -228,12 +230,49 @@ public interface HolidayCalendar
    * @param startInclusive  the start date
    * @param endExclusive  the end date
    * @return the total number of business days between the start and end date
-   * @throws IllegalArgumentException if the calculation is outside the supported range
+   * @throws IllegalArgumentException if either date is outside the supported range
    */
   public default int daysBetween(LocalDate startInclusive, LocalDate endExclusive) {
+    ArgChecker.inOrderOrEqual(startInclusive, endExclusive, "startInclusive", "endExclusive");
     return Math.toIntExact(LocalDateUtils.stream(startInclusive, endExclusive)
         .filter(this::isBusinessDay)
         .count());
+  }
+
+  /**
+   * Gets the stream of business days between the two dates.
+   * <p>
+   * This method will treat weekends as holidays.
+   * If the dates are equal, an empty stream is returned.
+   * If the end is before the start, an exception is thrown.
+   * 
+   * @param startInclusive  the start date
+   * @param endExclusive  the end date
+   * @return the stream of business days
+   * @throws IllegalArgumentException if either date is outside the supported range
+   */
+  public default Stream<LocalDate> businessDays(LocalDate startInclusive, LocalDate endExclusive) {
+    ArgChecker.inOrderOrEqual(startInclusive, endExclusive, "startInclusive", "endExclusive");
+    return LocalDateUtils.stream(startInclusive, endExclusive)
+        .filter(this::isBusinessDay);
+  }
+
+  /**
+   * Gets the stream of holidays between the two dates.
+   * <p>
+   * This method will treat weekends as holidays.
+   * If the dates are equal, an empty stream is returned.
+   * If the end is before the start, an exception is thrown.
+   * 
+   * @param startInclusive  the start date
+   * @param endExclusive  the end date
+   * @return the stream of holidays
+   * @throws IllegalArgumentException if either date is outside the supported range
+   */
+  public default Stream<LocalDate> holidays(LocalDate startInclusive, LocalDate endExclusive) {
+    ArgChecker.inOrderOrEqual(startInclusive, endExclusive, "startInclusive", "endExclusive");
+    return LocalDateUtils.stream(startInclusive, endExclusive)
+        .filter(this::isHoliday);
   }
 
   //-------------------------------------------------------------------------
@@ -255,6 +294,25 @@ public interface HolidayCalendar
       return this;
     }
     return new CombinedHolidayCalendar(this, other);
+  }
+
+  /**
+   * Combines this holiday calendar with another.
+   * <p>
+   * The resulting calendar will declare a day as a business day if it is a
+   * business day in either source calendar.
+   * 
+   * @param other  the other holiday calendar
+   * @return the combined calendar
+   */
+  public default HolidayCalendar linkedWith(HolidayCalendar other) {
+    if (this.equals(other)) {
+      return this;
+    }
+    if (this == HolidayCalendars.NO_HOLIDAYS || other == HolidayCalendars.NO_HOLIDAYS) {
+      return HolidayCalendars.NO_HOLIDAYS;
+    }
+    return new LinkedHolidayCalendar(this, other);
   }
 
   //-------------------------------------------------------------------------

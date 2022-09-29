@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -20,11 +20,14 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.io.CharSource;
 import com.opengamma.strata.basics.StandardId;
-import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.io.CharSources;
 import com.opengamma.strata.collect.io.CsvFile;
 import com.opengamma.strata.collect.io.CsvRow;
 import com.opengamma.strata.collect.io.ResourceLocator;
+import com.opengamma.strata.collect.io.UnicodeBom;
+import com.opengamma.strata.collect.result.ParseFailureException;
 import com.opengamma.strata.data.FieldName;
+import com.opengamma.strata.loader.LoaderUtils;
 import com.opengamma.strata.market.observable.QuoteId;
 
 /**
@@ -52,6 +55,9 @@ import com.opengamma.strata.market.observable.QuoteId;
  * 2014-01-22, OG-Future, CME-ED-Mar14, MarketValue, 99.620
  * </pre>
  * Note that Microsoft Excel prefers the CSV file to have no space after the comma.
+ * <p>
+ * CSV files sometimes contain a Unicode Byte Order Mark.
+ * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
  */
 public final class QuotesCsvLoader {
 
@@ -188,16 +194,23 @@ public final class QuotesCsvLoader {
       Predicate<LocalDate> datePredicate,
       Collection<CharSource> charSources) {
 
-    // builder ensures keys can only be seen once
-    Map<LocalDate, ImmutableMap.Builder<QuoteId, Double>> mutableMap = new HashMap<>();
-    for (CharSource charSource : charSources) {
-      parseSingle(datePredicate, charSource, mutableMap);
+    try {
+      // builder ensures keys can only be seen once
+      Map<LocalDate, ImmutableMap.Builder<QuoteId, Double>> mutableMap = new HashMap<>();
+      for (CharSource charSource : charSources) {
+        parseSingle(datePredicate, charSource, mutableMap);
+      }
+      ImmutableMap.Builder<LocalDate, ImmutableMap<QuoteId, Double>> builder = ImmutableMap.builder();
+      for (Entry<LocalDate, Builder<QuoteId, Double>> entry : mutableMap.entrySet()) {
+        builder.put(entry.getKey(), entry.getValue().build());
+      }
+      return builder.build();
+
+    } catch (ParseFailureException ex) {
+      throw ex;
+    } catch (RuntimeException ex) {
+      throw new ParseFailureException(ex, "Error parsing quotes CSV files: {exceptionMessage}", ex.getMessage());
     }
-    ImmutableMap.Builder<LocalDate, ImmutableMap<QuoteId, Double>> builder = ImmutableMap.builder();
-    for (Entry<LocalDate, Builder<QuoteId, Double>> entry : mutableMap.entrySet()) {
-      builder.put(entry.getKey(), entry.getValue().build());
-    }
-    return builder.build();
   }
 
   // loads a single CSV file, filtering by date
@@ -210,7 +223,7 @@ public final class QuotesCsvLoader {
       CsvFile csv = CsvFile.of(resource, true);
       for (CsvRow row : csv.rows()) {
         String dateText = row.getField(DATE_FIELD);
-        LocalDate date = LocalDate.parse(dateText);
+        LocalDate date = LoaderUtils.parseDate(dateText);
         if (datePredicate.test(date)) {
           String symbologyStr = row.getField(SYMBOLOGY_FIELD);
           String tickerStr = row.getField(TICKER_FIELD);
@@ -226,8 +239,8 @@ public final class QuotesCsvLoader {
         }
       }
     } catch (RuntimeException ex) {
-      throw new IllegalArgumentException(
-          Messages.format("Error processing resource as CSV file: {}", resource), ex);
+      throw new ParseFailureException(
+          ex, "Error parsing CSV file '{fileName}': {exceptionMessage}", CharSources.extractFileName(resource), ex.getMessage());
     }
   }
 

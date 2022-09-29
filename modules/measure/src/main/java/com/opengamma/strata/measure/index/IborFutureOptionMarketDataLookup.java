@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -17,6 +17,7 @@ import com.opengamma.strata.calc.runner.CalculationParameters;
 import com.opengamma.strata.calc.runner.FunctionRequirements;
 import com.opengamma.strata.data.MarketData;
 import com.opengamma.strata.data.MarketDataId;
+import com.opengamma.strata.data.MarketDataNotFoundException;
 import com.opengamma.strata.data.scenario.ScenarioMarketData;
 import com.opengamma.strata.pricer.index.IborFutureOptionVolatilities;
 import com.opengamma.strata.pricer.index.IborFutureOptionVolatilitiesId;
@@ -70,7 +71,7 @@ public interface IborFutureOptionMarketDataLookup extends CalculationParameter {
    * @return the type of the parameter implementation
    */
   @Override
-  default Class<? extends CalculationParameter> queryType() {
+  public default Class<? extends CalculationParameter> queryType() {
     return IborFutureOptionMarketDataLookup.class;
   }
 
@@ -158,6 +159,7 @@ public interface IborFutureOptionMarketDataLookup extends CalculationParameter {
    * @param index  the Ibor index
    * @param marketData  the complete set of market data for one scenario
    * @return the volatilities
+   * @throws MarketDataNotFoundException if the index is not found
    */
   public abstract IborFutureOptionVolatilities volatilities(IborIndex index, MarketData marketData);
 

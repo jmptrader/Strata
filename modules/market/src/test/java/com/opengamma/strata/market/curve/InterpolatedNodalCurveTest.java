@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,17 +7,18 @@ package com.opengamma.strata.market.curve;
 
 import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.ValueType;
@@ -34,7 +35,6 @@ import com.opengamma.strata.market.param.UnitParameterSensitivity;
 /**
  * Test {@link InterpolatedNodalCurve}.
  */
-@Test
 public class InterpolatedNodalCurveTest {
 
   private static final int SIZE = 3;
@@ -57,6 +57,7 @@ public class InterpolatedNodalCurveTest {
   private static final CurveExtrapolator LINEAR_EXTRAPOLATOR = CurveExtrapolators.LINEAR;
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of_CurveMetadata() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR);
     assertThat(test.getName()).isEqualTo(CURVE_NAME);
@@ -77,6 +78,7 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(YVALUES);
   }
 
+  @Test
   public void test_of_extrapolators() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(
         METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR, LINEAR_EXTRAPOLATOR, LINEAR_EXTRAPOLATOR);
@@ -86,6 +88,7 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getExtrapolatorRight().getName()).isEqualTo(LINEAR_EXTRAPOLATOR.getName());
   }
 
+  @Test
   public void test_of_noCurveMetadata() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA_NOPARAM, XVALUES, YVALUES, INTERPOLATOR);
     assertThat(test.getName()).isEqualTo(CURVE_NAME);
@@ -96,22 +99,26 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getParameterMetadata(1)).isEqualTo(SimpleCurveParameterMetadata.of(ValueType.YEAR_FRACTION, XVALUES.get(1)));
   }
 
+  @Test
   public void test_of_invalid() {
     // not enough nodes
-    assertThrowsIllegalArg(() -> InterpolatedNodalCurve.of(
-        METADATA, DoubleArray.of(1d), DoubleArray.of(1d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalCurve.of(METADATA, DoubleArray.of(1d), DoubleArray.of(1d), INTERPOLATOR));
     // x node size != y node size
-    assertThrowsIllegalArg(() -> InterpolatedNodalCurve.of(
-        METADATA, XVALUES, DoubleArray.of(1d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalCurve.of(METADATA, XVALUES, DoubleArray.of(1d, 3d), INTERPOLATOR));
     // parameter metadata size != node size
-    assertThrowsIllegalArg(() -> InterpolatedNodalCurve.of(
-        METADATA_ENTRIES, DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalCurve.of(
+            METADATA_ENTRIES, DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), INTERPOLATOR));
     // x not in order
-    assertThrowsIllegalArg(() -> InterpolatedNodalCurve.of(
-        METADATA, DoubleArray.of(2d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalCurve.of(
+            METADATA, DoubleArray.of(2d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_lookup() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     BoundCurveInterpolator interp = INTERPOLATOR.bind(XVALUES, YVALUES, FLAT_EXTRAPOLATOR, FLAT_EXTRAPOLATOR);
@@ -126,6 +133,7 @@ public class InterpolatedNodalCurveTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withMetadata() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     InterpolatedNodalCurve test = base.withMetadata(METADATA_ENTRIES);
@@ -136,12 +144,15 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(YVALUES);
   }
 
+  @Test
   public void test_withMetadata_badSize() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
-    assertThrowsIllegalArg(() -> base.withMetadata(METADATA_ENTRIES2));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withMetadata(METADATA_ENTRIES2));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withValues() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     InterpolatedNodalCurve test = base.withYValues(YVALUES_BUMPED);
@@ -152,13 +163,17 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(YVALUES_BUMPED);
   }
 
+  @Test
   public void test_withValues_badSize() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
-    assertThrowsIllegalArg(() -> base.withYValues(DoubleArray.EMPTY));
-    assertThrowsIllegalArg(() -> base.withYValues(DoubleArray.of(4d, 6d)));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withYValues(DoubleArray.EMPTY));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withYValues(DoubleArray.of(4d, 6d)));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withValuesXy() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     InterpolatedNodalCurve test = base.withValues(XVALUES2, YVALUES_BUMPED);
@@ -169,13 +184,17 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(YVALUES_BUMPED);
   }
 
+  @Test
   public void test_withValuesXy_badSize() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
-    assertThrowsIllegalArg(() -> base.withValues(DoubleArray.EMPTY, DoubleArray.EMPTY));
-    assertThrowsIllegalArg(() -> base.withValues(DoubleArray.of(1d, 3d, 5d), DoubleArray.of(4d, 6d)));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withValues(DoubleArray.EMPTY, DoubleArray.EMPTY));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withValues(DoubleArray.of(1d, 3d, 5d), DoubleArray.of(4d, 6d)));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withNode_atStart_withMetadata() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR);
     LabelDateParameterMetadata item = LabelDateParameterMetadata.of(date(2015, 6, 30), TNR_1Y);
@@ -190,6 +209,7 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(DoubleArray.of(4d, 5d, 7d, 8d));
   }
 
+  @Test
   public void test_withNode_inMiddle_withMetadata() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR);
     LabelDateParameterMetadata item = LabelDateParameterMetadata.of(date(2015, 6, 30), TNR_1Y);
@@ -203,6 +223,7 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(DoubleArray.of(5d, 7d, 4d, 8d));
   }
 
+  @Test
   public void test_withNode_atEnd_withoutMetadata() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     LabelDateParameterMetadata item = LabelDateParameterMetadata.of(date(2015, 6, 30), TNR_1Y);
@@ -214,6 +235,7 @@ public class InterpolatedNodalCurveTest {
     assertThat(test.getYValues()).isEqualTo(DoubleArray.of(4d, 5d, 7d, 8d));
   }
 
+  @Test
   public void test_withNode_replace_withMetadata() {
     InterpolatedNodalCurve base = InterpolatedNodalCurve.of(METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR);
     LabelDateParameterMetadata item = LabelDateParameterMetadata.of(date(2015, 6, 30), TNR_1Y);
@@ -228,6 +250,7 @@ public class InterpolatedNodalCurveTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_createParameterSensitivity() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA_ENTRIES, XVALUES, YVALUES, INTERPOLATOR);
     assertThat(test.createParameterSensitivity(DoubleArray.of(2d, 3d, 4d))).isEqualTo(
@@ -237,6 +260,7 @@ public class InterpolatedNodalCurveTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     coverImmutableBean(test);
@@ -249,8 +273,10 @@ public class InterpolatedNodalCurveTest {
         .extrapolatorRight(CurveExtrapolators.LOG_LINEAR)
         .build();
     coverBeanEquals(test, test2);
+    assertThat(test.values().toMap()).isEqualTo(ImmutableMap.of(1d, 5d, 2d, 7d, 3d, 8d));
   }
 
+  @Test
   public void test_serialization() {
     InterpolatedNodalCurve test = InterpolatedNodalCurve.of(METADATA, XVALUES, YVALUES, INTERPOLATOR);
     assertSerialization(test);

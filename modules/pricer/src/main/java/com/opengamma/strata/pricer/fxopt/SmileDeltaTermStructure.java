@@ -1,12 +1,18 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.fxopt;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
 import com.google.common.collect.ImmutableList;
 import com.opengamma.strata.basics.date.DayCount;
+import com.opengamma.strata.basics.date.Tenor;
+import com.opengamma.strata.basics.value.ValueDerivatives;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.param.ParameterPerturbation;
 import com.opengamma.strata.market.param.ParameterizedData;
@@ -72,6 +78,15 @@ public interface SmileDeltaTermStructure
   public abstract DoubleArray getExpiries();
 
   /**
+   * Gets the tenor associated with each expiry in the volatility term.
+   * 
+   * @return the list of tenors associated with the expiries, empty if not available
+   */
+  public default List<Optional<Tenor>> getExpiryTenors() {
+    return Collections.nCopies(getExpiries().size(), Optional.empty());
+  }
+
+  /**
    * Computes full delta for all strikes including put delta absolute value.
    * <p>
    * The ATM is 0.50 delta and the x call are transformed in 1-x put.
@@ -112,6 +127,24 @@ public interface SmileDeltaTermStructure
       double expiry,
       double strike,
       double forward);
+
+  /**
+   * Computes the partial derivatives of the volatilities.
+   * <p>
+   * The first derivatives are {@code dVol/dExpiry and dVol/dStrike}.
+   * The derivatives are in the following order:
+   * <ul>
+   * <li>[0] derivative with respect to expiry
+   * <li>[1] derivative with respect to strike
+   * </ul>
+   *
+   * @param expiry  the expiry at which the partial derivative is taken
+   * @param strike  the strike at which the partial derivative is taken
+   * @param forward  the forward rate
+   * @return the z-value and it's partial first derivatives
+   * @throws RuntimeException if the derivative cannot be calculated
+   */
+  public abstract ValueDerivatives partialFirstDerivatives(double expiry, double strike, double forward);
 
   /**
    * Calculates the smile at a given time.

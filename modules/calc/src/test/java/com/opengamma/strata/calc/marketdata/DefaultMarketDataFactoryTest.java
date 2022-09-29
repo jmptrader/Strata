@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,15 +6,15 @@
 package com.opengamma.strata.calc.marketdata;
 
 import static com.opengamma.strata.collect.Guavate.toImmutableMap;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
 import static com.opengamma.strata.collect.TestHelper.date;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -34,7 +34,6 @@ import com.opengamma.strata.data.scenario.MarketDataBox;
 import com.opengamma.strata.data.scenario.ScenarioMarketData;
 import com.opengamma.strata.data.scenario.ScenarioPerturbation;
 
-@Test
 public class DefaultMarketDataFactoryTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -43,6 +42,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building time series from requirements.
    */
+  @Test
   public void buildTimeSeries() {
     TestObservableId id1 = TestObservableId.of("1");
     TestObservableId id2 = TestObservableId.of("2");
@@ -73,6 +73,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests non-observable market data values supplied by the user are included in the results.
    */
+  @Test
   public void buildSuppliedNonObservableValues() {
     TestId id1 = new TestId("1");
     TestId id2 = new TestId("2");
@@ -93,6 +94,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building single values using market data functions.
    */
+  @Test
   public void buildNonObservableValues() {
     ObservableId idA = new TestIdA("1");
     MarketDataId<?> idC = new TestIdC("1");
@@ -120,6 +122,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building observable market data values.
    */
+  @Test
   public void buildObservableValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -137,6 +140,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests observable market data values supplied by the user are included in the results.
    */
+  @Test
   public void buildSuppliedObservableValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
@@ -158,6 +162,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building market data that depends on other market data.
    */
+  @Test
   public void buildDataFromOtherData() {
     TestMarketDataFunctionB builderB = new TestMarketDataFunctionB();
     TestMarketDataFunctionC builderC = new TestMarketDataFunctionC();
@@ -219,6 +224,7 @@ public class DefaultMarketDataFactoryTest {
    * requirements will not contain par rates IDs. The requirements contain curve IDs and the curve
    * building function will declare that it requires par rates.
    */
+  @Test
   public void buildDataFromSuppliedData() {
     TestMarketDataFunctionB builderB = new TestMarketDataFunctionB();
     TestMarketDataFunctionC builderC = new TestMarketDataFunctionC();
@@ -275,6 +281,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests an exception is thrown when there is no builder for an ID type.
    */
+  @Test
   public void noMarketDataBuilderAvailable() {
     TestIdB idB1 = new TestIdB("1");
     TestIdB idB2 = new TestIdB("2");
@@ -292,15 +299,17 @@ public class DefaultMarketDataFactoryTest {
         builder);
 
     BuiltScenarioMarketData suppliedData = BuiltScenarioMarketData.builder(date(2011, 3, 8)).build();
-    assertThrows(
-        () -> factory.createMultiScenario(requirements, MARKET_DATA_CONFIG, suppliedData, REF_DATA, ScenarioDefinition.empty()),
-        IllegalStateException.class,
-        "No market data function available for market data ID of type.*");
+    assertThatIllegalStateException()
+        .isThrownBy(
+            () -> factory.createMultiScenario(
+                requirements, MARKET_DATA_CONFIG, suppliedData, REF_DATA, ScenarioDefinition.empty()))
+        .withMessageStartingWith("No market data function available for market data ID of type");
   }
 
   /**
    * Tests building a result and keeping the intermediate values.
    */
+  @Test
   public void buildWithIntermediateValues() {
     TestMarketDataFunctionB builderB = new TestMarketDataFunctionB();
     TestMarketDataFunctionC builderC = new TestMarketDataFunctionC();
@@ -358,6 +367,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building multiple observable values for scenarios where the values aren't perturbed.
    */
+  @Test
   public void buildObservableScenarioValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -370,7 +380,6 @@ public class DefaultMarketDataFactoryTest {
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<Double> mapping =
         PerturbationMapping.of(
-            Double.class,
             new FalseFilter<>(TestObservableId.class),
             new AbsoluteDoubleShift(1, 2, 3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -386,6 +395,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests observable values supplied by the user are included in the results when they aren't perturbed
    */
+  @Test
   public void buildSuppliedObservableScenarioValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
@@ -401,7 +411,6 @@ public class DefaultMarketDataFactoryTest {
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<Double> mapping =
         PerturbationMapping.of(
-            Double.class,
             new FalseFilter<>(TestObservableId.class),
             new AbsoluteDoubleShift(1, 2, 3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -418,6 +427,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Test that time series from the supplied data are copied to the scenario data.
    */
+  @Test
   public void buildSuppliedTimeSeries() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
@@ -446,7 +456,6 @@ public class DefaultMarketDataFactoryTest {
     MarketDataRequirements requirements = MarketDataRequirements.builder().addTimeSeries(id1, id2).build();
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<Double> mapping = PerturbationMapping.of(
-        Double.class,
         new FalseFilter<>(TestObservableId.class),
         new AbsoluteDoubleShift(1, 2, 3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -460,6 +469,7 @@ public class DefaultMarketDataFactoryTest {
     assertThat(marketData.getTimeSeries(id2)).isEqualTo(timeSeries2);
   }
 
+  @Test
   public void perturbObservableValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -470,7 +480,6 @@ public class DefaultMarketDataFactoryTest {
     TestObservableId id2 = TestObservableId.of(StandardId.of("reqs", "b"));
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id1, id2).build();
     PerturbationMapping<Double> mapping = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(id1),
         new AbsoluteDoubleShift(1, 2, 3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -487,6 +496,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests that observable data is only perturbed once, even if there are two applicable perturbation mappings.
    */
+  @Test
   public void observableDataOnlyPerturbedOnce() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -497,11 +507,9 @@ public class DefaultMarketDataFactoryTest {
     TestObservableId id2 = TestObservableId.of(StandardId.of("reqs", "b"));
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id1, id2).build();
     PerturbationMapping<Double> mapping1 = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(id2),
         new RelativeDoubleShift(0.1, 0.2, 0.3));
     PerturbationMapping<Double> mapping2 = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(id2),
         new AbsoluteDoubleShift(1, 2, 3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping1, mapping2));
@@ -518,6 +526,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests building multiple values of non-observable market data for multiple scenarios. The data isn't perturbed.
    */
+  @Test
   public void buildNonObservableScenarioValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -531,7 +540,6 @@ public class DefaultMarketDataFactoryTest {
 
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<String> mapping = PerturbationMapping.of(
-        String.class,
         new FalseFilter<>(NonObservableId.class),
         new StringAppender("", "", ""));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -555,6 +563,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests non-observable values supplied by the user are included in the results when they aren't perturbed
    */
+  @Test
   public void buildSuppliedNonObservableScenarioValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
@@ -568,7 +577,6 @@ public class DefaultMarketDataFactoryTest {
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id1, id2).build();
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<String> mapping = PerturbationMapping.of(
-        String.class,
         new FalseFilter<>(NonObservableId.class),
         new StringAppender("", "", ""));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -590,6 +598,7 @@ public class DefaultMarketDataFactoryTest {
    * requirements will not contain par rates IDs. The requirements contain curve IDs and the curve
    * building function will declare that it requires par rates.
    */
+  @Test
   public void buildScenarioValuesFromSuppliedData() {
     TestMarketDataFunctionB builderB = new TestMarketDataFunctionB();
     TestMarketDataFunctionC builderC = new TestMarketDataFunctionC();
@@ -629,12 +638,10 @@ public class DefaultMarketDataFactoryTest {
         builderC);
 
     PerturbationMapping<Double> aMapping = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(new TestIdA("2")),
         new RelativeDoubleShift(0.2, 0.3, 0.4));
 
     PerturbationMapping<TestMarketDataC> cMapping = PerturbationMapping.of(
-        TestMarketDataC.class,
         new ExactIdFilter<>(new TestIdC("1")),
         new TestCPerturbation(1.1, 1.2, 1.3));
 
@@ -668,6 +675,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests that perturbations are applied to non-observable market data.
    */
+  @Test
   public void perturbNonObservableValues() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -681,7 +689,6 @@ public class DefaultMarketDataFactoryTest {
 
     PerturbationMapping<String> mapping =
         PerturbationMapping.of(
-            String.class,
             new ExactIdFilter<>(id1),
             new StringAppender("foo", "bar", "baz"));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -698,6 +705,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests that non-observable data is only perturbed once, even if there are two applicable perturbation mappings.
    */
+  @Test
   public void nonObservableDataOnlyPerturbedOnce() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -710,11 +718,9 @@ public class DefaultMarketDataFactoryTest {
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id1, id2).build();
 
     PerturbationMapping<String> mapping1 = PerturbationMapping.of(
-        String.class,
         new ExactIdFilter<>(id1),
         new StringAppender("FOO", "BAR", "BAZ"));
     PerturbationMapping<String> mapping2 = PerturbationMapping.of(
-        String.class,
         new ExactIdFilter<>(id1),
         new StringAppender("foo", "bar", "baz"));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping1, mapping2));
@@ -731,6 +737,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests that observable data built from observable values see the effects of the perturbations.
    */
+  @Test
   public void nonObservableDataBuiltFromPerturbedObservableData() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -744,7 +751,6 @@ public class DefaultMarketDataFactoryTest {
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id1, id2).build();
 
     PerturbationMapping<Double> mapping = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(quoteId),
         new RelativeDoubleShift(0.1, 0.2, 0.3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -762,6 +768,7 @@ public class DefaultMarketDataFactoryTest {
    * Tests that an exception is thrown when building observable market data for scenarios where there is no
    * market data function.
    */
+  @Test
   public void nonObservableScenarioDataWithMissingBuilder() {
     MarketDataFactory factory = MarketDataFactory.of(
         new TestObservableDataProvider(),
@@ -774,32 +781,30 @@ public class DefaultMarketDataFactoryTest {
 
     // This mapping doesn't perturb any data but it causes three scenarios to be built
     PerturbationMapping<String> mapping = PerturbationMapping.of(
-        String.class,
         new FalseFilter<>(NonObservableId.class),
         new StringAppender("", "", ""));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
 
-    assertThrows(
-        () -> factory.createMultiScenario(
-            requirements,
-            MARKET_DATA_CONFIG,
-            suppliedData,
-            REF_DATA, scenarioDefinition),
-        IllegalStateException.class,
-        "No market data function available for market data ID of type.*");
-
+    assertThatIllegalStateException()
+        .isThrownBy(
+            () -> factory.createMultiScenario(
+                requirements,
+                MARKET_DATA_CONFIG,
+                suppliedData,
+                REF_DATA, scenarioDefinition))
+        .withMessageStartingWith("No market data function available for market data ID of type");
   }
 
   /**
    * Tests that perturbations are applied to observable data supplied by the user.
    */
+  @Test
   public void perturbSuppliedNonObservableData() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
         new TestTimeSeriesProvider(ImmutableMap.of()));
     NonObservableId id = new NonObservableId("a");
     PerturbationMapping<String> mapping = PerturbationMapping.of(
-        String.class,
         new ExactIdFilter<>(id),
         new StringAppender("Foo", "Bar", "Baz"));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -820,6 +825,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests that perturbations are applied to non-observable data supplied by the user.
    */
+  @Test
   public void perturbSuppliedObservableData() {
     MarketDataFactory factory = MarketDataFactory.of(
         ObservableDataProvider.none(),
@@ -827,7 +833,6 @@ public class DefaultMarketDataFactoryTest {
     TestObservableId id = TestObservableId.of(StandardId.of("reqs", "a"));
     MarketDataRequirements requirements = MarketDataRequirements.builder().addValues(id).build();
     PerturbationMapping<Double> mapping = PerturbationMapping.of(
-        Double.class,
         new ExactIdFilter<>(id),
         new RelativeDoubleShift(0.1, 0.2, 0.3));
     ScenarioDefinition scenarioDefinition = ScenarioDefinition.ofMappings(ImmutableList.of(mapping));
@@ -847,6 +852,7 @@ public class DefaultMarketDataFactoryTest {
   /**
    * Tests ObservableDataProvider.none(), which is never normally be invoked.
    */
+  @Test
   public void coverage_ObservableDataProvider_none() {
     TestObservableId id = TestObservableId.of(StandardId.of("reqs", "a"));
     ObservableDataProvider test = ObservableDataProvider.none();
@@ -1192,6 +1198,11 @@ public class DefaultMarketDataFactoryTest {
     public int getScenarioCount() {
       return shiftAmount.length;
     }
+
+    @Override
+    public Class<Double> getMarketDataType() {
+      return Double.class;
+    }
   }
 
   /**
@@ -1213,6 +1224,11 @@ public class DefaultMarketDataFactoryTest {
     @Override
     public int getScenarioCount() {
       return shiftAmounts.length;
+    }
+
+    @Override
+    public Class<Double> getMarketDataType() {
+      return Double.class;
     }
   }
 
@@ -1309,6 +1325,11 @@ public class DefaultMarketDataFactoryTest {
     public int getScenarioCount() {
       return str.length;
     }
+
+    @Override
+    public Class<String> getMarketDataType() {
+      return String.class;
+    }
   }
 
   /**
@@ -1335,6 +1356,11 @@ public class DefaultMarketDataFactoryTest {
     @Override
     public int getScenarioCount() {
       return scaleFactors.length;
+    }
+
+    @Override
+    public Class<TestMarketDataC> getMarketDataType() {
+      return TestMarketDataC.class;
     }
   }
 }

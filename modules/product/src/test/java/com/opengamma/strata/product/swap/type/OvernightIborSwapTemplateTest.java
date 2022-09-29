@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -16,20 +16,20 @@ import static com.opengamma.strata.basics.index.OvernightIndices.USD_FED_FUND;
 import static com.opengamma.strata.basics.schedule.Frequency.P3M;
 import static com.opengamma.strata.basics.schedule.Frequency.P6M;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
 import static com.opengamma.strata.product.common.BuySell.BUY;
 import static com.opengamma.strata.product.common.PayReceive.PAY;
 import static com.opengamma.strata.product.common.PayReceive.RECEIVE;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.Optional;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.date.DaysAdjustment;
@@ -39,7 +39,6 @@ import com.opengamma.strata.product.swap.SwapTrade;
 /**
  * Test {@link OvernightIborSwapTemplate}.
  */
-@Test
 public class OvernightIborSwapTemplateTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -61,28 +60,33 @@ public class OvernightIborSwapTemplateTest {
       ImmutableOvernightIborSwapConvention.of("GBP-Swap", ON_LEG_2, IBOR2, SPOT_DATE_ADJUSTMENT_0);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of() {
     OvernightIborSwapTemplate test = OvernightIborSwapTemplate.of(TENOR_10Y, CONV);
-    assertEquals(test.getPeriodToStart(), Period.ZERO);
-    assertEquals(test.getTenor(), TENOR_10Y);
-    assertEquals(test.getConvention(), CONV);
+    assertThat(test.getPeriodToStart()).isEqualTo(Period.ZERO);
+    assertThat(test.getTenor()).isEqualTo(TENOR_10Y);
+    assertThat(test.getConvention()).isEqualTo(CONV);
   }
 
+  @Test
   public void test_of_period() {
     OvernightIborSwapTemplate test = OvernightIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
-    assertEquals(test.getPeriodToStart(), Period.ofMonths(3));
-    assertEquals(test.getTenor(), TENOR_10Y);
-    assertEquals(test.getConvention(), CONV);
+    assertThat(test.getPeriodToStart()).isEqualTo(Period.ofMonths(3));
+    assertThat(test.getTenor()).isEqualTo(TENOR_10Y);
+    assertThat(test.getConvention()).isEqualTo(CONV);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder_notEnoughData() {
-    assertThrowsIllegalArg(() -> OvernightIborSwapTemplate.builder()
-        .tenor(TENOR_2Y)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> OvernightIborSwapTemplate.builder()
+            .tenor(TENOR_2Y)
+            .build());
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_createTrade() {
     OvernightIborSwapTemplate base = OvernightIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
     LocalDate tradeDate = LocalDate.of(2015, 5, 5);
@@ -92,11 +96,12 @@ public class OvernightIborSwapTemplateTest {
     Swap expected = Swap.of(
         ON_LEG.toLeg(startDate, endDate, PAY, NOTIONAL_2M, 0.25d),
         IBOR.toLeg(startDate, endDate, RECEIVE, NOTIONAL_2M));
-    assertEquals(test.getInfo().getTradeDate(), Optional.of(tradeDate));
-    assertEquals(test.getProduct(), expected);
+    assertThat(test.getInfo().getTradeDate()).isEqualTo(Optional.of(tradeDate));
+    assertThat(test.getProduct()).isEqualTo(expected);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     OvernightIborSwapTemplate test = OvernightIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
     coverImmutableBean(test);
@@ -104,6 +109,7 @@ public class OvernightIborSwapTemplateTest {
     coverBeanEquals(test, test2);
   }
 
+  @Test
   public void test_serialization() {
     OvernightIborSwapTemplate test = OvernightIborSwapTemplate.of(Period.ofMonths(3), TENOR_10Y, CONV);
     assertSerialization(test);

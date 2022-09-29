@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -23,6 +23,6 @@ public interface CheckedConsumer<T> {
    * @param t  the input argument
    * @throws Throwable if an error occurs
    */
-  public void accept(T t) throws Throwable;
+  public abstract void accept(T t) throws Throwable;
 
 }

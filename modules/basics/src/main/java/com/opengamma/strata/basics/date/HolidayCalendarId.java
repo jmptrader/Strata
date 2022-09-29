@@ -1,19 +1,21 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.date;
 
+import static com.opengamma.strata.collect.Guavate.filteringOptional;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.toList;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 
-import org.joda.beans.PropertyDefinition;
 import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
@@ -23,6 +25,8 @@ import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.ReferenceDataId;
 import com.opengamma.strata.basics.ReferenceDataNotFoundException;
 import com.opengamma.strata.basics.Resolvable;
+import com.opengamma.strata.basics.currency.Currency;
+import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.Messages;
 import com.opengamma.strata.collect.named.Named;
@@ -40,23 +44,30 @@ public final class HolidayCalendarId
 
   /** Serialization version. */
   private static final long serialVersionUID = 1L;
+  /** Name splitter. */
+  private static final Splitter SPLITTER_PLUS = Splitter.on('+');
+  /** Name joiner. */
+  private static final Joiner JOINER_PLUS = Joiner.on('+');
+  /** Name splitter. */
+  private static final Splitter SPLITTER_WIGGLE = Splitter.on('~');
+  /** Name joiner. */
+  private static final Joiner JOINER_WIGGLE = Joiner.on('~');
   /** Instance cache. */
   private static final ConcurrentHashMap<String, HolidayCalendarId> CACHE = new ConcurrentHashMap<>();
 
   /**
    * The identifier, expressed as a normalized unique name.
    */
-  @PropertyDefinition(validate = "notNull")
   private final String name;
   /**
    * The hash code.
    */
-  private transient final int hashCode;
+  private final transient int hashCode;
   /**
    * The resolver function.
    * Implementations of this function must only call {@link ReferenceData#queryValueOrNull(ReferenceDataId)}.
    */
-  private transient final BiFunction<HolidayCalendarId, ReferenceData, HolidayCalendar> resolver;
+  private final transient BiFunction<HolidayCalendarId, ReferenceData, HolidayCalendar> resolver;
 
   //-------------------------------------------------------------------------
   /**
@@ -80,32 +91,53 @@ public final class HolidayCalendarId
 
   // create a new instance atomically, broken out to aid inlining
   private static HolidayCalendarId create(String name) {
-    if (!name.contains("+")) {
-      return CACHE.computeIfAbsent(name, n -> new HolidayCalendarId(name));
-    }
-    // parse + separated names once and build resolver function to aid performance
+    // parse names once and build resolver function to aid performance
     // name BBB+CCC+AAA changed to sorted form of AAA+BBB+CCC
     // dedicated resolver function created
-    List<HolidayCalendarId> ids = Splitter.on('+').splitToList(name).stream()
-        .filter(n -> !n.equals(HolidayCalendarIds.NO_HOLIDAYS.getName()))
-        .map(n -> HolidayCalendarId.of(n))
-        .distinct()
-        .sorted(comparing(HolidayCalendarId::getName))
-        .collect(toList());
-    String normalizedName = Joiner.on('+').join(ids);
+    if (name.indexOf('~') >= 0) {
+      List<HolidayCalendarId> ids = SPLITTER_WIGGLE.splitToList(name).stream()
+          .map(n -> HolidayCalendarId.of(n))
+          .distinct()
+          .sorted(comparing(HolidayCalendarId::getName))
+          .collect(toList());
+      if (ids.contains(HolidayCalendarIds.NO_HOLIDAYS)) {
+        return HolidayCalendarIds.NO_HOLIDAYS;
+      }
+      String normalizedName = JOINER_WIGGLE.join(ids);
+      return create(name, ids, normalizedName, HolidayCalendar::linkedWith);
+    } else if (name.indexOf('+') >= 0) {
+      List<HolidayCalendarId> ids = SPLITTER_PLUS.splitToList(name).stream()
+          .filter(n -> !n.equals(HolidayCalendarIds.NO_HOLIDAYS.getName()))
+          .map(n -> HolidayCalendarId.of(n))
+          .distinct()
+          .sorted(comparing(HolidayCalendarId::getName))
+          .collect(toList());
+      String normalizedName = JOINER_PLUS.join(ids);
+      return create(name, ids, normalizedName, HolidayCalendar::combinedWith);
+    } else {
+      return CACHE.computeIfAbsent(name, n -> new HolidayCalendarId(name));
+    }
+  }
+
+  // creates a new complex id
+  private static HolidayCalendarId create(
+      String name,
+      List<HolidayCalendarId> ids,
+      String normalizedName,
+      BinaryOperator<HolidayCalendar> fn) {
+
     BiFunction<HolidayCalendarId, ReferenceData, HolidayCalendar> resolver = (id, refData) -> {
       HolidayCalendar cal = refData.queryValueOrNull(id);
       if (cal != null) {
         return cal;
       }
-      cal = HolidayCalendars.NO_HOLIDAYS;
       for (HolidayCalendarId splitId : ids) {
         HolidayCalendar splitCal = refData.queryValueOrNull(splitId);
         if (splitCal == null) {
           throw new ReferenceDataNotFoundException(Messages.format(
               "Reference data not found for '{}' of type 'HolidayCalendarId' when finding '{}'", splitId, id));
         }
-        cal = cal.combinedWith(splitCal);
+        cal = cal != null ? fn.apply(cal, splitCal) : splitCal;
       }
       return cal;
     };
@@ -113,6 +145,60 @@ public final class HolidayCalendarId
     HolidayCalendarId id = CACHE.computeIfAbsent(normalizedName, n -> new HolidayCalendarId(normalizedName, resolver));
     CACHE.putIfAbsent(name, id);
     return id;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Gets the default calendar for a currency.
+   * <p>
+   * This uses data from {@code HolidayCalendarDefaultData.ini} to provide a default.
+   * 
+   * @param currency  the currency to find the default for
+   * @return the holiday calendar
+   * @throws IllegalArgumentException if there is no default for the currency
+   */
+  public static HolidayCalendarId defaultByCurrency(Currency currency) {
+    return HolidayCalendarIniLookup.INSTANCE.defaultByCurrency(currency);
+  }
+
+  /**
+   * Tries to find a default calendar for a currency.
+   * <p>
+   * This uses data from {@code HolidayCalendarDefaultData.ini} to provide a default.
+   *
+   * @param currency  the currency to find the default for
+   * @return the holiday calendar, empty if no calendar found
+   */
+  public static Optional<HolidayCalendarId> findDefaultByCurrency(Currency currency) {
+    return HolidayCalendarIniLookup.INSTANCE.findDefaultByCurrency(currency);
+  }
+
+  /**
+   * Gets the default calendar for a pair of currencies.
+   * <p>
+   * This uses data from {@code HolidayCalendarDefaultData.ini} to provide a default.
+   * <p>
+   * If no calendar is found, the 'NoHolidays' calendar is used as the default.
+   *
+   * @param currencyPair the currency pair to find the defaults for
+   * @return the holiday calendar
+   */
+  public static HolidayCalendarId defaultByCurrencyPair(CurrencyPair currencyPair) {
+    return currencyPair.toSet().stream()
+        .map(HolidayCalendarId::findDefaultByCurrency)
+        .flatMap(filteringOptional())
+        .reduce(HolidayCalendarIds.NO_HOLIDAYS, HolidayCalendarId::combinedWith);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Checks if the holiday calendar is a combined or linked calendar.
+   *
+   * @param id the holiday calendar id
+   * @return if the holiday calendar is a combined or linked calendar
+   */
+  public static boolean isCompositeCalendar(HolidayCalendarId id) {
+    return id.getName().indexOf('~') >= 0 || id.getName().indexOf('+') >= 0;
   }
 
   //-------------------------------------------------------------------------
@@ -209,6 +295,25 @@ public final class HolidayCalendarId
       return this;
     }
     return HolidayCalendarId.of(name + '+' + other.name);
+  }
+
+  /**
+   * Combines this holiday calendar identifier with another.
+   * <p>
+   * The resulting calendar will declare a day as a business day if it is a
+   * business day in either source calendar.
+   * 
+   * @param other  the other holiday calendar identifier
+   * @return the combined holiday calendar identifier
+   */
+  public HolidayCalendarId linkedWith(HolidayCalendarId other) {
+    if (this == other) {
+      return this;
+    }
+    if (this == HolidayCalendarIds.NO_HOLIDAYS || other == HolidayCalendarIds.NO_HOLIDAYS) {
+      return HolidayCalendarIds.NO_HOLIDAYS;
+    }
+    return HolidayCalendarId.of(name + '~' + other.name);
   }
 
   //-------------------------------------------------------------------------

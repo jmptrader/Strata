@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,6 +10,7 @@ import static com.opengamma.strata.basics.currency.Currency.GBP;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.FOLLOWING;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.GBLO;
 import static com.opengamma.strata.basics.schedule.Frequency.P1M;
+import static com.opengamma.strata.basics.schedule.StubConvention.SMART_INITIAL;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
@@ -17,11 +18,11 @@ import static com.opengamma.strata.collect.TestHelper.date;
 import static com.opengamma.strata.product.common.PayReceive.PAY;
 import static com.opengamma.strata.product.common.PayReceive.RECEIVE;
 import static com.opengamma.strata.product.swap.SwapLegType.FIXED;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.ReferenceData;
@@ -39,10 +40,10 @@ import com.opengamma.strata.basics.value.ValueStep;
 /**
  * Test.
  */
-@Test
 public class KnownAmountSwapLegTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
+  private static final LocalDate DATE_01_02 = date(2014, 1, 2);
   private static final LocalDate DATE_01_05 = date(2014, 1, 5);
   private static final LocalDate DATE_01_06 = date(2014, 1, 6);
   private static final LocalDate DATE_02_05 = date(2014, 2, 5);
@@ -56,6 +57,7 @@ public class KnownAmountSwapLegTest {
   private static final DaysAdjustment PLUS_TWO_DAYS = DaysAdjustment.ofBusinessDays(2, GBLO);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     BusinessDayAdjustment bda = BusinessDayAdjustment.of(FOLLOWING, GBLO);
     PeriodicSchedule accrualSchedule = PeriodicSchedule.builder()
@@ -76,16 +78,18 @@ public class KnownAmountSwapLegTest {
         .amount(amountSchedule)
         .currency(GBP)
         .build();
-    assertEquals(test.getPayReceive(), PAY);
-    assertEquals(test.getStartDate(), AdjustableDate.of(DATE_01_05, bda));
-    assertEquals(test.getEndDate(), AdjustableDate.of(DATE_04_05, bda));
-    assertEquals(test.getAccrualSchedule(), accrualSchedule);
-    assertEquals(test.getPaymentSchedule(), paymentSchedule);
-    assertEquals(test.getAmount(), amountSchedule);
-    assertEquals(test.getCurrency(), GBP);
+    assertThat(test.getPayReceive()).isEqualTo(PAY);
+    assertThat(test.getStartDate()).isEqualTo(AdjustableDate.of(DATE_01_05, bda));
+    assertThat(test.getEndDate()).isEqualTo(AdjustableDate.of(DATE_04_05, bda));
+    assertThat(test.getAccrualSchedule()).isEqualTo(accrualSchedule);
+    assertThat(test.getPaymentSchedule()).isEqualTo(paymentSchedule);
+    assertThat(test.getAmount()).isEqualTo(amountSchedule);
+    assertThat(test.getCurrency()).isEqualTo(GBP);
+    assertThat(test.allCurrencies()).containsOnly(GBP);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_collectIndices() {
     KnownAmountSwapLeg test = KnownAmountSwapLeg.builder()
         .payReceive(PAY)
@@ -104,11 +108,46 @@ public class KnownAmountSwapLegTest {
         .build();
     ImmutableSet.Builder<Index> builder = ImmutableSet.builder();
     test.collectIndices(builder);
-    assertEquals(builder.build(), ImmutableSet.of());
-    assertEquals(test.allIndices(), ImmutableSet.of());
+    assertThat(builder.build()).isEmpty();
+    assertThat(test.allIndices()).isEmpty();
   }
 
   //-------------------------------------------------------------------------
+  @Test
+  public void test_replaceStartDate() {
+    // test case
+    KnownAmountSwapLeg test = KnownAmountSwapLeg.builder()
+        .payReceive(PAY)
+        .accrualSchedule(PeriodicSchedule.builder()
+            .startDate(DATE_01_05)
+            .endDate(DATE_04_05)
+            .frequency(P1M)
+            .businessDayAdjustment(BusinessDayAdjustment.of(FOLLOWING, GBLO))
+            .build())
+        .paymentSchedule(PaymentSchedule.builder()
+            .paymentFrequency(P1M)
+            .paymentDateOffset(DaysAdjustment.ofBusinessDays(2, GBLO))
+            .build())
+        .amount(ValueSchedule.of(123d))
+        .currency(GBP)
+        .build();
+    // expected
+    KnownAmountSwapLeg expected = test.toBuilder()
+        .accrualSchedule(PeriodicSchedule.builder()
+            .startDate(DATE_01_02)
+            .startDateBusinessDayAdjustment(BusinessDayAdjustment.NONE)
+            .endDate(DATE_04_05)
+            .frequency(P1M)
+            .stubConvention(SMART_INITIAL)
+            .businessDayAdjustment(BusinessDayAdjustment.of(FOLLOWING, GBLO))
+            .build())
+        .build();
+    // assertion
+    assertThat(test.replaceStartDate(DATE_01_02)).isEqualTo(expected);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void test_resolve() {
     // test case
     KnownAmountSwapLeg test = KnownAmountSwapLeg.builder()
@@ -148,7 +187,7 @@ public class KnownAmountSwapLegTest {
         .unadjustedEndDate(DATE_04_05)
         .build();
     // assertion
-    assertEquals(test.resolve(REF_DATA), ResolvedSwapLeg.builder()
+    assertThat(test.resolve(REF_DATA)).isEqualTo(ResolvedSwapLeg.builder()
         .type(FIXED)
         .payReceive(PAY)
         .paymentPeriods(rpp1, rpp2, rpp3)
@@ -156,6 +195,7 @@ public class KnownAmountSwapLegTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     KnownAmountSwapLeg test = KnownAmountSwapLeg.builder()
         .payReceive(PAY)
@@ -191,6 +231,7 @@ public class KnownAmountSwapLegTest {
     coverBeanEquals(test, test2);
   }
 
+  @Test
   public void test_serialization() {
     KnownAmountSwapLeg test = KnownAmountSwapLeg.builder()
         .payReceive(PAY)

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,8 +7,9 @@ package com.opengamma.strata.measure.swaption;
 
 import java.time.LocalDate;
 
-import com.opengamma.strata.basics.index.IborIndex;
+import com.opengamma.strata.basics.index.RateIndex;
 import com.opengamma.strata.data.MarketData;
+import com.opengamma.strata.data.MarketDataNotFoundException;
 import com.opengamma.strata.pricer.swaption.SwaptionVolatilities;
 
 /**
@@ -54,14 +55,14 @@ public interface SwaptionMarketData {
 
   //-------------------------------------------------------------------------
   /**
-   * Gets the volatilities for the specified Ibor index.
+   * Gets the volatilities for the specified index.
    * <p>
    * If the index is not found, an exception is thrown.
    *
-   * @param index  the Ibor index
+   * @param index  the index
    * @return the volatilities for the index
-   * @throws IllegalArgumentException if the index is not found
+   * @throws MarketDataNotFoundException if the index is not found
    */
-  public abstract SwaptionVolatilities volatilities(IborIndex index);
+  public abstract SwaptionVolatilities volatilities(RateIndex index);
 
 }

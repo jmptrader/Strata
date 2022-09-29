@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -21,6 +21,6 @@ public interface IntTernaryOperator {
    * @param c  the third argument
    * @return the result of the function
    */
-  int applyAsInt(int a, int b, int c);
+  public abstract int applyAsInt(int a, int b, int c);
 
 }

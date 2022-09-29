@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,27 +8,31 @@ package com.opengamma.strata.product.bond;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.USNY;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
+import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.currency.Payment;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.BusinessDayConventions;
+import com.opengamma.strata.product.PortfolioItemSummary;
+import com.opengamma.strata.product.PortfolioItemType;
+import com.opengamma.strata.product.ProductType;
 import com.opengamma.strata.product.TradeInfo;
 
 /**
  * Test {@link CapitalIndexedBondTrade}.
  */
-@Test
 public class CapitalIndexedBondTradeTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -50,12 +54,16 @@ public class CapitalIndexedBondTradeTest {
       TradeInfo.builder().tradeDate(date(2008, 1, 1)).settlementDate(date(2008, 1, 1)).build();
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     CapitalIndexedBondTrade test = sut();
-    assertEquals(test.getInfo(), TRADE_INFO);
-    assertEquals(test.getProduct(), PRODUCT);
-    assertEquals(test.getQuantity(), QUANTITY);
-    assertEquals(test.getPrice(), PRICE);
+    assertThat(test.getInfo()).isEqualTo(TRADE_INFO);
+    assertThat(test.getProduct()).isEqualTo(PRODUCT);
+    assertThat(test.getQuantity()).isEqualTo(QUANTITY);
+    assertThat(test.getPrice()).isEqualTo(PRICE);
+    assertThat(test.withInfo(TRADE_INFO).getInfo()).isEqualTo(TRADE_INFO);
+    assertThat(test.withQuantity(129).getQuantity()).isCloseTo(129d, offset(0d));
+    assertThat(test.withPrice(129).getPrice()).isCloseTo(129d, offset(0d));
   }
 
   //-------------------------------------------------------------------------
@@ -83,35 +91,52 @@ public class CapitalIndexedBondTradeTest {
       .build();
 
   //-------------------------------------------------------------------------
+  @Test
+  public void test_summarize() {
+    CapitalIndexedBondTrade trade = sut();
+    PortfolioItemSummary expected = PortfolioItemSummary.builder()
+        .id(TRADE_INFO.getId().orElse(null))
+        .portfolioItemType(PortfolioItemType.TRADE)
+        .productType(ProductType.BOND)
+        .currencies(Currency.USD)
+        .description("Bond x 10")
+        .build();
+    assertThat(trade.summarize()).isEqualTo(expected);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void test_resolve() {
     ResolvedCapitalIndexedBondTrade test = sut().resolve(REF_DATA);
     ResolvedCapitalIndexedBondTrade expected = ResolvedCapitalIndexedBondTrade.builder()
         .info(TRADE_INFO)
         .product(PRODUCT.resolve(REF_DATA))
         .quantity(QUANTITY)
-        .price(PRICE)
-        .settlement(SETTLEMENT)
+        .settlement(ResolvedCapitalIndexedBondSettlement.of(SETTLEMENT_DATE, PRICE, SETTLEMENT))
         .build();
-    assertEquals(test, expected);
+    assertThat(test).isEqualTo(expected);
   }
 
+  @Test
   public void test_resolve1() {
     ResolvedCapitalIndexedBondTrade test = sut1().resolve(REF_DATA);
     ResolvedCapitalIndexedBondTrade expected = ResolvedCapitalIndexedBondTrade.builder()
         .info(TRADE_INFO)
         .product(PRODUCT1.resolve(REF_DATA))
         .quantity(QUANTITY)
-        .price(PRICE)
-        .settlement(SETTLEMENT1)
+        .settlement(ResolvedCapitalIndexedBondSettlement.of(SETTLEMENT_DATE, PRICE, SETTLEMENT1))
         .build();
-    assertEquals(test, expected);
+    assertThat(test).isEqualTo(expected);
   }
 
+  @Test
   public void test_resolve_invalid() {
     CapitalIndexedBondTrade test = sut().toBuilder().info(TRADE_INFO_EARLY).build();
-    assertThrowsIllegalArg(() -> test.resolve(REF_DATA));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> test.resolve(REF_DATA));
   }
 
+  @Test
   public void test_resolve_noTradeOrSettlementDate() {
     CapitalIndexedBondTrade test = CapitalIndexedBondTrade.builder()
         .info(TradeInfo.empty())
@@ -119,15 +144,47 @@ public class CapitalIndexedBondTradeTest {
         .quantity(QUANTITY)
         .price(PRICE)
         .build();
-    assertThrows(() -> test.resolve(REF_DATA), IllegalStateException.class);
+    assertThatIllegalStateException()
+        .isThrownBy(() -> test.resolve(REF_DATA));
   }
 
   //-------------------------------------------------------------------------
+  @Test
+  public void test_withQuantity() {
+    CapitalIndexedBondTrade base = sut();
+    double quantity = 3456d;
+    CapitalIndexedBondTrade computed = base.withQuantity(quantity);
+    CapitalIndexedBondTrade expected = CapitalIndexedBondTrade.builder()
+        .info(TRADE_INFO)
+        .product(PRODUCT)
+        .quantity(quantity)
+        .price(PRICE)
+        .build();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  @Test
+  public void test_withPrice() {
+    CapitalIndexedBondTrade base = sut();
+    double price = 0.95;
+    CapitalIndexedBondTrade computed = base.withPrice(price);
+    CapitalIndexedBondTrade expected = CapitalIndexedBondTrade.builder()
+        .info(TRADE_INFO)
+        .product(PRODUCT)
+        .quantity(QUANTITY)
+        .price(price)
+        .build();
+    assertThat(computed).isEqualTo(expected);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

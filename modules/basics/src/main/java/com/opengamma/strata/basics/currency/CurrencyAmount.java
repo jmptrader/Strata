@@ -1,19 +1,18 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.currency;
 
 import java.io.Serializable;
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.function.DoubleUnaryOperator;
 
 import org.joda.beans.JodaBeanUtils;
 import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
-import com.google.common.base.Splitter;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.math.DoubleMath;
 import com.opengamma.strata.collect.ArgChecker;
@@ -25,9 +24,9 @@ import com.opengamma.strata.collect.ArgChecker;
  * It is specifically named "CurrencyAmount" and not "Money" to indicate that
  * it simply holds a currency and an amount. By contrast, naming it "Money"
  * would imply it was a suitable choice for accounting purposes, which it is not.
- * <p>
  * This design approach has been chosen primarily for performance reasons.
  * Using a {@code BigDecimal} is markedly slower.
+ * See the {@link Money} class for the alternative that uses {@link BigDecimal}.
  * <p>
  * A {@code double} is a 64 bit floating point value suitable for most calculations.
  * Floating point maths is
@@ -51,11 +50,13 @@ public final class CurrencyAmount
 
   /**
    * The currency.
+   * <p>
    * For example, in the value 'GBP 12.34' the currency is 'GBP'.
    */
   private final Currency currency;
   /**
    * The amount of the currency.
+   * <p>
    * For example, in the value 'GBP 12.34' the amount is 12.34.
    */
   private final double amount;
@@ -73,10 +74,13 @@ public final class CurrencyAmount
 
   /**
    * Obtains an instance of {@code CurrencyAmount} for the specified currency and amount.
+   * <p>
+   * If the negative form of zero is passed in, it will be converted to positive zero.
    *
    * @param currency  the currency the amount is in
    * @param amount  the amount of the currency to represent
    * @return the currency amount
+   * @throws IllegalArgumentException if the amount is {@code NaN}
    */
   public static CurrencyAmount of(Currency currency, double amount) {
     return new CurrencyAmount(currency, amount);
@@ -88,11 +92,13 @@ public final class CurrencyAmount
    * <p>
    * A currency is uniquely identified by ISO-4217 three letter code.
    * This method creates the currency if it is not known.
+   * <p>
+   * If the negative form of zero is passed in, it will be converted to positive zero.
    *
    * @param currencyCode  the three letter currency code, ASCII and upper case
    * @param amount  the amount of the currency to represent
    * @return the currency amount
-   * @throws IllegalArgumentException if the currency code is invalid
+   * @throws IllegalArgumentException if the currency code is invalid, or if the amount is {@code NaN}
    */
   public static CurrencyAmount of(String currencyCode, double amount) {
     return of(Currency.of(currencyCode), amount);
@@ -103,21 +109,27 @@ public final class CurrencyAmount
    * Parses the string to produce a {@code CurrencyAmount}.
    * <p>
    * This parses the {@code toString} format of '${currency} ${amount}'.
-   * 
+   *
    * @param amountStr  the amount string
    * @return the currency amount
    * @throws IllegalArgumentException if the amount cannot be parsed
    */
   @FromString
   public static CurrencyAmount parse(String amountStr) {
-    ArgChecker.notNull(amountStr, "amountStr");
-    List<String> split = Splitter.on(' ').splitToList(amountStr);
-    if (split.size() != 2) {
+    // this method has had some performance optimizations applied
+    if (amountStr == null || amountStr.length() <= 4 || amountStr.charAt(3) != ' ') {
       throw new IllegalArgumentException("Unable to parse amount, invalid format: " + amountStr);
     }
+
+    String currencyCode = amountStr.substring(0, 3);
+    String doubleString = amountStr.substring(4);
+    if (doubleString.indexOf(' ') != -1) {
+      throw new IllegalArgumentException("Unable to parse amount, invalid format: " + amountStr);
+    }
+
     try {
-      Currency cur = Currency.parse(split.get(0));
-      double amount = Double.parseDouble(split.get(1));
+      Currency cur = Currency.parse(currencyCode);
+      double amount = Double.parseDouble(doubleString);
       return new CurrencyAmount(cur, amount);
     } catch (RuntimeException ex) {
       throw new IllegalArgumentException("Unable to parse amount: " + amountStr, ex);
@@ -127,13 +139,13 @@ public final class CurrencyAmount
   //-------------------------------------------------------------------------
   /**
    * Creates an instance.
-   * 
+   *
    * @param currency  the currency
    * @param amount  the amount
    */
   private CurrencyAmount(Currency currency, double amount) {
     this.currency = ArgChecker.notNull(currency, "currency");
-    this.amount = amount;
+    this.amount = ArgChecker.notNaN(amount + 0d, "amount");  // this weird addition removes negative zero
   }
 
   //-------------------------------------------------------------------------
@@ -141,7 +153,7 @@ public final class CurrencyAmount
    * Gets the currency.
    * <p>
    * For example, in the value 'GBP 12.34' the currency is 'GBP'.
-   * 
+   *
    * @return the currency
    */
   public Currency getCurrency() {
@@ -152,7 +164,7 @@ public final class CurrencyAmount
    * Gets the amount of the currency.
    * <p>
    * For example, in the value 'GBP 12.34' the amount is 12.34.
-   * 
+   *
    * @return the amount
    */
   public double getAmount() {
@@ -261,16 +273,49 @@ public final class CurrencyAmount
 
   //-------------------------------------------------------------------------
   /**
+   * Checks if the amount is zero.
+   * 
+   * @return true if zero
+   */
+  public boolean isZero() {
+    return amount == 0;
+  }
+
+  /**
+   * Checks if the amount is positive.
+   * <p>
+   * Zero and negative amounts return false.
+   * 
+   * @return true if positive
+   */
+  public boolean isPositive() {
+    return amount > 0;
+  }
+
+  /**
+   * Checks if the amount is negative.
+   * <p>
+   * Zero and positive amounts return false.
+   * 
+   * @return true if negative
+   */
+  public boolean isNegative() {
+    return amount < 0;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
    * Returns a copy of this {@code CurrencyAmount} with the amount negated.
    * <p>
-   * This takes this amount and negates it.
+   * This takes this amount and negates it. If the amount is 0.0 or -0.0 the negated amount is 0.0.
    * <p>
    * This instance is immutable and unaffected by this method.
    * 
    * @return an amount based on this with the amount negated
    */
   public CurrencyAmount negated() {
-    return new CurrencyAmount(currency, -amount);
+    // Zero is treated as a special case to avoid creating -0.0 which produces surprising equality behaviour
+    return new CurrencyAmount(currency, amount == 0d ? 0d : -amount);
   }
 
   /**
@@ -301,6 +346,27 @@ public final class CurrencyAmount
 
   //-------------------------------------------------------------------------
   /**
+   * Converts this monetary amount to the equivalent {@code Money}.
+   * <p>
+   * An instance of {@link Money} only stores the amount to the number of decimal places of the currency.
+   * As such, this method may result in a loss of precision.
+   *
+   * @return the equivalent {@code Money}
+   */
+  public Money toMoney() {
+    return Money.of(currency, amount);
+  }
+
+  /**
+   * Converts this monetary amount to the equivalent {@code BigMoney}.
+   *
+   * @return the equivalent {@code BigMoney}
+   */
+  public BigMoney toBigMoney() {
+    return BigMoney.of(currency, amount);
+  }
+
+  /**
    * Converts this amount to an equivalent amount the specified currency.
    * <p>
    * The result will be expressed in terms of the given currency, converting
@@ -308,7 +374,7 @@ public final class CurrencyAmount
    * <p>
    * For example, if this represents 'GBP 100' and this method is called with
    * arguments {@code (USD, 1.6)} then the result will be 'USD 160'.
-   * 
+   *
    * @param resultCurrency  the currency of the result
    * @param fxRate  the FX rate from this currency to the result currency
    * @return the converted instance, which should be expressed in the specified currency
@@ -329,7 +395,7 @@ public final class CurrencyAmount
    * <p>
    * The result will be expressed in terms of the given currency.
    * If conversion is needed, the provider will be used to supply the FX rate.
-   * 
+   *
    * @param resultCurrency  the currency of the result
    * @param rateProvider  the provider of FX rates
    * @return the converted instance, in the specified currency
@@ -349,7 +415,7 @@ public final class CurrencyAmount
    * Compares this currency amount to another.
    * <p>
    * This compares currencies alphabetically, then by amount.
-   * 
+   *
    * @param other  the other amount
    * @return negative if less, zero if equal, positive if greater
    */
@@ -361,9 +427,10 @@ public final class CurrencyAmount
         .result();
   }
 
+  //-------------------------------------------------------------------------
   /**
    * Checks if this currency amount equals another.
-   * 
+   *
    * @param obj  the other amount, null returns false
    * @return true if equal
    */
@@ -382,7 +449,7 @@ public final class CurrencyAmount
 
   /**
    * Returns a suitable hash code for the currency.
-   * 
+   *
    * @return the hash code
    */
   @Override
@@ -396,7 +463,7 @@ public final class CurrencyAmount
    * <p>
    * The format is the currency code, followed by a space, followed by the
    * amount: '${currency} ${amount}'.
-   * 
+   *
    * @return the currency amount
    */
   @Override

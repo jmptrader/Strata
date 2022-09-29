@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -54,5 +54,16 @@ final class StandardMeasures {
   //-------------------------------------------------------------------------
   // semi-parallel gamma bucketed PV01
   public static final Measure PV01_SEMI_PARALLEL_GAMMA_BUCKETED = ImmutableMeasure.of("PV01SemiParallelGammaBucketed");
+  // single-node gamma bucketed PV01
+  public static final Measure PV01_SINGLE_NODE_GAMMA_BUCKETED = ImmutableMeasure.of("PV01SingleNodeGammaBucketed");
+
+  //-------------------------------------------------------------------------
+  // Vega market quote bucketed
+  public static final Measure VEGA_MARKET_QUOTE_BUCKETED = ImmutableMeasure.of("VegaMarketQuoteBucketed");
+
+  //-------------------------------------------------------------------------
+  // restricted constructor
+  private StandardMeasures() {
+  }
 
 }

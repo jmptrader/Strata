@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -21,7 +21,8 @@ import com.opengamma.strata.math.impl.rootfinding.NewtonRaphsonSingleRootFinder;
  * weights $w_i$ are given by:
  * $$
  * \begin{align*}
- * w_i = \frac{2^{\alpha + \beta}(2n + \alpha + \beta)\Gamma(\alpha + n)\Gamma(\beta + n)}{n!\Gamma(n + \alpha + \beta + 1)J_i'(x_i) J_{i - 1}}
+ * w_i = \frac{2^{\alpha + \beta}(2n + \alpha + \beta)\Gamma(\alpha + n)\Gamma(\beta + n)}
+ * {n!\Gamma(n + \alpha + \beta + 1)J_i'(x_i) J_{i - 1}}
  * \end{align*}
  * $$
  * where $x_i$ is the $i^{th}$ root of the orthogonal polynomial, $J_i$ is the
@@ -39,6 +40,7 @@ public class GaussJacobiWeightAndAbscissaFunction implements QuadratureWeightAnd
   private final double _c;
 
   /**
+   * Creates an instance.
    * Sets $\alpha = 0$ and $\beta = 0$
    */
   public GaussJacobiWeightAndAbscissaFunction() {
@@ -46,6 +48,7 @@ public class GaussJacobiWeightAndAbscissaFunction implements QuadratureWeightAnd
   }
 
   /**
+   * Creates an instance.
    * @param alpha The value of $\alpha$ to use when generating the polynomials
    * @param beta The value of $\beta$ to use when generating the polynomials
    */

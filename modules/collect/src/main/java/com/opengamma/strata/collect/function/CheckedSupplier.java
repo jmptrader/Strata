@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -23,6 +23,6 @@ public interface CheckedSupplier<R> {
    * @return a result
    * @throws Throwable if an error occurs
    */
-  public R get() throws Throwable;
+  public abstract R get() throws Throwable;
 
 }

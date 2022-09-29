@@ -1,9 +1,11 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.product.swap;
+
+import java.time.LocalDate;
 
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.ReferenceData;
@@ -14,6 +16,7 @@ import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.date.AdjustableDate;
 import com.opengamma.strata.basics.index.Index;
 import com.opengamma.strata.product.common.PayReceive;
+import com.opengamma.strata.product.swaption.Swaption;
 
 /**
  * A single leg of a swap.
@@ -78,14 +81,39 @@ public interface SwapLeg extends Resolvable<ResolvedSwapLeg> {
    */
   public abstract AdjustableDate getEndDate();
 
+  //-------------------------------------------------------------------------
   /**
-   * Gets the currency of the leg.
+   * Gets the payment currency of the leg.
    * <p>
-   * A swap leg has a single currency.
+   * A swap leg has a single payment currency.
    * 
-   * @return the currency of the leg
+   * @return the payment currency of the leg
    */
   public abstract Currency getCurrency();
+
+  /**
+   * Returns the set of currencies referred to by the leg.
+   * <p>
+   * This returns the complete set of currencies for the leg, not just the payment currencies.
+   * For example, if there is an FX reset, then this set contains both the currency of the
+   * payment and the currency of the notional.
+   * 
+   * @return the set of currencies referred to by this leg
+   */
+  public default ImmutableSet<Currency> allCurrencies() {
+    ImmutableSet.Builder<Currency> builder = ImmutableSet.builder();
+    collectCurrencies(builder);
+    return builder.build();
+  }
+
+  /**
+   * Collects all the currencies referred to by this leg.
+   * <p>
+   * This collects the complete set of currencies for the leg, not just the payment currencies.
+   * 
+   * @param builder  the builder to populate
+   */
+  public abstract void collectCurrencies(ImmutableSet.Builder<Currency> builder);
 
   //-------------------------------------------------------------------------
   /**
@@ -109,10 +137,28 @@ public interface SwapLeg extends Resolvable<ResolvedSwapLeg> {
    * A swap leg will typically refer to at least one index, such as 'GBP-LIBOR-3M'.
    * Each index that is referred to must be added to the specified builder.
    * 
-   * @param builder  the builder to use
+   * @param builder  the builder to populate
    */
   public abstract void collectIndices(ImmutableSet.Builder<Index> builder);
 
+  //-------------------------------------------------------------------------
+  /**
+   * Returns an instance based on this leg with the start date replaced.
+   * <p>
+   * This is used to change the start date of the leg, and is currently used by {@link Swaption}.
+   * <p>
+   * See each implementation for details of how the override is performed.
+   * 
+   * @param adjustedStartDate the new adjusted start date
+   * @return the updated leg
+   * @throws IllegalArgumentException if the start date cannot be replaced with the proposed start date
+   * @throws UnsupportedOperationException if changing the start date is not supported
+   */
+  public default SwapLeg replaceStartDate(LocalDate adjustedStartDate) {
+    throw new UnsupportedOperationException("Unable to change start date: " + getClass().getSimpleName());
+  }
+
+  //-------------------------------------------------------------------------
   /**
    * Resolves this swap leg using the specified reference data.
    * <p>

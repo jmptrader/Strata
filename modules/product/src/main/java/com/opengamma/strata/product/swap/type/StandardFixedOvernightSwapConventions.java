@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,10 +8,13 @@ package com.opengamma.strata.product.swap.type;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
+import static com.opengamma.strata.basics.index.OvernightIndices.CHF_SARON;
 import static com.opengamma.strata.basics.index.OvernightIndices.EUR_EONIA;
+import static com.opengamma.strata.basics.index.OvernightIndices.EUR_ESTR;
 import static com.opengamma.strata.basics.index.OvernightIndices.GBP_SONIA;
 import static com.opengamma.strata.basics.index.OvernightIndices.JPY_TONAR;
 import static com.opengamma.strata.basics.index.OvernightIndices.USD_FED_FUND;
+import static com.opengamma.strata.basics.index.OvernightIndices.USD_SOFR;
 import static com.opengamma.strata.basics.schedule.Frequency.P12M;
 import static com.opengamma.strata.basics.schedule.Frequency.TERM;
 import static com.opengamma.strata.product.swap.OvernightAccrualMethod.COMPOUNDED;
@@ -27,7 +30,7 @@ import com.opengamma.strata.basics.schedule.StubConvention;
 /**
  * Market standard Fixed-Overnight swap conventions.
  * <p>
- * http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+ * https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
  */
 final class StandardFixedOvernightSwapConventions {
 
@@ -51,6 +54,45 @@ final class StandardFixedOvernightSwapConventions {
 
   //-------------------------------------------------------------------------
   /**
+   * CHF fixed vs SARON OIS swap for terms less than or equal to one year.
+   * <p>
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention CHF_FIXED_TERM_SARON_OIS =
+      makeConvention("CHF-FIXED-TERM-SARON-OIS", CHF_SARON, ACT_360, TERM, 2, 2);
+
+  /**
+   * CHF fixed vs SARON OIS swap for terms greater than one year.
+   * <p>
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention CHF_FIXED_1Y_SARON_OIS =
+      makeConvention("CHF-FIXED-1Y-SARON-OIS", CHF_SARON, ACT_360, P12M, 2, 2);
+
+  //-------------------------------------------------------------------------
+
+  /**
+   * USD fixed vs SOFR OIS swap for terms less than or equal to one year.
+   * <p>
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention USD_FIXED_TERM_SOFR_OIS =
+      makeConvention("USD-FIXED-TERM-SOFR-OIS", USD_SOFR, ACT_360, TERM, 2, 2);
+
+  /**
+   * USD fixed vs SOFR OIS swap for terms greater than one year.
+   * <p>
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention USD_FIXED_1Y_SOFR_OIS =
+      makeConvention("USD-FIXED-1Y-SOFR-OIS", USD_SOFR, ACT_360, P12M, 2, 2);
+
+  //-------------------------------------------------------------------------
+  /**
    * EUR fixed vs EONIA OIS swap for terms less than or equal to one year.
    * <p>
    * Both legs pay once at the end and use day count 'Act/360'.
@@ -67,6 +109,23 @@ final class StandardFixedOvernightSwapConventions {
    */
   public static final FixedOvernightSwapConvention EUR_FIXED_1Y_EONIA_OIS =
       makeConvention("EUR-FIXED-1Y-EONIA-OIS", EUR_EONIA, ACT_360, P12M, 1, 2);
+  /**
+   * EUR fixed vs ESTR OIS swap for terms less than or equal to one year.
+   * <p>
+   * Both legs pay once at the end and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention EUR_FIXED_TERM_ESTR_OIS =
+      makeConvention("EUR-FIXED-TERM-ESTR-OIS", EUR_ESTR, ACT_360, TERM, 2, 2);
+
+  /**
+   * EUR fixed vs ESTR OIS swap for terms greater than one year.
+   * <p>
+   * Both legs pay annually and use day count 'Act/360'.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
+   */
+  public static final FixedOvernightSwapConvention EUR_FIXED_1Y_ESTR_OIS =
+      makeConvention("EUR-FIXED-1Y-ESTR-OIS", EUR_ESTR, ACT_360, P12M, 2, 2);
 
   //-------------------------------------------------------------------------
   /**
@@ -92,19 +151,19 @@ final class StandardFixedOvernightSwapConventions {
    * JPY fixed vs TONAR OIS swap for terms less than or equal to one year.
    * <p>
    * Both legs pay once at the end and use day count 'Act/365F'.
-   * The spot date offset is 2 days and there is no payment date offset.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
    */
   public static final FixedOvernightSwapConvention JPY_FIXED_TERM_TONAR_OIS =
-      makeConvention("JPY-FIXED-TERM-TONAR-OIS", JPY_TONAR, ACT_365F, TERM, 0, 0);
+      makeConvention("JPY-FIXED-TERM-TONAR-OIS", JPY_TONAR, ACT_365F, TERM, 2, 2);
 
   /**
    * JPY fixed vs TONAR OIS swap for terms greater than one year.
    * <p>
    * Both legs pay annually and use day count 'Act/365F'.
-   * The spot date offset is 2 days and there is no payment date offset.
+   * The spot date offset is 2 days and the payment date offset is 2 days.
    */
   public static final FixedOvernightSwapConvention JPY_FIXED_1Y_TONAR_OIS =
-      makeConvention("JPY-FIXED-1Y-TONAR-OIS", JPY_TONAR, ACT_365F, P12M, 0, 2);
+      makeConvention("JPY-FIXED-1Y-TONAR-OIS", JPY_TONAR, ACT_365F, P12M, 2, 2);
 
   //-------------------------------------------------------------------------
   // build conventions
@@ -128,7 +187,7 @@ final class StandardFixedOvernightSwapConventions {
             .accrualBusinessDayAdjustment(BusinessDayAdjustment.of(MODIFIED_FOLLOWING, calendar))
             .paymentFrequency(frequency)
             .paymentDateOffset(paymentDateOffset)
-            .stubConvention(StubConvention.SHORT_INITIAL)
+            .stubConvention(StubConvention.SMART_INITIAL)
             .build(),
         OvernightRateSwapLegConvention.builder()
             .index(index)
@@ -136,7 +195,7 @@ final class StandardFixedOvernightSwapConventions {
             .accrualFrequency(frequency)
             .paymentFrequency(frequency)
             .paymentDateOffset(paymentDateOffset)
-            .stubConvention(StubConvention.SHORT_INITIAL)
+            .stubConvention(StubConvention.SMART_INITIAL)
             .build(),
         spotDateOffset);
   }

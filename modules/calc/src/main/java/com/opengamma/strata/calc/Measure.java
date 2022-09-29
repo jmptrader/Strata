@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,6 +6,7 @@
 package com.opengamma.strata.calc;
 
 import org.joda.convert.FromString;
+import org.joda.convert.ToString;
 
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -37,15 +38,6 @@ public interface Measure extends Named {
     return extendedEnum().lookup(uniqueName);
   }
 
-  //-------------------------------------------------------------------------
-  /**
-   * Flag indicating whether measure values should be automatically converted to the reporting currency.
-   *
-   * @return true if measure values should be automatically converted to the reporting currency
-   */
-  public abstract boolean isCurrencyConvertible();
-
-  //-------------------------------------------------------------------------
   /**
    * Gets the extended enum helper.
    * <p>
@@ -54,8 +46,28 @@ public interface Measure extends Named {
    *
    * @return the extended enum helper
    */
-  static ExtendedEnum<Measure> extendedEnum() {
+  public static ExtendedEnum<Measure> extendedEnum() {
     return MeasureHelper.ENUM_LOOKUP;
   }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Gets the name that uniquely identifies this measure.
+   * <p>
+   * This name is used in serialization and can be parsed using {@link #of(String)}.
+   * 
+   * @return the unique name
+   */
+  @ToString
+  @Override
+  public abstract String getName();
+
+  //-------------------------------------------------------------------------
+  /**
+   * Flag indicating whether measure values should be automatically converted to the reporting currency.
+   *
+   * @return true if measure values should be automatically converted to the reporting currency
+   */
+  public abstract boolean isCurrencyConvertible();
 
 }

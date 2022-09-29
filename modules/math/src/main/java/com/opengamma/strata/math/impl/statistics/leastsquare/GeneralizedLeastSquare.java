@@ -1,10 +1,11 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.leastsquare;
 
+import static com.opengamma.strata.math.MathUtils.pow2;
 import static org.apache.commons.math3.util.CombinatoricsUtils.binomialCoefficient;
 
 import java.util.List;
@@ -16,21 +17,23 @@ import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.DoubleArrayMath;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
-import com.opengamma.strata.math.impl.FunctionUtils;
-import com.opengamma.strata.math.impl.linearalgebra.Decomposition;
-import com.opengamma.strata.math.impl.linearalgebra.DecompositionResult;
 import com.opengamma.strata.math.impl.linearalgebra.SVDecompositionCommons;
 import com.opengamma.strata.math.impl.matrix.CommonsMatrixAlgebra;
 import com.opengamma.strata.math.impl.matrix.MatrixAlgebra;
+import com.opengamma.strata.math.linearalgebra.Decomposition;
+import com.opengamma.strata.math.linearalgebra.DecompositionResult;
 
 /**
- * 
+ * Generalized least square method.
  */
 public class GeneralizedLeastSquare {
 
   private final Decomposition<?> _decomposition;
   private final MatrixAlgebra _algebra;
 
+  /**
+   * Creates an instance.
+   */
   public GeneralizedLeastSquare() {
     _decomposition = new SVDecompositionCommons();
     _algebra = new CommonsMatrixAlgebra();
@@ -51,7 +54,7 @@ public class GeneralizedLeastSquare {
   }
 
   /**
-   * Generalised least square with penalty on (higher-order) finite differences of weights
+   * Generalised least square with penalty on (higher-order) finite differences of weights.
    * @param <T> The type of the independent variables (e.g. Double, double[], DoubleArray etc)
    * @param x independent variables
    * @param y dependent (scalar) variables
@@ -86,6 +89,7 @@ public class GeneralizedLeastSquare {
   GeneralizedLeastSquareResults<Double> solve(
       double[] x, double[] y, double[] sigma, List<Function<Double, Double>> basisFunctions,
       double lambda, int differenceOrder) {
+
     return solve(DoubleArrayMath.toObject(x), y, sigma, basisFunctions, lambda, differenceOrder);
   }
 
@@ -104,7 +108,7 @@ public class GeneralizedLeastSquare {
   }
 
   /**
-   * Generalised least square with penalty on (higher-order) finite differences of weights
+   * Generalised least square with penalty on (higher-order) finite differences of weights.
    * @param <T> The type of the independent variables (e.g. Double, double[], DoubleArray etc)
    * @param x independent variables
    * @param y dependent (scalar) variables
@@ -133,8 +137,11 @@ public class GeneralizedLeastSquare {
   }
 
   /**
-   * Specialist method used mainly for solving multidimensional P-spline problems where the basis functions (B-splines) span a N-dimension space, and the weights sit on an N-dimension
-   *  grid and are treated as a N-order tensor rather than a vector, so k-order differencing is done for each tensor index while varying the other indices.
+   * Specialist method used mainly for solving multidimensional P-spline problems where the basis functions
+   * (B-splines) span a N-dimension space, and the weights sit on an N-dimension
+   * grid and are treated as a N-order tensor rather than a vector, so k-order differencing is
+   * done for each tensor index while varying the other indices.
+   * 
    * @param <T> The type of the independent variables (e.g. Double, double[], DoubleArray etc)
    * @param x independent variables
    * @param y dependent (scalar) variables
@@ -225,7 +232,7 @@ public class GeneralizedLeastSquare {
       for (k = 0; k < m; k++) {
         temp += w.get(k) * f[k][i];
       }
-      chiSq += FunctionUtils.square(y.get(i) - temp) * invSigmaSqr[i];
+      chiSq += pow2(y.get(i) - temp) * invSigmaSqr[i];
     }
 
     return new GeneralizedLeastSquareResults<>(basisFunctions, chiSq, w, covar);
@@ -289,7 +296,7 @@ public class GeneralizedLeastSquare {
       for (k = 0; k < m; k++) {
         temp += w.get(k) * f[k][i];
       }
-      chiSq += FunctionUtils.square(y.get(i) - temp) * invSigmaSqr[i];
+      chiSq += pow2(y.get(i) - temp) * invSigmaSqr[i];
     }
 
     return new GeneralizedLeastSquareResults<>(basisFunctions, chiSq, w, covar);
@@ -302,7 +309,7 @@ public class GeneralizedLeastSquare {
     for (int i = 0; i < m; i++) {
       double sum = 0;
       for (int k = 0; k < n; k++) {
-        sum += FunctionUtils.square(funcMatrix[i][k]) * invSigmaSqr[k];
+        sum += pow2(funcMatrix[i][k]) * invSigmaSqr[k];
       }
       a[i][i] = sum;
       for (int j = i + 1; j < m; j++) {
@@ -323,9 +330,6 @@ public class GeneralizedLeastSquare {
 
     double[][] data = new double[m][m];
     if (m == 0) {
-      for (int i = 0; i < m; i++) {
-        data[i][i] = 1.0;
-      }
       return DoubleMatrix.copyOf(data);
     }
 

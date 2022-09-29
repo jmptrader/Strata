@@ -1,30 +1,32 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer;
 
+import static com.opengamma.strata.pricer.SimpleDiscountFactors.EFFECTIVE_ZERO;
+
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
+import java.util.OptionalInt;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableConstructor;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.date.DayCount;
@@ -77,11 +79,11 @@ public final class ZeroRatePeriodicDiscountFactors
   /**
    * The number of compounding periods per year of the zero-coupon rate.
    */
-  private final int frequency;  // cached, not a property
+  private final transient int frequency;  // cached, not a property
   /**
    * The day count convention of the curve.
    */
-  private final DayCount dayCount;  // cached, not a property
+  private final transient DayCount dayCount;  // cached, not a property
 
   //-------------------------------------------------------------------------
   /**
@@ -127,6 +129,11 @@ public final class ZeroRatePeriodicDiscountFactors
     this.frequency = frequencyOpt.get();
   }
 
+  // ensure standard constructor is invoked
+  private Object readResolve() {
+    return new ZeroRatePeriodicDiscountFactors(currency, valuationDate, curve);
+  }
+
   //-------------------------------------------------------------------------
   @Override
   public <T> Optional<T> findData(MarketDataName<T> name) {
@@ -152,6 +159,11 @@ public final class ZeroRatePeriodicDiscountFactors
   }
 
   @Override
+  public OptionalInt findParameterIndex(ParameterMetadata metadata) {
+    return curve.findParameterIndex(metadata);
+  }
+
+  @Override
   public ZeroRatePeriodicDiscountFactors withParameter(int parameterIndex, double newValue) {
     return withCurve(curve.withParameter(parameterIndex, newValue));
   }
@@ -169,33 +181,30 @@ public final class ZeroRatePeriodicDiscountFactors
 
   @Override
   public double discountFactor(double relativeYearFraction) {
+    if (relativeYearFraction <= EFFECTIVE_ZERO) {
+      return 1d;
+    }
     // convert zero rate periodically compounded to discount factor
     return Math.pow(1d + curve.yValue(relativeYearFraction) / frequency, -relativeYearFraction * frequency);
   }
 
   @Override
-  public double discountFactorWithSpread(
-      double yearFraction,
-      double zSpread,
-      CompoundedRateType compoundedRateType,
-      int periodPerYear) {
-
-    if (Math.abs(yearFraction) < EFFECTIVE_ZERO) {
-      return 1d;
+  public double discountFactorTimeDerivative(double yearFraction) {
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return 0d;
     }
-    double df = discountFactor(yearFraction);
-    if (compoundedRateType.equals(CompoundedRateType.PERIODIC)) {
-      ArgChecker.notNegativeOrZero(periodPerYear, "periodPerYear");
-      double ratePeriodicAnnualPlusOne =
-          Math.pow(df, -1.0 / periodPerYear / yearFraction) + zSpread / periodPerYear;
-      return Math.pow(ratePeriodicAnnualPlusOne, -periodPerYear * yearFraction);
-    } else {
-      return df * Math.exp(-zSpread * yearFraction);
-    }
+    double zr = curve.yValue(yearFraction);
+    double periodIF = 1d + zr / frequency;
+    double df = Math.pow(periodIF, -yearFraction * frequency);
+    return -frequency * df *
+        (Math.log(periodIF) + yearFraction / periodIF * curve.firstDerivative(yearFraction) / frequency);
   }
 
   @Override
   public double zeroRate(double yearFraction) {
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return 0d;
+    }
     double ratePeriod = curve.yValue(yearFraction);
     return frequency * Math.log(1d + ratePeriod / frequency);
   }
@@ -204,6 +213,9 @@ public final class ZeroRatePeriodicDiscountFactors
   @Override
   public ZeroRateSensitivity zeroRatePointSensitivity(double yearFraction, Currency sensitivityCurrency) {
     double discountFactor = discountFactor(yearFraction);
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return ZeroRateSensitivity.of(currency, yearFraction, sensitivityCurrency, 0d);
+    }
     return ZeroRateSensitivity.of(currency, yearFraction, sensitivityCurrency, -discountFactor * yearFraction);
   }
 
@@ -215,7 +227,7 @@ public final class ZeroRatePeriodicDiscountFactors
       CompoundedRateType compoundedRateType,
       int periodPerYear) {
 
-    if (Math.abs(yearFraction) < EFFECTIVE_ZERO) {
+    if (yearFraction < EFFECTIVE_ZERO) {
       return ZeroRateSensitivity.of(currency, yearFraction, sensitivityCurrency, 0);
     }
     if (compoundedRateType.equals(CompoundedRateType.CONTINUOUS)) {
@@ -233,10 +245,15 @@ public final class ZeroRatePeriodicDiscountFactors
   @Override
   public CurrencyParameterSensitivities parameterSensitivity(ZeroRateSensitivity pointSens) {
     double yearFraction = pointSens.getYearFraction();
+    UnitParameterSensitivity curveSens = curve.yValueParameterSensitivity(yearFraction);
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return CurrencyParameterSensitivities.of(curveSens.multipliedBy(pointSens.getCurrency(), 0d));
+      // Discount factor in 0 is always 1, no sensitivity.
+    }
     double rp = curve.yValue(yearFraction);
     double rcBar = 1.0;
     double rpBar = 1.0 / (1 + rp / frequency) * rcBar;
-    UnitParameterSensitivity unitSens = curve.yValueParameterSensitivity(yearFraction).multipliedBy(rpBar);
+    UnitParameterSensitivity unitSens = curveSens.multipliedBy(rpBar);
     CurrencyParameterSensitivity curSens = unitSens.multipliedBy(pointSens.getCurrency(), pointSens.getSensitivity());
     return CurrencyParameterSensitivities.of(curSens);
   }
@@ -258,7 +275,6 @@ public final class ZeroRatePeriodicDiscountFactors
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code ZeroRatePeriodicDiscountFactors}.
    * @return the meta-bean, not null
@@ -268,7 +284,7 @@ public final class ZeroRatePeriodicDiscountFactors
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(ZeroRatePeriodicDiscountFactors.Meta.INSTANCE);
+    MetaBean.register(ZeroRatePeriodicDiscountFactors.Meta.INSTANCE);
   }
 
   /**
@@ -279,16 +295,6 @@ public final class ZeroRatePeriodicDiscountFactors
   @Override
   public ZeroRatePeriodicDiscountFactors.Meta metaBean() {
     return ZeroRatePeriodicDiscountFactors.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -349,8 +355,8 @@ public final class ZeroRatePeriodicDiscountFactors
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("ZeroRatePeriodicDiscountFactors{");
-    buf.append("currency").append('=').append(currency).append(',').append(' ');
-    buf.append("valuationDate").append('=').append(valuationDate).append(',').append(' ');
+    buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
+    buf.append("valuationDate").append('=').append(JodaBeanUtils.toString(valuationDate)).append(',').append(' ');
     buf.append("curve").append('=').append(JodaBeanUtils.toString(curve));
     buf.append('}');
     return buf.toString();
@@ -478,7 +484,7 @@ public final class ZeroRatePeriodicDiscountFactors
   /**
    * The bean-builder for {@code ZeroRatePeriodicDiscountFactors}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<ZeroRatePeriodicDiscountFactors> {
+  private static final class Builder extends DirectPrivateBeanBuilder<ZeroRatePeriodicDiscountFactors> {
 
     private Currency currency;
     private LocalDate valuationDate;
@@ -524,30 +530,6 @@ public final class ZeroRatePeriodicDiscountFactors
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public ZeroRatePeriodicDiscountFactors build() {
       return new ZeroRatePeriodicDiscountFactors(
           currency,
@@ -569,6 +551,5 @@ public final class ZeroRatePeriodicDiscountFactors
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

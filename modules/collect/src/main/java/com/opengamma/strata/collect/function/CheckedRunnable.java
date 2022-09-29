@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -20,6 +20,6 @@ public interface CheckedRunnable {
    *
    * @throws Throwable if an error occurs
    */
-  public void run() throws Throwable;
+  public abstract void run() throws Throwable;
 
 }

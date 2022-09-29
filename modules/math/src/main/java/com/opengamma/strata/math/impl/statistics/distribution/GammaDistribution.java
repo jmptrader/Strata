@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.distribution;
@@ -8,10 +8,9 @@ package com.opengamma.strata.math.impl.statistics.distribution;
 import java.util.Date;
 
 import com.opengamma.strata.collect.ArgChecker;
-
-import cern.jet.random.Gamma;
-import cern.jet.random.engine.MersenneTwister;
-import cern.jet.random.engine.RandomEngine;
+import com.opengamma.strata.math.impl.cern.Gamma;
+import com.opengamma.strata.math.impl.cern.MersenneTwister;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
 
 /**
  * The Gamma distribution is a continuous probability distribution with cdf
@@ -28,7 +27,6 @@ import cern.jet.random.engine.RandomEngine;
  * $$
  * where $k$ is the shape parameter and $\theta$ is the scale parameter.
  * <p>
- * 
  */
 public class GammaDistribution implements ProbabilityDistribution<Double> {
 

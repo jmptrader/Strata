@@ -1,84 +1,114 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.product.common;
 
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import java.util.Locale;
 
-import com.opengamma.strata.product.common.LongShort;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Test {@link LongShort}.
  */
-@Test
 public class LongShortTest {
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_ofLong() {
-    assertEquals(LongShort.ofLong(true), LongShort.LONG);
-    assertEquals(LongShort.ofLong(false), LongShort.SHORT);
+    assertThat(LongShort.ofLong(true)).isEqualTo(LongShort.LONG);
+    assertThat(LongShort.ofLong(false)).isEqualTo(LongShort.SHORT);
   }
 
+  @Test
   public void test_isLong() {
-    assertEquals(LongShort.LONG.isLong(), true);
-    assertEquals(LongShort.SHORT.isLong(), false);
+    assertThat(LongShort.LONG.isLong()).isTrue();
+    assertThat(LongShort.SHORT.isLong()).isFalse();
   }
 
+  @Test
   public void test_isShort() {
-    assertEquals(LongShort.LONG.isShort(), false);
-    assertEquals(LongShort.SHORT.isShort(), true);
+    assertThat(LongShort.LONG.isShort()).isFalse();
+    assertThat(LongShort.SHORT.isShort()).isTrue();
   }
 
+  @Test
   public void test_sign() {
-    assertEquals(LongShort.LONG.sign(), 1);
-    assertEquals(LongShort.SHORT.sign(), -1);
+    assertThat(LongShort.LONG.sign()).isEqualTo(1);
+    assertThat(LongShort.SHORT.sign()).isEqualTo(-1);
+  }
+
+  @Test
+  public void test_opposite() {
+    assertThat(LongShort.LONG.opposite()).isEqualTo(LongShort.SHORT);
+    assertThat(LongShort.SHORT.opposite()).isEqualTo(LongShort.LONG);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "name")
-  static Object[][] data_name() {
+  public static Object[][] data_name() {
     return new Object[][] {
         {LongShort.LONG, "Long"},
         {LongShort.SHORT, "Short"},
     };
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_toString(LongShort convention, String name) {
-    assertEquals(convention.toString(), name);
+    assertThat(convention.toString()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_of_lookup(LongShort convention, String name) {
-    assertEquals(LongShort.of(name), convention);
+    assertThat(LongShort.of(name)).isEqualTo(convention);
   }
 
+  @ParameterizedTest
+  @MethodSource("data_name")
+  public void test_of_lookupUpperCase(LongShort convention, String name) {
+    assertThat(LongShort.of(name.toUpperCase(Locale.ENGLISH))).isEqualTo(convention);
+  }
+
+  @ParameterizedTest
+  @MethodSource("data_name")
+  public void test_of_lookupLowerCase(LongShort convention, String name) {
+    assertThat(LongShort.of(name.toLowerCase(Locale.ENGLISH))).isEqualTo(convention);
+  }
+
+  @Test
   public void test_of_lookup_notFound() {
-    assertThrowsIllegalArg(() -> LongShort.of("Rubbish"));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> LongShort.of("Rubbish"));
   }
 
+  @Test
   public void test_of_lookup_null() {
-    assertThrowsIllegalArg(() -> LongShort.of(null));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> LongShort.of(null));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverEnum(LongShort.class);
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(LongShort.LONG);
   }
 
+  @Test
   public void test_jodaConvert() {
     assertJodaConvert(LongShort.class, LongShort.LONG);
   }

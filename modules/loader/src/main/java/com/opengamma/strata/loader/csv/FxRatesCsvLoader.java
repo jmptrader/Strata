@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -21,11 +21,14 @@ import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.io.CharSource;
 import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.basics.currency.FxRate;
-import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.io.CharSources;
 import com.opengamma.strata.collect.io.CsvFile;
 import com.opengamma.strata.collect.io.CsvRow;
 import com.opengamma.strata.collect.io.ResourceLocator;
+import com.opengamma.strata.collect.io.UnicodeBom;
+import com.opengamma.strata.collect.result.ParseFailureException;
 import com.opengamma.strata.data.FxRateId;
+import com.opengamma.strata.loader.LoaderUtils;
 
 /**
  * Loads a set of FX rates into memory from CSV resources.
@@ -49,6 +52,9 @@ import com.opengamma.strata.data.FxRateId;
  * 2014-01-23, EUR/USD, 1.11
  * </pre>
  * Note that Microsoft Excel prefers the CSV file to have no space after the comma.
+ * <p>
+ * CSV files sometimes contain a Unicode Byte Order Mark.
+ * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
  */
 public final class FxRatesCsvLoader {
 
@@ -183,16 +189,23 @@ public final class FxRatesCsvLoader {
       Predicate<LocalDate> datePredicate,
       Collection<CharSource> charSources) {
 
-    // builder ensures keys can only be seen once
-    Map<LocalDate, ImmutableMap.Builder<FxRateId, FxRate>> mutableMap = new HashMap<>();
-    for (CharSource charSource : charSources) {
-      parseSingle(datePredicate, charSource, mutableMap);
+    try {
+      // builder ensures keys can only be seen once
+      Map<LocalDate, ImmutableMap.Builder<FxRateId, FxRate>> mutableMap = new HashMap<>();
+      for (CharSource charSource : charSources) {
+        parseSingle(datePredicate, charSource, mutableMap);
+      }
+      ImmutableMap.Builder<LocalDate, ImmutableMap<FxRateId, FxRate>> builder = ImmutableMap.builder();
+      for (Entry<LocalDate, Builder<FxRateId, FxRate>> entry : mutableMap.entrySet()) {
+        builder.put(entry.getKey(), entry.getValue().build());
+      }
+      return builder.build();
+
+    } catch (ParseFailureException ex) {
+      throw ex;
+    } catch (RuntimeException ex) {
+      throw new ParseFailureException(ex, "Error parsing FX rates CSV files: {exceptionMessage}", ex.getMessage());
     }
-    ImmutableMap.Builder<LocalDate, ImmutableMap<FxRateId, FxRate>> builder = ImmutableMap.builder();
-    for (Entry<LocalDate, Builder<FxRateId, FxRate>> entry : mutableMap.entrySet()) {
-      builder.put(entry.getKey(), entry.getValue().build());
-    }
-    return builder.build();
   }
 
   // loads a single CSV file, filtering by date
@@ -205,7 +218,7 @@ public final class FxRatesCsvLoader {
       CsvFile csv = CsvFile.of(resource, true);
       for (CsvRow row : csv.rows()) {
         String dateText = row.getField(DATE_FIELD);
-        LocalDate date = LocalDate.parse(dateText);
+        LocalDate date = LoaderUtils.parseDate(dateText);
         if (datePredicate.test(date)) {
           String currencyPairStr = row.getField(CURRENCY_PAIR_FIELD);
           String valueStr = row.getField(VALUE_FIELD);
@@ -216,9 +229,10 @@ public final class FxRatesCsvLoader {
           builderForDate.put(FxRateId.of(currencyPair), FxRate.of(currencyPair, value));
         }
       }
+
     } catch (RuntimeException ex) {
-      throw new IllegalArgumentException(
-          Messages.format("Error processing resource as CSV file: {}", resource), ex);
+      throw new ParseFailureException(
+          ex, "Error parsing CSV file '{fileName}': {exceptionMessage}", CharSources.extractFileName(resource), ex.getMessage());
     }
   }
 

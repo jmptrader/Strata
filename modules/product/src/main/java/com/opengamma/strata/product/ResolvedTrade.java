@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -17,13 +17,13 @@ package com.opengamma.strata.product;
 public interface ResolvedTrade {
 
   /**
-   * Gets the standard trade information.
+   * Gets the standard information.
    * <p>
-   * All trades contain this standard set of information.
+   * All resolved trades contain this standard set of information.
    * 
-   * @return the trade information
+   * @return the information
    */
-  public abstract TradeInfo getInfo();
+  public abstract PortfolioItemInfo getInfo();
 
   /**
    * Gets the underlying product that was agreed when the trade occurred.

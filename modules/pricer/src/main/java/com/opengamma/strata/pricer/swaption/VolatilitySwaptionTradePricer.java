@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -132,7 +132,8 @@ public class VolatilitySwaptionTradePricer {
       SwaptionVolatilities swaptionVolatilities) {
 
     ResolvedSwaption product = trade.getProduct();
-    SwaptionSensitivity pointSens = productPricer.presentValueSensitivityModelParamsVolatility(product, ratesProvider, swaptionVolatilities);
+    SwaptionSensitivity pointSens =
+        productPricer.presentValueSensitivityModelParamsVolatility(product, ratesProvider, swaptionVolatilities);
     return PointSensitivities.of(pointSens);
   }
 
@@ -151,6 +152,35 @@ public class VolatilitySwaptionTradePricer {
       SwaptionVolatilities swaptionVolatilities) {
 
     return MultiCurrencyAmount.of(presentValue(trade, ratesProvider, swaptionVolatilities));
+  }
+
+  /**
+   * Computes the implied volatility of the swaption.
+   *
+   * @param swaptionTrade  the swaption trade
+   * @param ratesProvider  the rates provider
+   * @param swaptionVolatilities  the volatilities
+   * @return the implied volatility
+   */
+  public double impliedVolatility(
+      ResolvedSwaptionTrade swaptionTrade,
+      RatesProvider ratesProvider,
+      SwaptionVolatilities swaptionVolatilities) {
+
+    return productPricer.impliedVolatility(swaptionTrade.getProduct(), ratesProvider, swaptionVolatilities);
+  }
+
+  /**
+   * Provides the forward rate.
+   * <p>
+   * This is the par rate for the forward starting swap that is the underlying of the swaption.
+   *
+   * @param swaptionTrade  the swaption trade
+   * @param ratesProvider  the rates provider
+   * @return the forward rate
+   */
+  public double forwardRate(ResolvedSwaptionTrade swaptionTrade, RatesProvider ratesProvider) {
+    return productPricer.forwardRate(swaptionTrade.getProduct(), ratesProvider);
   }
 
   /**

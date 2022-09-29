@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.io;
@@ -8,14 +8,15 @@ package com.opengamma.strata.collect.io;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
 import com.google.common.io.CharSource;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.MapStream;
 import com.opengamma.strata.collect.Unchecked;
 
 /**
@@ -28,6 +29,8 @@ import com.opengamma.strata.collect.Unchecked;
  * <p>
  * The basic element is a key-value pair.
  * The key is separated from the value using the '=' symbol.
+ * The string ' = ' is searched for before '=' to allow an equals sign to be present
+ * in the key, which implies that this string cannot be in either the key or the value.
  * Duplicate keys are allowed.
  * For example 'key = value'.
  * The equals sign and value may be omitted, in which case the value is an empty string.
@@ -70,6 +73,9 @@ public final class IniFile {
    * <p>
    * This parses the specified character source expecting an INI file format.
    * The resulting instance can be queried for each section in the file.
+   * <p>
+   * INI files sometimes contain a Unicode Byte Order Mark.
+   * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
    * 
    * @param source  the INI file resource
    * @return the INI file
@@ -79,7 +85,7 @@ public final class IniFile {
   public static IniFile of(CharSource source) {
     ArgChecker.notNull(source, "source");
     ImmutableList<String> lines = Unchecked.wrap(() -> source.readLines());
-    Map<String, Multimap<String, String>> parsedIni = parse(lines);
+    ImmutableMap<String, ImmutableListMultimap<String, String>> parsedIni = parse(lines);
     ImmutableMap.Builder<String, PropertySet> builder = ImmutableMap.builder();
     parsedIni.forEach((sectionName, sectionData) -> builder.put(sectionName, PropertySet.of(sectionData)));
     return new IniFile(builder.build());
@@ -87,9 +93,11 @@ public final class IniFile {
 
   //-------------------------------------------------------------------------
   // parses the INI file format
-  private static Map<String, Multimap<String, String>> parse(ImmutableList<String> lines) {
-    Map<String, Multimap<String, String>> ini = new LinkedHashMap<>();
-    Multimap<String, String> currentSection = null;
+  private static ImmutableMap<String, ImmutableListMultimap<String, String>> parse(ImmutableList<String> lines) {
+    // cannot use ArrayListMultiMap as it does not retain the order of the keys
+    // whereas ImmutableListMultimap does retain the order of the keys
+    Map<String, ImmutableListMultimap.Builder<String, String>> ini = new LinkedHashMap<>();
+    ImmutableListMultimap.Builder<String, String> currentSection = null;
     int lineNum = 0;
     for (String line : lines) {
       lineNum++;
@@ -102,14 +110,15 @@ public final class IniFile {
         if (ini.containsKey(sectionName)) {
           throw new IllegalArgumentException("Invalid INI file, duplicate section not allowed, line " + lineNum);
         }
-        currentSection = ArrayListMultimap.create();
+        currentSection = ImmutableListMultimap.builder();
         ini.put(sectionName, currentSection);
 
       } else if (currentSection == null) {
         throw new IllegalArgumentException("Invalid INI file, properties must be within a [section], line " + lineNum);
 
       } else {
-        int equalsPosition = line.indexOf('=');
+        int equalsPosition = line.indexOf(" = ");
+        equalsPosition = equalsPosition < 0 ? line.indexOf('=') : equalsPosition + 1;
         String key = (equalsPosition < 0 ? line.trim() : line.substring(0, equalsPosition).trim());
         String value = (equalsPosition < 0 ? "" : line.substring(equalsPosition + 1).trim());
         if (key.length() == 0) {
@@ -118,7 +127,7 @@ public final class IniFile {
         currentSection.put(key, value);
       }
     }
-    return ini;
+    return MapStream.of(ini).mapValues(b -> b.build()).toMap();
   }
 
   //-------------------------------------------------------------------------
@@ -191,6 +200,39 @@ public final class IniFile {
       throw new IllegalArgumentException("Unknown INI file section: " + name);
     }
     return sectionMap.get(name);
+  }
+
+  /**
+   * Finds a single section in this INI file.
+   * <p>
+   * This returns the section associated with the specified name, empty if not present.
+   * 
+   * @param name  the section name
+   * @return the INI file section, empty if not found
+   */
+  public Optional<PropertySet> findSection(String name) {
+    ArgChecker.notNull(name, "name");
+    return Optional.ofNullable(sectionMap.get(name));
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Combines this file with another.
+   * <p>
+   * This file takes precedence. Where a key exists in both files the values in the other file
+   * will be discarded.
+   * Any order of any additional keys will be retained, with those keys located after the base set of keys.
+   *
+   * @param other  the other INI file
+   * @return the combined INI file
+   */
+  public IniFile combinedWith(IniFile other) {
+    ArgChecker.notNull(other, "other");
+
+    return IniFile.of(MapStream.concat(
+        MapStream.of(this.sectionMap),
+        MapStream.of(other.sectionMap))
+        .toMap(PropertySet::combinedWith));
   }
 
   //-------------------------------------------------------------------------

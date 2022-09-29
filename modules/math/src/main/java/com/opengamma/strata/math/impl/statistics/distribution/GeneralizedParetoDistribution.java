@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.distribution;
@@ -9,12 +9,12 @@ import java.util.Date;
 
 import com.google.common.math.DoubleMath;
 import com.opengamma.strata.collect.ArgChecker;
-
-import cern.jet.random.engine.MersenneTwister64;
-import cern.jet.random.engine.RandomEngine;
+import com.opengamma.strata.math.impl.cern.MersenneTwister64;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
 
 /**
- * 
+ * Calculates the Pareto distribution.
+ * <p>
  * The generalized Pareto distribution is a family of power law probability
  * distributions with location parameter $\mu$, shape parameter $\xi$ and scale
  * parameter $\sigma$, where
@@ -64,6 +64,7 @@ public class GeneralizedParetoDistribution implements ProbabilityDistribution<Do
   private final RandomEngine _engine;
 
   /**
+   * Creates an instance.
    * 
    * @param mu The location parameter
    * @param sigma The scale parameter, not negative or zero
@@ -74,6 +75,7 @@ public class GeneralizedParetoDistribution implements ProbabilityDistribution<Do
   }
 
   /**
+   * Creates an instance.
    * 
    * @param mu The location parameter
    * @param sigma The scale parameter
@@ -91,6 +93,8 @@ public class GeneralizedParetoDistribution implements ProbabilityDistribution<Do
   }
 
   /**
+   * Gets the location parameter.
+   * 
    * @return The location parameter
    */
   public double getMu() {
@@ -98,6 +102,8 @@ public class GeneralizedParetoDistribution implements ProbabilityDistribution<Do
   }
 
   /**
+   * Gets the scale parameter.
+   * 
    * @return The scale parameter
    */
   public double getSigma() {
@@ -105,6 +111,8 @@ public class GeneralizedParetoDistribution implements ProbabilityDistribution<Do
   }
 
   /**
+   * Gets the shape parameter.
+   * 
    * @return The shape parameter
    */
   public double getKsi() {

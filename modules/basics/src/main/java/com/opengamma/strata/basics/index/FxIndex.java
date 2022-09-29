@@ -1,11 +1,13 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.index;
 
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.joda.convert.FromString;
@@ -13,6 +15,7 @@ import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.currency.CurrencyPair;
+import com.opengamma.strata.basics.date.DaysAdjustment;
 import com.opengamma.strata.basics.date.HolidayCalendarId;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -38,6 +41,8 @@ public interface FxIndex
 
   /**
    * Obtains an instance from the specified unique name.
+   * <p>
+   * If the unique name can be parsed as a currency pair, an FX index will be looked up on the pair.
    * 
    * @param uniqueName  the unique name
    * @return the index
@@ -46,7 +51,51 @@ public interface FxIndex
   @FromString
   public static FxIndex of(String uniqueName) {
     ArgChecker.notNull(uniqueName, "uniqueName");
-    return extendedEnum().lookup(uniqueName);
+    Optional<FxIndex> fxIndexOpt = extendedEnum().find(uniqueName);
+    if (fxIndexOpt.isPresent()) {
+      return fxIndexOpt.get();
+    }
+    try {
+      CurrencyPair currencyPair = CurrencyPair.parse(uniqueName);
+      return FxIndex.of(currencyPair);
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Unable to create FX index from " + uniqueName);
+    }
+  }
+
+  /**
+   * Obtains an instance from the specified currency pair.
+   * <p>
+   * If a currency pair does not have an implementation, an FX index will be created.
+   *
+   * @param currencyPair the currency pair
+   * @return the index
+   */
+  public static FxIndex of(CurrencyPair currencyPair) {
+    ArgChecker.notNull(currencyPair, "currencyPair");
+    return extendedEnum().lookupAll().values().stream()
+        .filter(index -> index.getCurrencyPair().equals(currencyPair))
+        .min(Comparator.comparing(FxIndex::getName))
+        .orElseGet(() -> createFxIndex(currencyPair));
+  }
+
+  /**
+   * Creates a FX index for the provided currency pair.
+   * <p>
+   * The FX index will be default to the combined holiday calendars for the currency pair.
+   * The maturity day offset will default to 2 days.
+   *
+   * @param currencyPair the currency pair
+   * @return the index
+   */
+  public static FxIndex createFxIndex(CurrencyPair currencyPair) {
+    HolidayCalendarId calendarId = HolidayCalendarId.defaultByCurrencyPair(currencyPair);
+    return ImmutableFxIndex.builder()
+        .name(currencyPair.toString())
+        .currencyPair(currencyPair)
+        .fixingCalendar(calendarId)
+        .maturityDateOffset(DaysAdjustment.ofBusinessDays(2, calendarId))
+        .build();
   }
 
   /**
@@ -68,6 +117,28 @@ public interface FxIndex
    * @return the currency pair of the index
    */
   public abstract CurrencyPair getCurrencyPair();
+
+  /**
+   * Gets the adjustment applied to the maturity date to obtain the fixing date.
+   * <p>
+   * The fixing date is the date on which the index is to be observed.
+   * The maturity date is the date on which the implied amount is delivered/exchanged.
+   * The maturity date is typically two business days after the fixing date.
+   * 
+   * @return the fixing date offset
+   */
+  public abstract DaysAdjustment getFixingDateOffset();
+
+  /**
+   * Gets the adjustment applied to the fixing date to obtain the maturity date.
+   * <p>
+   * The fixing date is the date on which the index is to be observed.
+   * The maturity date is the date on which the implied amount is delivered/exchanged.
+   * The maturity date is typically two business days after the fixing date.
+   * 
+   * @return the maturity date offset
+   */
+  public abstract DaysAdjustment getMaturityDateOffset();
 
   /**
    * Gets the calendar that determines which dates are fixing dates.

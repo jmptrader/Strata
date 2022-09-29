@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -17,7 +17,7 @@ import com.opengamma.strata.basics.index.IborIndices;
 /**
  * Market standard three leg basis swap conventions.
  * <p>
- * http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+ * https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
  */
 final class StandardThreeLegBasisSwapConventions {
 

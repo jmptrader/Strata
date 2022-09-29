@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -105,6 +105,7 @@ public class SabrExtrapolationReplicationCmsProductPricer {
       ResolvedCms cms,
       RatesProvider ratesProvider,
       SabrSwaptionVolatilities swaptionVolatilities) {
+
     ExplainMapBuilder builder = ExplainMap.builder();
     builder.put(ExplainKey.ENTRY_TYPE, "CmsSwap");
     List<ExplainMap> legsExplain = new ArrayList<>();

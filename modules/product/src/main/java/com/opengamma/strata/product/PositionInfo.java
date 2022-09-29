@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,24 +10,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.basics.StandardId;
-import com.opengamma.strata.collect.Messages;
 
 /**
  * Additional information about a position.
@@ -37,7 +36,7 @@ import com.opengamma.strata.collect.Messages;
  */
 @BeanDefinition(builderScope = "private", constructorScope = "package")
 public final class PositionInfo
-    implements ImmutableBean, Serializable {
+    implements PortfolioItemInfo, ImmutableBean, Serializable {
 
   /**
    * An empty instance of {@code PositionInfo}.
@@ -54,16 +53,15 @@ public final class PositionInfo
    * Certain uses of the identifier, such as storage in a database, require that the
    * identifier does not change over time, and this should be considered best practice.
    */
-  @PropertyDefinition(get = "optional")
+  @PropertyDefinition(get = "optional", overrideGet = true)
   private final StandardId id;
   /**
    * The position attributes.
    * <p>
-   * Position attributes, provide the ability to associate arbitrary information
-   * with a position in a key-value map.
+   * Position attributes provide the ability to associate arbitrary information in a key-value map.
    */
   @PropertyDefinition(validate = "notNull")
-  private final ImmutableMap<PositionAttributeType<?>, Object> attributes;
+  private final ImmutableMap<AttributeType<?>, Object> attributes;
 
   //-------------------------------------------------------------------------
   /**
@@ -86,6 +84,19 @@ public final class PositionInfo
   }
 
   /**
+   * Obtains an instance based on the supplied info.
+   *
+   * @param info  the base info
+   * @return the position information
+   */
+  public static PositionInfo from(PortfolioItemInfo info) {
+    if (info instanceof PositionInfo) {
+      return ((PositionInfo) info);
+    }
+    return empty().combinedWith(info);
+  }
+
+  /**
    * Returns a builder used to create an instance of the bean.
    * 
    * @return the builder
@@ -95,58 +106,63 @@ public final class PositionInfo
   }
 
   //-------------------------------------------------------------------------
-  /**
-   * Gets the attribute associated with the specified type.
-   * <p>
-   * This method obtains the specified attribute.
-   * This allows an attribute about a position to be obtained if available.
-   * <p>
-   * If the attribute is not found, an exception is thrown.
-   * 
-   * @param <T>  the type of the result
-   * @param type  the type to find
-   * @return the attribute value
-   * @throws IllegalArgumentException if the attribute is not found
-   */
-  public <T> T getAttribute(PositionAttributeType<T> type) {
-    return findAttribute(type).orElseThrow(() -> new IllegalArgumentException(
-        Messages.format("Attribute not found for type '{}'", type)));
+  @Override
+  public PositionInfo withId(StandardId identifier) {
+    return new PositionInfo(identifier, attributes);
   }
 
-  /**
-   * Finds the attribute associated with the specified type.
-   * <p>
-   * This method obtains the specified attribute.
-   * This allows an attribute about a position to be obtained if available.
-   * <p>
-   * If the attribute is not found, optional empty is returned.
-   * 
-   * @param <T>  the type of the result
-   * @param type  the type to find
-   * @return the attribute value
-   */
-  @SuppressWarnings("unchecked")
-  public <T> Optional<T> findAttribute(PositionAttributeType<T> type) {
-    return Optional.ofNullable((T) attributes.get(type));
+  //-------------------------------------------------------------------------
+  @Override
+  public ImmutableSet<AttributeType<?>> getAttributeTypes() {
+    return attributes.keySet();
   }
 
-  /**
-   * Returns a copy of this instance with attribute added.
-   * <p>
-   * This returns a new instance with the specified attribute added.
-   * The attribute is added using {@code Map.put(type, value)} semantics.
-   * 
-   * @param <T> the type of the value
-   * @param type  the type providing meaning to the value
-   * @param value  the value
-   * @return a new instance based on this one with the attribute added
-   */
-  @SuppressWarnings("unchecked")
-  public <T> PositionInfo withAttribute(PositionAttributeType<T> type, T value) {
+  @Override
+  public <T> Optional<T> findAttribute(AttributeType<T> type) {
+    return Optional.ofNullable(type.fromStoredForm(attributes.get(type)));
+  }
+
+  @Override
+  public <T> PositionInfo withAttribute(AttributeType<T> type, T value) {
     // ImmutableMap.Builder would not provide Map.put semantics
-    Map<PositionAttributeType<?>, Object> updatedAttributes = new HashMap<>(attributes);
-    updatedAttributes.put(type, value);
+    Map<AttributeType<?>, Object> updatedAttributes = new HashMap<>(attributes);
+    if (value == null) {
+      updatedAttributes.remove(type);
+    } else {
+      updatedAttributes.put(type, type.toStoredForm(value));
+    }
     return new PositionInfo(id, updatedAttributes);
+  }
+
+  @Override
+  public PositionInfo withAttributes(Attributes other) {
+    PositionInfoBuilder builder = toBuilder();
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+    }
+    return builder.build();
+  }
+
+  @Override
+  public PositionInfo combinedWith(PortfolioItemInfo other) {
+    PositionInfoBuilder builder = toBuilder();
+    other.getId().filter(ignored -> this.id == null).ifPresent(builder::id);
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      if (!attributes.keySet().contains(attrType)) {
+        builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+      }
+    }
+    return builder.build();
+  }
+
+  @Override
+  public PositionInfo overrideWith(PortfolioItemInfo other) {
+    PositionInfoBuilder builder = toBuilder();
+    other.getId().ifPresent(builder::id);
+    for (AttributeType<?> attrType : other.getAttributeTypes()) {
+      builder.addAttribute(attrType.captureWildcard(), other.getAttribute(attrType));
+    }
+    return builder.build();
   }
 
   /**
@@ -159,7 +175,6 @@ public final class PositionInfo
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code PositionInfo}.
    * @return the meta-bean, not null
@@ -169,7 +184,7 @@ public final class PositionInfo
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(PositionInfo.Meta.INSTANCE);
+    MetaBean.register(PositionInfo.Meta.INSTANCE);
   }
 
   /**
@@ -184,7 +199,7 @@ public final class PositionInfo
    */
   PositionInfo(
       StandardId id,
-      Map<PositionAttributeType<?>, Object> attributes) {
+      Map<AttributeType<?>, Object> attributes) {
     JodaBeanUtils.notNull(attributes, "attributes");
     this.id = id;
     this.attributes = ImmutableMap.copyOf(attributes);
@@ -193,16 +208,6 @@ public final class PositionInfo
   @Override
   public PositionInfo.Meta metaBean() {
     return PositionInfo.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -217,6 +222,7 @@ public final class PositionInfo
    * identifier does not change over time, and this should be considered best practice.
    * @return the optional value of the property, not null
    */
+  @Override
   public Optional<StandardId> getId() {
     return Optional.ofNullable(id);
   }
@@ -225,11 +231,10 @@ public final class PositionInfo
   /**
    * Gets the position attributes.
    * <p>
-   * Position attributes, provide the ability to associate arbitrary information
-   * with a position in a key-value map.
+   * Position attributes provide the ability to associate arbitrary information in a key-value map.
    * @return the value of the property, not null
    */
-  public ImmutableMap<PositionAttributeType<?>, Object> getAttributes() {
+  public ImmutableMap<AttributeType<?>, Object> getAttributes() {
     return attributes;
   }
 
@@ -259,7 +264,7 @@ public final class PositionInfo
   public String toString() {
     StringBuilder buf = new StringBuilder(96);
     buf.append("PositionInfo{");
-    buf.append("id").append('=').append(id).append(',').append(' ');
+    buf.append("id").append('=').append(JodaBeanUtils.toString(id)).append(',').append(' ');
     buf.append("attributes").append('=').append(JodaBeanUtils.toString(attributes));
     buf.append('}');
     return buf.toString();
@@ -284,7 +289,7 @@ public final class PositionInfo
      * The meta-property for the {@code attributes} property.
      */
     @SuppressWarnings({"unchecked", "rawtypes" })
-    private final MetaProperty<ImmutableMap<PositionAttributeType<?>, Object>> attributes = DirectMetaProperty.ofImmutable(
+    private final MetaProperty<ImmutableMap<AttributeType<?>, Object>> attributes = DirectMetaProperty.ofImmutable(
         this, "attributes", PositionInfo.class, (Class) ImmutableMap.class);
     /**
      * The meta-properties.
@@ -339,7 +344,7 @@ public final class PositionInfo
      * The meta-property for the {@code attributes} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<ImmutableMap<PositionAttributeType<?>, Object>> attributes() {
+    public MetaProperty<ImmutableMap<AttributeType<?>, Object>> attributes() {
       return attributes;
     }
 
@@ -370,10 +375,10 @@ public final class PositionInfo
   /**
    * The bean-builder for {@code PositionInfo}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<PositionInfo> {
+  private static final class Builder extends DirectPrivateBeanBuilder<PositionInfo> {
 
     private StandardId id;
-    private Map<PositionAttributeType<?>, Object> attributes = ImmutableMap.of();
+    private Map<AttributeType<?>, Object> attributes = ImmutableMap.of();
 
     /**
      * Restricted constructor.
@@ -402,35 +407,11 @@ public final class PositionInfo
           this.id = (StandardId) newValue;
           break;
         case 405645655:  // attributes
-          this.attributes = (Map<PositionAttributeType<?>, Object>) newValue;
+          this.attributes = (Map<AttributeType<?>, Object>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
       }
-      return this;
-    }
-
-    @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
       return this;
     }
 
@@ -454,6 +435,5 @@ public final class PositionInfo
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

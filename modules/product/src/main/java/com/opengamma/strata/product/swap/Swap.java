@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,23 +7,24 @@ package com.opengamma.strata.product.swap;
 
 import static com.opengamma.strata.collect.Guavate.toImmutableList;
 import static com.opengamma.strata.collect.Guavate.toImmutableSet;
+import static java.util.stream.Collectors.joining;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.BeanDefinition;
-import org.joda.beans.DerivedProperty;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.DerivedProperty;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
@@ -36,9 +37,12 @@ import com.opengamma.strata.basics.Resolvable;
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.date.AdjustableDate;
 import com.opengamma.strata.basics.index.Index;
+import com.opengamma.strata.basics.value.ValueSchedule;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.product.Product;
 import com.opengamma.strata.product.common.PayReceive;
+import com.opengamma.strata.product.common.SummarizerUtils;
+import com.opengamma.strata.product.swaption.Swaption;
 
 /**
  * A rate swap.
@@ -63,7 +67,7 @@ public final class Swap
    * The legs of a swap are essentially unordered, however it is more efficient
    * and closer to user expectation to treat them as being ordered.
    */
-  @PropertyDefinition(validate = "notEmpty")
+  @PropertyDefinition(validate = "notEmpty", builderType = "List<? extends SwapLeg>")
   private final ImmutableList<SwapLeg> legs;
 
   //-------------------------------------------------------------------------
@@ -88,7 +92,7 @@ public final class Swap
    * @param legs  the list of legs
    * @return the swap
    */
-  public static Swap of(List<SwapLeg> legs) {
+  public static Swap of(List<? extends SwapLeg> legs) {
     ArgChecker.notEmpty(legs, "legs");
     return new Swap(ImmutableList.copyOf(legs));
   }
@@ -176,24 +180,6 @@ public final class Swap
 
   //-------------------------------------------------------------------------
   /**
-   * Checks if this trade is cross-currency.
-   * <p>
-   * A cross currency swap is defined as one with legs in two different currencies.
-   * 
-   * @return true if cross currency
-   */
-  public boolean isCrossCurrency() {
-    // optimized for performance
-    Currency firstCurrency = legs.get(0).getCurrency();
-    for (int i = 1; i < legs.size(); i++) {
-      if (!legs.get(i).getCurrency().equals(firstCurrency)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Returns the set of payment currencies referred to by the swap.
    * <p>
    * This returns the complete set of payment currencies for the swap.
@@ -205,8 +191,23 @@ public final class Swap
    * 
    * @return the set of payment currencies referred to by this swap
    */
+  @Override
   public ImmutableSet<Currency> allPaymentCurrencies() {
     return legs.stream().map(leg -> leg.getCurrency()).collect(toImmutableSet());
+  }
+
+  /**
+   * Returns the set of currencies referred to by the swap.
+   * <p>
+   * This returns the complete set of currencies for the swap, not just the payment currencies.
+   * 
+   * @return the set of currencies referred to by this swap
+   */
+  @Override
+  public ImmutableSet<Currency> allCurrencies() {
+    ImmutableSet.Builder<Currency> builder = ImmutableSet.builder();
+    legs.stream().forEach(leg -> leg.collectCurrencies(builder));
+    return builder.build();
   }
 
   //-------------------------------------------------------------------------
@@ -226,6 +227,125 @@ public final class Swap
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Summarizes this swap into string form.
+   *
+   * @return the summary description
+   */
+  public String summaryDescription() {
+    // 5Y USD 2mm Rec USD-LIBOR-6M / Pay 1% : 21Jan17-21Jan22
+    StringBuilder buf = new StringBuilder(64);
+    buf.append(SummarizerUtils.datePeriod(getStartDate().getUnadjusted(), getEndDate().getUnadjusted()));
+    buf.append(' ');
+    if (getLegs().size() == 2 &&
+        getPayLeg().isPresent() &&
+        getReceiveLeg().isPresent() &&
+        getLegs().stream().allMatch(leg -> leg instanceof RateCalculationSwapLeg)) {
+
+      // normal swap
+      SwapLeg payLeg = getPayLeg().get();
+      SwapLeg recLeg = getReceiveLeg().get();
+      String payNotional = notional(payLeg);
+      String recNotional = notional(recLeg);
+      if (payNotional.equals(recNotional)) {
+        buf.append(recNotional);
+        buf.append(" Rec ");
+        buf.append(legSummary(recLeg));
+        buf.append(" / Pay ");
+        buf.append(legSummary(payLeg));
+      } else {
+        buf.append("Rec ");
+        buf.append(legSummary(recLeg));
+        buf.append(' ');
+        buf.append(recNotional);
+        buf.append(" / Pay ");
+        buf.append(legSummary(payLeg));
+        buf.append(' ');
+        buf.append(payNotional);
+      }
+    } else {
+      // abnormal swap
+      buf.append(getLegs().stream()
+          .map(leg -> (SummarizerUtils.payReceive(leg.getPayReceive()) + " " + legSummary(leg) + " " + notional(leg)).trim())
+          .collect(joining(" / ")));
+    }
+    buf.append(" : ");
+    buf.append(SummarizerUtils.dateRange(getStartDate().getUnadjusted(), getEndDate().getUnadjusted()));
+    return buf.toString();
+  }
+
+  // the notional, with trailing space if present
+  private String notional(SwapLeg leg) {
+    if (leg instanceof RateCalculationSwapLeg) {
+      RateCalculationSwapLeg rcLeg = (RateCalculationSwapLeg) leg;
+      NotionalSchedule notionalSchedule = rcLeg.getNotionalSchedule();
+      ValueSchedule amount = notionalSchedule.getAmount();
+      double notional = amount.getInitialValue();
+      String vary = !amount.getSteps().isEmpty() || amount.getStepSequence().isPresent() ? " variable" : "";
+      Currency currency = notionalSchedule.getFxReset().map(fxr -> fxr.getReferenceCurrency()).orElse(rcLeg.getCurrency());
+      return SummarizerUtils.amount(currency, notional) + vary;
+    }
+    if (leg instanceof RatePeriodSwapLeg) {
+      RatePeriodSwapLeg rpLeg = (RatePeriodSwapLeg) leg;
+      return SummarizerUtils.amount(rpLeg.getPaymentPeriods().get(0).getNotionalAmount());
+    }
+    return "";
+  }
+
+  // a summary of the leg
+  private String legSummary(SwapLeg leg) {
+    if (leg instanceof RateCalculationSwapLeg) {
+      RateCalculationSwapLeg rcLeg = (RateCalculationSwapLeg) leg;
+      RateCalculation calculation = rcLeg.getCalculation();
+      if (calculation instanceof FixedRateCalculation) {
+        FixedRateCalculation calc = (FixedRateCalculation) calculation;
+        String vary = !calc.getRate().getSteps().isEmpty() || calc.getRate().getStepSequence().isPresent() ? " variable" : "";
+        return SummarizerUtils.percent(calc.getRate().getInitialValue()) + vary;
+      }
+      if (calculation instanceof IborRateCalculation) {
+        IborRateCalculation calc = (IborRateCalculation) calculation;
+        String gearing = calc.getGearing().map(g -> " * " + SummarizerUtils.value(g.getInitialValue())).orElse("");
+        String spread = calc.getSpread().map(s -> " + " + SummarizerUtils.percent(s.getInitialValue())).orElse("");
+        return calc.getIndex().getName() + gearing + spread;
+      }
+      if (calculation instanceof OvernightRateCalculation) {
+        OvernightRateCalculation calc = (OvernightRateCalculation) calculation;
+        String avg = calc.getAccrualMethod() == OvernightAccrualMethod.AVERAGED ? " avg" : "";
+        String gearing = calc.getGearing().map(g -> " * " + SummarizerUtils.value(g.getInitialValue())).orElse("");
+        String spread = calc.getSpread().map(s -> " + " + SummarizerUtils.percent(s.getInitialValue())).orElse("");
+        return calc.getIndex().getName() + avg + gearing + spread;
+      }
+      if (calculation instanceof InflationRateCalculation) {
+        InflationRateCalculation calc = (InflationRateCalculation) calculation;
+        String gearing = calc.getGearing().map(g -> " * " + SummarizerUtils.value(g.getInitialValue())).orElse("");
+        return calc.getIndex().getName() + gearing;
+      }
+    }
+    if (leg instanceof KnownAmountSwapLeg) {
+      KnownAmountSwapLeg kaLeg = (KnownAmountSwapLeg) leg;
+      String vary =
+          !kaLeg.getAmount().getSteps().isEmpty() || kaLeg.getAmount().getStepSequence().isPresent() ? " variable" : "";
+      return SummarizerUtils.amount(kaLeg.getCurrency(), kaLeg.getAmount().getInitialValue()) + vary;
+    }
+    ImmutableSet<Index> allIndices = leg.allIndices();
+    return allIndices.isEmpty() ? "Fixed" : allIndices.toString();
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Returns an instance based on this swap with the start date replaced.
+   * <p>
+   * This is used to change the start date of the swap, and is currently used by {@link Swaption}.
+   * 
+   * @param adjustedStartDate the new adjusted start date
+   * @return the updated swap
+   * @throws IllegalArgumentException if the start date cannot be replaced with the proposed start date
+   * @throws UnsupportedOperationException if changing the start date is not supported
+   */
+  public Swap replaceStartDate(LocalDate adjustedStartDate) {
+    return new Swap(legs.stream().map(leg -> leg.replaceStartDate(adjustedStartDate)).collect(toImmutableList()));
+  }
+
   @Override
   public ResolvedSwap resolve(ReferenceData refData) {
     // avoid streams as profiling showed a hotspot
@@ -243,7 +363,6 @@ public final class Swap
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code Swap}.
    * @return the meta-bean, not null
@@ -253,7 +372,7 @@ public final class Swap
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(Swap.Meta.INSTANCE);
+    MetaBean.register(Swap.Meta.INSTANCE);
   }
 
   /**
@@ -270,7 +389,7 @@ public final class Swap
   }
 
   private Swap(
-      List<SwapLeg> legs) {
+      List<? extends SwapLeg> legs) {
     JodaBeanUtils.notEmpty(legs, "legs");
     this.legs = ImmutableList.copyOf(legs);
   }
@@ -278,16 +397,6 @@ public final class Swap
   @Override
   public Swap.Meta metaBean() {
     return Swap.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -335,8 +444,8 @@ public final class Swap
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("Swap{");
-    buf.append("legs").append('=').append(legs).append(',').append(' ');
-    buf.append("startDate").append('=').append(getStartDate()).append(',').append(' ');
+    buf.append("legs").append('=').append(JodaBeanUtils.toString(legs)).append(',').append(' ');
+    buf.append("startDate").append('=').append(JodaBeanUtils.toString(getStartDate())).append(',').append(' ');
     buf.append("endDate").append('=').append(JodaBeanUtils.toString(getEndDate()));
     buf.append('}');
     return buf.toString();
@@ -467,7 +576,7 @@ public final class Swap
    */
   public static final class Builder extends DirectFieldsBeanBuilder<Swap> {
 
-    private List<SwapLeg> legs = ImmutableList.of();
+    private List<? extends SwapLeg> legs = ImmutableList.of();
 
     /**
      * Restricted constructor.
@@ -499,7 +608,7 @@ public final class Swap
     public Builder set(String propertyName, Object newValue) {
       switch (propertyName.hashCode()) {
         case 3317797:  // legs
-          this.legs = (List<SwapLeg>) newValue;
+          this.legs = (List<? extends SwapLeg>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -510,24 +619,6 @@ public final class Swap
     @Override
     public Builder set(MetaProperty<?> property, Object value) {
       super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
       return this;
     }
 
@@ -547,7 +638,7 @@ public final class Swap
      * @param legs  the new value, not empty
      * @return this, for chaining, not null
      */
-    public Builder legs(List<SwapLeg> legs) {
+    public Builder legs(List<? extends SwapLeg> legs) {
       JodaBeanUtils.notEmpty(legs, "legs");
       this.legs = legs;
       return this;
@@ -566,15 +657,16 @@ public final class Swap
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(64);
+      StringBuilder buf = new StringBuilder(128);
       buf.append("Swap.Builder{");
-      buf.append("legs").append('=').append(JodaBeanUtils.toString(legs));
+      buf.append("legs").append('=').append(JodaBeanUtils.toString(legs)).append(',').append(' ');
+      buf.append("startDate").append('=').append(JodaBeanUtils.toString(null)).append(',').append(' ');
+      buf.append("endDate").append('=').append(JodaBeanUtils.toString(null));
       buf.append('}');
       return buf.toString();
     }
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

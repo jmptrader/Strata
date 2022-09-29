@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -34,16 +34,20 @@ import com.opengamma.strata.collect.io.ResourceLocator;
 import com.opengamma.strata.data.ImmutableMarketData;
 import com.opengamma.strata.loader.csv.QuotesCsvLoader;
 import com.opengamma.strata.loader.csv.RatesCalibrationCsvLoader;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
+import com.opengamma.strata.market.ValueType;
+import com.opengamma.strata.market.curve.CurveGroupName;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.observable.QuoteId;
 import com.opengamma.strata.market.param.CurrencyParameterSensitivities;
 import com.opengamma.strata.market.sensitivity.PointSensitivities;
 import com.opengamma.strata.market.surface.ConstantSurface;
+import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
 import com.opengamma.strata.market.surface.Surface;
+import com.opengamma.strata.market.surface.SurfaceMetadata;
 import com.opengamma.strata.market.surface.interpolator.GridSurfaceInterpolator;
 import com.opengamma.strata.market.surface.interpolator.SurfaceInterpolator;
 import com.opengamma.strata.pricer.curve.CalibrationMeasures;
-import com.opengamma.strata.pricer.curve.CurveCalibrator;
+import com.opengamma.strata.pricer.curve.RatesCurveCalibrator;
 import com.opengamma.strata.pricer.option.RawOptionData;
 import com.opengamma.strata.pricer.option.TenorRawOptionData;
 import com.opengamma.strata.pricer.rate.RatesProvider;
@@ -76,17 +80,17 @@ public class SabrSwaptionCubePvRiskExample {
   private static final String SETTINGS_FILE = "example-calibration/curves/EUR-DSCONOIS-E3BS-E6IRS-settings.csv";
   private static final String NODES_FILE = "example-calibration/curves/EUR-DSCONOIS-E3BS-E6IRS-nodes.csv";
   private static final String QUOTES_FILE = "example-calibration/quotes/quotes-20160229-eur.csv";
-  private static final CurveGroupDefinition CONFIGS =
+  private static final RatesCurveGroupDefinition CONFIGS =
       RatesCalibrationCsvLoader.load(
           ResourceLocator.of(BASE_DIR + GROUPS_FILE),
           ResourceLocator.of(BASE_DIR + SETTINGS_FILE),
-          ResourceLocator.of(BASE_DIR + NODES_FILE)).get(0);
+          ResourceLocator.of(BASE_DIR + NODES_FILE)).get(CurveGroupName.of("EUR-DSCONOIS-E3BS-E6IRS"));
   private static final Map<QuoteId, Double> MAP_MQ =
       QuotesCsvLoader.load(CALIBRATION_DATE, ImmutableList.of(ResourceLocator.of(BASE_DIR + QUOTES_FILE)));
   private static final ImmutableMarketData MARKET_QUOTES = ImmutableMarketData.of(CALIBRATION_DATE, MAP_MQ);
 
   private static final CalibrationMeasures CALIBRATION_MEASURES = CalibrationMeasures.PAR_SPREAD;
-  private static final CurveCalibrator CALIBRATOR = CurveCalibrator.of(1e-9, 1e-9, 100, CALIBRATION_MEASURES);
+  private static final RatesCurveCalibrator CALIBRATOR = RatesCurveCalibrator.of(1e-9, 1e-9, 100, CALIBRATION_MEASURES);
 
   private static final SabrSwaptionPhysicalProductPricer SWAPTION_PRICER = SabrSwaptionPhysicalProductPricer.DEFAULT;
 
@@ -139,7 +143,12 @@ public class SabrSwaptionCubePvRiskExample {
     // SABR calibration 
     start = System.currentTimeMillis();
     double beta = 0.50;
-    Surface betaSurface = ConstantSurface.of("SABR-Beta", beta);
+    SurfaceMetadata betaMetadata = DefaultSurfaceMetadata.builder()
+        .xValueType(ValueType.YEAR_FRACTION)
+        .yValueType(ValueType.YEAR_FRACTION)
+        .zValueType(ValueType.SABR_BETA)
+        .surfaceName("Beta").build();
+    Surface betaSurface = ConstantSurface.of(betaMetadata, beta);
     double shift = 0.0300;
     Surface shiftSurface = ConstantSurface.of("SABR-Shift", shift);
     SabrParametersSwaptionVolatilities sabr = SABR_CALIBRATION.calibrateWithFixedBetaAndShift(

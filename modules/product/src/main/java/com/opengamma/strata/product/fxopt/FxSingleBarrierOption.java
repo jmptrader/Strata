@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,20 +6,19 @@
 package com.opengamma.strata.product.fxopt;
 
 import java.io.Serializable;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableValidator;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableValidator;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
@@ -28,29 +27,30 @@ import org.joda.beans.impl.direct.DirectMetaPropertyMap;
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.Resolvable;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
+import com.opengamma.strata.basics.currency.CurrencyPair;
 import com.opengamma.strata.collect.ArgChecker;
-import com.opengamma.strata.product.Product;
+import com.opengamma.strata.product.fx.FxOptionProduct;
 import com.opengamma.strata.product.option.Barrier;
 
 /**
  * FX (European) single barrier option.
  * <p>
- * An FX option is a financial instrument that provides an option to exchange two currencies at a specified future time 
+ * An FX option is a financial instrument that provides an option to exchange two currencies at a specified future time
  * only when barrier event occurs (knock-in option) or does not occur (knock-out option).
  * <p>
- * Depending on the barrier defined in {@link Barrier}, the options are classified into four types: up-and-in, 
+ * Depending on the barrier defined in {@link Barrier}, the options are classified into four types: up-and-in,
  * down-and-in, up-and-out and down-and-out.
  * <p>
  * For example, an up-and-out call on a 'EUR 1.00 / USD -1.41' exchange with barrier of 1.5 is the option to
- * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00, only when EUR/USD rate does 
+ * perform a foreign exchange on the expiry date, where USD 1.41 is paid to receive EUR 1.00, only when EUR/USD rate does
  * not exceed 1.5 during the barrier event observation period.
  * <p>
- * In case of the occurrence (non-occurrence for knock-in options) of the barrier event, the option becomes worthless, 
+ * In case of the occurrence (non-occurrence for knock-in options) of the barrier event, the option becomes worthless,
  * or alternatively, a rebate is made.
  */
-@BeanDefinition(builderScope = "private")
+@BeanDefinition
 public final class FxSingleBarrierOption
-    implements Product, Resolvable<ResolvedFxSingleBarrierOption>, ImmutableBean, Serializable {
+    implements FxOptionProduct, Resolvable<ResolvedFxSingleBarrierOption>, ImmutableBean, Serializable {
 
   /**
    * The underlying FX vanilla option.
@@ -60,7 +60,7 @@ public final class FxSingleBarrierOption
   /**
    * The barrier description.
    * <p>
-   * The barrier level stored in this field must be represented based on the direction of the currency pair in the 
+   * The barrier level stored in this field must be represented based on the direction of the currency pair in the
    * underlying FX transaction.
    * <p>
    * For example, if the underlying option is an option on EUR/GBP, the barrier should be a certain level of EUR/GBP rate.
@@ -68,7 +68,7 @@ public final class FxSingleBarrierOption
   @PropertyDefinition(validate = "notNull")
   private final Barrier barrier;
   /**
-   * For a 'out' option, the amount is paid when the barrier is reached; 
+   * For a 'out' option, the amount is paid when the barrier is reached;
    * for a 'in' option, the amount is paid at expiry if the barrier is not reached.
    * <p>
    * This is the notional amount represented in one of the currency pair.
@@ -80,7 +80,7 @@ public final class FxSingleBarrierOption
   //-------------------------------------------------------------------------
   /**
    * Obtains FX single barrier option with rebate.
-   * 
+   *
    * @param underlyingOption  the underlying FX vanilla option
    * @param barrier  the barrier
    * @param rebate  the rebate
@@ -92,7 +92,7 @@ public final class FxSingleBarrierOption
 
   /**
    * Obtains FX single barrier option without rebate.
-   * 
+   *
    * @param underlyingOption  the underlying FX vanilla option
    * @param barrier  the barrier
    * @return the instance
@@ -112,6 +112,29 @@ public final class FxSingleBarrierOption
   }
 
   //-------------------------------------------------------------------------
+  /**
+   * Gets currency pair of the base currency and counter currency.
+   * <p>
+   * This currency pair is conventional, thus indifferent to the direction of FX.
+   *
+   * @return the currency pair
+   */
+  @Override
+  public CurrencyPair getCurrencyPair() {
+    return underlyingOption.getCurrencyPair();
+  }
+
+  //-----------------------------------------------------------------------
+  /**
+   * Gets the underlying Fx vanilla option's expiry.
+   * @return the expiry
+   */
+  @Override
+  public ZonedDateTime getExpiry() {
+    return underlyingOption.getExpiry();
+  }
+
+  //-------------------------------------------------------------------------
   @Override
   public ResolvedFxSingleBarrierOption resolve(ReferenceData refData) {
     if (rebate != null) {
@@ -121,7 +144,6 @@ public final class FxSingleBarrierOption
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code FxSingleBarrierOption}.
    * @return the meta-bean, not null
@@ -131,13 +153,21 @@ public final class FxSingleBarrierOption
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(FxSingleBarrierOption.Meta.INSTANCE);
+    MetaBean.register(FxSingleBarrierOption.Meta.INSTANCE);
   }
 
   /**
    * The serialization version id.
    */
   private static final long serialVersionUID = 1L;
+
+  /**
+   * Returns a builder used to create an instance of the bean.
+   * @return the builder, not null
+   */
+  public static FxSingleBarrierOption.Builder builder() {
+    return new FxSingleBarrierOption.Builder();
+  }
 
   private FxSingleBarrierOption(
       FxVanillaOption underlyingOption,
@@ -154,16 +184,6 @@ public final class FxSingleBarrierOption
   @Override
   public FxSingleBarrierOption.Meta metaBean() {
     return FxSingleBarrierOption.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -203,6 +223,14 @@ public final class FxSingleBarrierOption
   }
 
   //-----------------------------------------------------------------------
+  /**
+   * Returns a builder that allows this bean to be mutated.
+   * @return the mutable builder, not null
+   */
+  public Builder toBuilder() {
+    return new Builder(this);
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (obj == this) {
@@ -230,8 +258,8 @@ public final class FxSingleBarrierOption
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("FxSingleBarrierOption{");
-    buf.append("underlyingOption").append('=').append(underlyingOption).append(',').append(' ');
-    buf.append("barrier").append('=').append(barrier).append(',').append(' ');
+    buf.append("underlyingOption").append('=').append(JodaBeanUtils.toString(underlyingOption)).append(',').append(' ');
+    buf.append("barrier").append('=').append(JodaBeanUtils.toString(barrier)).append(',').append(' ');
     buf.append("rebate").append('=').append(JodaBeanUtils.toString(rebate));
     buf.append('}');
     return buf.toString();
@@ -291,7 +319,7 @@ public final class FxSingleBarrierOption
     }
 
     @Override
-    public BeanBuilder<? extends FxSingleBarrierOption> builder() {
+    public FxSingleBarrierOption.Builder builder() {
       return new FxSingleBarrierOption.Builder();
     }
 
@@ -359,7 +387,7 @@ public final class FxSingleBarrierOption
   /**
    * The bean-builder for {@code FxSingleBarrierOption}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<FxSingleBarrierOption> {
+  public static final class Builder extends DirectFieldsBeanBuilder<FxSingleBarrierOption> {
 
     private FxVanillaOption underlyingOption;
     private Barrier barrier;
@@ -369,6 +397,16 @@ public final class FxSingleBarrierOption
      * Restricted constructor.
      */
     private Builder() {
+    }
+
+    /**
+     * Restricted copy constructor.
+     * @param beanToCopy  the bean to copy from, not null
+     */
+    private Builder(FxSingleBarrierOption beanToCopy) {
+      this.underlyingOption = beanToCopy.getUnderlyingOption();
+      this.barrier = beanToCopy.getBarrier();
+      this.rebate = beanToCopy.rebate;
     }
 
     //-----------------------------------------------------------------------
@@ -411,29 +449,53 @@ public final class FxSingleBarrierOption
     }
 
     @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public FxSingleBarrierOption build() {
       return new FxSingleBarrierOption(
           underlyingOption,
           barrier,
           rebate);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Sets the underlying FX vanilla option.
+     * @param underlyingOption  the new value, not null
+     * @return this, for chaining, not null
+     */
+    public Builder underlyingOption(FxVanillaOption underlyingOption) {
+      JodaBeanUtils.notNull(underlyingOption, "underlyingOption");
+      this.underlyingOption = underlyingOption;
+      return this;
+    }
+
+    /**
+     * Sets the barrier description.
+     * <p>
+     * The barrier level stored in this field must be represented based on the direction of the currency pair in the
+     * underlying FX transaction.
+     * <p>
+     * For example, if the underlying option is an option on EUR/GBP, the barrier should be a certain level of EUR/GBP rate.
+     * @param barrier  the new value, not null
+     * @return this, for chaining, not null
+     */
+    public Builder barrier(Barrier barrier) {
+      JodaBeanUtils.notNull(barrier, "barrier");
+      this.barrier = barrier;
+      return this;
+    }
+
+    /**
+     * Sets for a 'out' option, the amount is paid when the barrier is reached;
+     * for a 'in' option, the amount is paid at expiry if the barrier is not reached.
+     * <p>
+     * This is the notional amount represented in one of the currency pair.
+     * The amount should be positive.
+     * @param rebate  the new value
+     * @return this, for chaining, not null
+     */
+    public Builder rebate(CurrencyAmount rebate) {
+      this.rebate = rebate;
+      return this;
     }
 
     //-----------------------------------------------------------------------
@@ -450,6 +512,5 @@ public final class FxSingleBarrierOption
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

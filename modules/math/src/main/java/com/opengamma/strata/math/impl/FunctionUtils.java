@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl;
@@ -9,11 +9,13 @@ import java.util.Arrays;
 
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
+import com.opengamma.strata.math.MathUtils;
 
 /**
  * A collection of basic useful maths functions.
  */
 public final class FunctionUtils {
+// CSOFF: JavadocMethod
 
   /**
    * Restricted constructor.
@@ -21,13 +23,14 @@ public final class FunctionUtils {
   private FunctionUtils() {
   }
 
-  //-------------------------------------------------------------------------
   /**
    * Returns the square of a number.
    * 
    * @param x  the number to square
    * @return x*x
+   * @deprecated Use {@link MathUtils#pow2(double)}
    */
+  @Deprecated
   public static double square(double x) {
     return x * x;
   }
@@ -37,7 +40,9 @@ public final class FunctionUtils {
    * 
    * @param x  the number to cube
    * @return x*x*x
+   * @deprecated Use {@link MathUtils#pow3(double)}
    */
+  @Deprecated
   public static double cube(double x) {
     return x * x * x;
   }
@@ -150,10 +155,8 @@ public final class FunctionUtils {
       // Fast break out if it's an exact match.
       return index;
     }
-    if (index < 0) {
-      index = -(index + 1);
-      index--;
-    }
+    index = -(index + 1);
+    index--;
     if (value == -0. && index < n - 1 && set.get(index + 1) == 0.) {
       ++index;
     }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -19,7 +19,7 @@ import com.opengamma.strata.collect.ArgChecker;
  * <p>
  * This builder allows a {@link TradeInfo} to be created.
  */
-public final class TradeInfoBuilder {
+public final class TradeInfoBuilder implements PortfolioItemInfoBuilder<TradeInfo> {
 
   /**
    * The primary identifier for the trade.
@@ -55,7 +55,7 @@ public final class TradeInfoBuilder {
    * Trade attributes, provide the ability to associate arbitrary information
    * with a trade in a key-value map.
    */
-  private final Map<TradeAttributeType<?>, Object> attributes = new HashMap<>();
+  private final Map<AttributeType<?>, Object> attributes = new HashMap<>();
 
   // creates an empty instance
   TradeInfoBuilder() {
@@ -69,7 +69,7 @@ public final class TradeInfoBuilder {
       LocalTime tradeTime,
       ZoneId zone,
       LocalDate settlementDate,
-      Map<TradeAttributeType<?>, Object> attributes) {
+      Map<AttributeType<?>, Object> attributes) {
 
     this.id = id;
     this.counterparty = counterparty;
@@ -89,6 +89,7 @@ public final class TradeInfoBuilder {
    * @param id  the identifier
    * @return this, for chaining
    */
+  @Override
   public TradeInfoBuilder id(StandardId id) {
     this.id = id;
     return this;
@@ -157,16 +158,16 @@ public final class TradeInfoBuilder {
    * The attribute is added using {@code Map.put(type, value)} semantics.
    * 
    * @param <T> the type of the value
-   * @param type  the type providing meaning to the value
-   * @param value  the value
+   * @param attributeType  the type providing meaning to the value
+   * @param attributeValue  the value
    * @return this, for chaining
    */
+  @Override
   @SuppressWarnings("unchecked")
-  public <T> TradeInfoBuilder addAttribute(TradeAttributeType<T> type, T value) {
-    ArgChecker.notNull(type, "type");
-    ArgChecker.notNull(value, "value");
-    // ImmutableMap.Builder would not provide Map.put semantics
-    attributes.put(type, value);
+  public <T> TradeInfoBuilder addAttribute(AttributeType<T> attributeType, T attributeValue) {
+    ArgChecker.notNull(attributeType, "attributeType");
+    ArgChecker.notNull(attributeValue, "attributeValue");
+    attributes.put(attributeType, attributeType.toStoredForm(attributeValue));
     return this;
   }
 
@@ -175,6 +176,7 @@ public final class TradeInfoBuilder {
    * 
    * @return the trade information
    */
+  @Override
   public TradeInfo build() {
     return new TradeInfo(
         id,

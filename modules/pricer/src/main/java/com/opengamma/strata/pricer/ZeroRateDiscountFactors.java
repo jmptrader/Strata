@@ -1,30 +1,32 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer;
 
+import static com.opengamma.strata.pricer.SimpleDiscountFactors.EFFECTIVE_ZERO;
+
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
+import java.util.OptionalInt;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableConstructor;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.basics.date.DayCount;
@@ -34,6 +36,7 @@ import com.opengamma.strata.data.MarketDataName;
 import com.opengamma.strata.market.ValueType;
 import com.opengamma.strata.market.curve.Curve;
 import com.opengamma.strata.market.curve.CurveInfoType;
+import com.opengamma.strata.market.curve.Curves;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurve;
 import com.opengamma.strata.market.param.CurrencyParameterSensitivities;
 import com.opengamma.strata.market.param.CurrencyParameterSensitivity;
@@ -54,11 +57,6 @@ public final class ZeroRateDiscountFactors
     implements DiscountFactors, ImmutableBean, Serializable {
 
   /**
-   * Year fraction used as an effective zero.
-   */
-  private static final double EFFECTIVE_ZERO = 1e-10;
-
-  /**
    * The currency that the discount factors are for.
    */
   @PropertyDefinition(validate = "notNull", overrideGet = true)
@@ -77,7 +75,7 @@ public final class ZeroRateDiscountFactors
   /**
    * The day count convention of the curve.
    */
-  private final DayCount dayCount;  // cached, not a property
+  private final transient DayCount dayCount;  // cached, not a property
 
   //-------------------------------------------------------------------------
   /**
@@ -86,6 +84,7 @@ public final class ZeroRateDiscountFactors
    * The curve is specified by an instance of {@link Curve}, such as {@link InterpolatedNodalCurve}.
    * The curve must contain {@linkplain ValueType#YEAR_FRACTION year fractions}
    * against {@linkplain ValueType#ZERO_RATE zero rates}, and the day count must be present.
+   * A suitable metadata instance for the curve can be created by {@link Curves#zeroRates(String, DayCount)}.
    * 
    * @param currency  the currency
    * @param valuationDate  the valuation date for which the curve is valid
@@ -118,6 +117,11 @@ public final class ZeroRateDiscountFactors
     this.dayCount = dayCount;
   }
 
+  // ensure standard constructor is invoked
+  private Object readResolve() {
+    return new ZeroRateDiscountFactors(currency, valuationDate, curve);
+  }
+
   //-------------------------------------------------------------------------
   @Override
   public <T> Optional<T> findData(MarketDataName<T> name) {
@@ -143,6 +147,11 @@ public final class ZeroRateDiscountFactors
   }
 
   @Override
+  public OptionalInt findParameterIndex(ParameterMetadata metadata) {
+    return curve.findParameterIndex(metadata);
+  }
+
+  @Override
   public ZeroRateDiscountFactors withParameter(int parameterIndex, double newValue) {
     return withCurve(curve.withParameter(parameterIndex, newValue));
   }
@@ -161,32 +170,26 @@ public final class ZeroRateDiscountFactors
   @Override
   public double discountFactor(double yearFraction) {
     // convert zero rate to discount factor
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return 1d;
+    }
     return Math.exp(-yearFraction * curve.yValue(yearFraction));
   }
 
   @Override
-  public double discountFactorWithSpread(
-      double yearFraction,
-      double zSpread,
-      CompoundedRateType compoundedRateType,
-      int periodPerYear) {
-
-    if (Math.abs(yearFraction) < EFFECTIVE_ZERO) {
-      return 1d;
+  public double discountFactorTimeDerivative(double yearFraction) {
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return 0d;
     }
-    double df = discountFactor(yearFraction);
-    if (compoundedRateType.equals(CompoundedRateType.PERIODIC)) {
-      ArgChecker.notNegativeOrZero(periodPerYear, "periodPerYear");
-      double ratePeriodicAnnualPlusOne =
-          Math.pow(df, -1.0 / periodPerYear / yearFraction) + zSpread / periodPerYear;
-      return Math.pow(ratePeriodicAnnualPlusOne, -periodPerYear * yearFraction);
-    } else {
-      return df * Math.exp(-zSpread * yearFraction);
-    }
+    double zr = curve.yValue(yearFraction);
+    return -Math.exp(-yearFraction * curve.yValue(yearFraction)) * (zr + curve.firstDerivative(yearFraction) * yearFraction);
   }
 
   @Override
   public double zeroRate(double yearFraction) {
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return 0d;
+    }
     return curve.yValue(yearFraction);
   }
 
@@ -194,36 +197,20 @@ public final class ZeroRateDiscountFactors
   @Override
   public ZeroRateSensitivity zeroRatePointSensitivity(double yearFraction, Currency sensitivityCurrency) {
     double discountFactor = discountFactor(yearFraction);
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return ZeroRateSensitivity.of(currency, yearFraction, sensitivityCurrency, 0d);
+    }
     return ZeroRateSensitivity.of(currency, yearFraction, sensitivityCurrency, -discountFactor * yearFraction);
-  }
-
-  @Override
-  public ZeroRateSensitivity zeroRatePointSensitivityWithSpread(
-      double yearFraction,
-      Currency sensitivityCurrency,
-      double zSpread,
-      CompoundedRateType compoundedRateType,
-      int periodPerYear) {
-
-    ZeroRateSensitivity sensi = zeroRatePointSensitivity(yearFraction, sensitivityCurrency);
-    if (Math.abs(yearFraction) < EFFECTIVE_ZERO) {
-      return sensi;
-    }
-    double factor;
-    if (compoundedRateType.equals(CompoundedRateType.PERIODIC)) {
-      double df = discountFactor(yearFraction);
-      double dfRoot = Math.pow(df, -1d / periodPerYear / yearFraction);
-      factor = dfRoot / df / Math.pow(dfRoot + zSpread / periodPerYear, periodPerYear * yearFraction + 1d);
-    } else {
-      factor = Math.exp(-zSpread * yearFraction);
-    }
-    return sensi.multipliedBy(factor);
   }
 
   @Override
   public CurrencyParameterSensitivities parameterSensitivity(ZeroRateSensitivity pointSens) {
     double yearFraction = pointSens.getYearFraction();
     UnitParameterSensitivity unitSens = curve.yValueParameterSensitivity(yearFraction);
+    if (yearFraction <= EFFECTIVE_ZERO) {
+      return CurrencyParameterSensitivities.of(unitSens.multipliedBy(pointSens.getCurrency(), 0d));
+      // Discount factor in 0 is always 1, no sensitivity.
+    }
     CurrencyParameterSensitivity curSens = unitSens.multipliedBy(pointSens.getCurrency(), pointSens.getSensitivity());
     return CurrencyParameterSensitivities.of(curSens);
   }
@@ -245,7 +232,6 @@ public final class ZeroRateDiscountFactors
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code ZeroRateDiscountFactors}.
    * @return the meta-bean, not null
@@ -255,7 +241,7 @@ public final class ZeroRateDiscountFactors
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(ZeroRateDiscountFactors.Meta.INSTANCE);
+    MetaBean.register(ZeroRateDiscountFactors.Meta.INSTANCE);
   }
 
   /**
@@ -266,16 +252,6 @@ public final class ZeroRateDiscountFactors
   @Override
   public ZeroRateDiscountFactors.Meta metaBean() {
     return ZeroRateDiscountFactors.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -336,8 +312,8 @@ public final class ZeroRateDiscountFactors
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("ZeroRateDiscountFactors{");
-    buf.append("currency").append('=').append(currency).append(',').append(' ');
-    buf.append("valuationDate").append('=').append(valuationDate).append(',').append(' ');
+    buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
+    buf.append("valuationDate").append('=').append(JodaBeanUtils.toString(valuationDate)).append(',').append(' ');
     buf.append("curve").append('=').append(JodaBeanUtils.toString(curve));
     buf.append('}');
     return buf.toString();
@@ -465,7 +441,7 @@ public final class ZeroRateDiscountFactors
   /**
    * The bean-builder for {@code ZeroRateDiscountFactors}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<ZeroRateDiscountFactors> {
+  private static final class Builder extends DirectPrivateBeanBuilder<ZeroRateDiscountFactors> {
 
     private Currency currency;
     private LocalDate valuationDate;
@@ -511,30 +487,6 @@ public final class ZeroRateDiscountFactors
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public ZeroRateDiscountFactors build() {
       return new ZeroRateDiscountFactors(
           currency,
@@ -556,6 +508,5 @@ public final class ZeroRateDiscountFactors
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

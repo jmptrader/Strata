@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -11,7 +11,8 @@ import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 
 /**
- * Hermite interpolation is determined if one specifies first derivatives for a cubic interpolant and first and second derivatives for a quintic interpolant
+ * Hermite interpolation is determined if one specifies first derivatives for a cubic
+ * interpolant and first and second derivatives for a quintic interpolant.
  */
 public class HermiteCoefficientsProvider {
 
@@ -21,7 +22,7 @@ public class HermiteCoefficientsProvider {
    * @param slopes (yValues_{i+1} - yValues_{i})/(xValues_{i+1} - xValues_{i})
    * @param first First derivatives at xValues_i
    * @return Coefficient matrix whose i-th row vector is { a_n, a_{n-1}, ...} for the i-th interval,
-   * where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + .... with n=3
+   *   where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + .... with n=3
    */
   public double[][] solve(double[] values, double[] intervals, double[] slopes, double[] first) {
     int nInt = intervals.length;
@@ -88,7 +89,7 @@ public class HermiteCoefficientsProvider {
    * @param first First derivatives at xValues_i
    * @param second Second derivatives at xValues_i
    * @return Coefficient matrix whose i-th row vector is { a_n, a_{n-1}, ...} for the i-th interval,
-   * where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + .... with n=5
+   *   where a_n, a_{n-1},... are coefficients of f(x) = a_n (x-x_i)^n + a_{n-1} (x-x_i)^{n-1} + .... with n=5
    */
   public double[][] solve(double[] values, double[] intervals, double[] slopes, double[] first, double[] second) {
     int nInt = intervals.length;
@@ -101,10 +102,12 @@ public class HermiteCoefficientsProvider {
       res[i][5] = values[i];
       res[i][4] = first[i];
       res[i][3] = 0.5 * second[i];
-      res[i][2] = 0.5 * (second[i + 1] - 3. * second[i]) / intervals[i] + 2. * (5. * slopes[i] - 3. * first[i] - 2. * first[i + 1]) / intervals[i] / intervals[i];
-      res[i][1] = 0.5 * (3. * second[i] - 2. * second[i + 1]) / intervals[i] / intervals[i] + (8. * first[i] + 7. * first[i + 1] - 15. * slopes[i]) / intervals[i] / intervals[i] / intervals[i];
-      res[i][0] = 0.5 * (second[i + 1] - second[i]) / intervals[i] / intervals[i] / intervals[i] + 3. * (2. * slopes[i] - first[i + 1] - first[i]) / intervals[i] / intervals[i] / intervals[i] /
-          intervals[i];
+      res[i][2] = 0.5 * (second[i + 1] - 3. * second[i]) / intervals[i] +
+          2. * (5. * slopes[i] - 3. * first[i] - 2. * first[i + 1]) / intervals[i] / intervals[i];
+      res[i][1] = 0.5 * (3. * second[i] - 2. * second[i + 1]) / intervals[i] / intervals[i] +
+          (8. * first[i] + 7. * first[i + 1] - 15. * slopes[i]) / intervals[i] / intervals[i] / intervals[i];
+      res[i][0] = 0.5 * (second[i + 1] - second[i]) / intervals[i] / intervals[i] / intervals[i] +
+          3. * (2. * slopes[i] - first[i + 1] - first[i]) / intervals[i] / intervals[i] / intervals[i] / intervals[i];
     }
 
     return res;
@@ -198,7 +201,7 @@ public class HermiteCoefficientsProvider {
   }
 
   /**
-   * Derivative values of slopes_i with respect to yValues_j, s_{ij}
+   * Derivative values of slopes_i with respect to yValues_j, s_{ij}.
    * @param intervals Intervals of x data
    * @return The matrix s_{ij}
    */

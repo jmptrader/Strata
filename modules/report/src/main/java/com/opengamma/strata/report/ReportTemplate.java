@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.report;
@@ -20,7 +20,7 @@ public interface ReportTemplate {
    * @throws RuntimeException if the ini file cannot be parsed
    */
   public static ReportTemplate load(IniFile iniFile) {
-    return MasterReportTemplateIniLoader.load(iniFile);
+    return DispatchingReportTemplateIniLoader.load(iniFile);
   }
 
 }

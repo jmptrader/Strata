@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.distribution;
@@ -9,18 +9,18 @@ import java.util.Date;
 import java.util.function.Function;
 
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.math.impl.cern.MersenneTwister64;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
+import com.opengamma.strata.math.impl.cern.StudentT;
 import com.opengamma.strata.math.impl.function.special.GammaFunction;
 import com.opengamma.strata.math.impl.function.special.InverseIncompleteBetaFunction;
-
-import cern.jet.random.StudentT;
-import cern.jet.random.engine.MersenneTwister64;
-import cern.jet.random.engine.RandomEngine;
 
 /**
  * Student's T-distribution is a continuous probability distribution with probability density function
  * $$
  * \begin{align*}
- * f(x) = \frac{\Gamma\left(\frac{\nu + 1}{2}\right)}{\sqrt{\nu\pi}\Gamma(\left(\frac{\nu}{2}\right)}\left(1 + \frac{x^2}{\nu}\right)^{-\frac{1}{2}(\nu + 1)}
+ * f(x) = \frac{\Gamma\left(\frac{\nu + 1}{2}\right)}{\sqrt{\nu\pi}\Gamma(\left(\frac{\nu}{2}\right)}\
+ * left(1 + \frac{x^2}{\nu}\right)^{-\frac{1}{2}(\nu + 1)}
  * \end{align*}
  * $$
  * where $\nu$ is the number of degrees of freedom and $\Gamma$ is the Gamma function ({@link GammaFunction}).

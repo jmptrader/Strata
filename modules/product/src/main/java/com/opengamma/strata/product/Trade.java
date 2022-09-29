@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.product;
 
-import com.opengamma.strata.basics.CalculationTarget;
+import com.opengamma.strata.product.common.SummarizerUtils;
 
 /**
  * A trade with additional structured information.
@@ -19,7 +19,12 @@ import com.opengamma.strata.basics.CalculationTarget;
  * Implementations of this interface must be immutable beans.
  */
 public interface Trade
-    extends CalculationTarget {
+    extends PortfolioItem {
+
+  @Override
+  public default PortfolioItemSummary summarize() {
+    return SummarizerUtils.summary(this, ProductType.OTHER, "Unknown: " + getClass().getSimpleName());
+  }
 
   /**
    * Gets the standard trade information.
@@ -28,6 +33,17 @@ public interface Trade
    * 
    * @return the trade information
    */
+  @Override
   public abstract TradeInfo getInfo();
+
+  //-------------------------------------------------------------------------
+  /**
+   * Returns an instance with the specified info.
+   * 
+   * @param info  the new info
+   * @return the instance with the specified info
+   */
+  @Override
+  public abstract Trade withInfo(PortfolioItemInfo info);
 
 }

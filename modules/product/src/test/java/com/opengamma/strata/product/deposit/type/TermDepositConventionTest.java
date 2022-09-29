@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,17 +13,19 @@ import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.EUTA;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.GBLO;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
-import static org.testng.Assert.assertEquals;
+import static com.opengamma.strata.collect.TestHelper.date;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 import java.time.Period;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.ReferenceData;
@@ -31,6 +33,7 @@ import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.BusinessDayConvention;
 import com.opengamma.strata.basics.date.BusinessDayConventions;
 import com.opengamma.strata.basics.date.DaysAdjustment;
+import com.opengamma.strata.basics.date.MarketTenor;
 import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.common.BuySell;
 import com.opengamma.strata.product.deposit.TermDeposit;
@@ -39,7 +42,6 @@ import com.opengamma.strata.product.deposit.TermDepositTrade;
 /**
  * Test {@link TermDepositConvention}.
  */
-@Test
 public class TermDepositConventionTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -47,6 +49,7 @@ public class TermDepositConventionTest {
   private static final DaysAdjustment PLUS_TWO_DAYS = DaysAdjustment.ofBusinessDays(2, EUTA);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder_full() {
     ImmutableTermDepositConvention test = ImmutableTermDepositConvention.builder()
         .name("Test")
@@ -55,24 +58,26 @@ public class TermDepositConventionTest {
         .dayCount(ACT_360)
         .spotDateOffset(PLUS_TWO_DAYS)
         .build();
-    assertEquals(test.getName(), "Test");
-    assertEquals(test.getBusinessDayAdjustment(), BDA_MOD_FOLLOW);
-    assertEquals(test.getCurrency(), EUR);
-    assertEquals(test.getDayCount(), ACT_360);
-    assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
+    assertThat(test.getName()).isEqualTo("Test");
+    assertThat(test.getBusinessDayAdjustment()).isEqualTo(BDA_MOD_FOLLOW);
+    assertThat(test.getCurrency()).isEqualTo(EUR);
+    assertThat(test.getDayCount()).isEqualTo(ACT_360);
+    assertThat(test.getSpotDateOffset()).isEqualTo(PLUS_TWO_DAYS);
   }
 
+  @Test
   public void test_of() {
     ImmutableTermDepositConvention test = ImmutableTermDepositConvention.of(
         "EUR-Deposit", EUR, BDA_MOD_FOLLOW, ACT_360, PLUS_TWO_DAYS);
-    assertEquals(test.getName(), "EUR-Deposit");
-    assertEquals(test.getBusinessDayAdjustment(), BDA_MOD_FOLLOW);
-    assertEquals(test.getCurrency(), EUR);
-    assertEquals(test.getDayCount(), ACT_360);
-    assertEquals(test.getSpotDateOffset(), PLUS_TWO_DAYS);
+    assertThat(test.getName()).isEqualTo("EUR-Deposit");
+    assertThat(test.getBusinessDayAdjustment()).isEqualTo(BDA_MOD_FOLLOW);
+    assertThat(test.getCurrency()).isEqualTo(EUR);
+    assertThat(test.getDayCount()).isEqualTo(ACT_360);
+    assertThat(test.getSpotDateOffset()).isEqualTo(PLUS_TWO_DAYS);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_toTrade() {
     TermDepositConvention convention = ImmutableTermDepositConvention.builder()
         .name("EUR-Dep")
@@ -100,13 +105,12 @@ public class TermDepositConventionTest {
         .dayCount(ACT_360)
         .build();
     TradeInfo tradeInfoExpected = TradeInfo.of(tradeDate);
-    assertEquals(trade.getProduct(), termDepositExpected);
-    assertEquals(trade.getInfo(), tradeInfoExpected);
+    assertThat(trade.getProduct()).isEqualTo(termDepositExpected);
+    assertThat(trade.getInfo()).isEqualTo(tradeInfoExpected);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "name")
-  static Object[][] data_name() {
+  public static Object[][] data_name() {
     return new Object[][] {
         {TermDepositConventions.USD_DEPOSIT_T2, "USD-Deposit-T2"},
         {TermDepositConventions.EUR_DEPOSIT_T2, "EUR-Deposit-T2"},
@@ -114,39 +118,46 @@ public class TermDepositConventionTest {
     };
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_name(TermDepositConvention convention, String name) {
-    assertEquals(convention.getName(), name);
+    assertThat(convention.getName()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_toString(TermDepositConvention convention, String name) {
-    assertEquals(convention.toString(), name);
+    assertThat(convention.toString()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_of_lookup(TermDepositConvention convention, String name) {
-    assertEquals(TermDepositConvention.of(name), convention);
+    assertThat(TermDepositConvention.of(name)).isEqualTo(convention);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_extendedEnum(TermDepositConvention convention, String name) {
     TermDepositConvention.of(name);  // ensures map is populated
     ImmutableMap<String, TermDepositConvention> map = TermDepositConvention.extendedEnum().lookupAll();
-    assertEquals(map.get(name), convention);
+    assertThat(map.get(name)).isEqualTo(convention);
   }
 
+  @Test
   public void test_of_lookup_notFound() {
-    assertThrowsIllegalArg(() -> TermDepositConvention.of("Rubbish"));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> TermDepositConvention.of("Rubbish"));
   }
 
+  @Test
   public void test_of_lookup_null() {
-    assertThrowsIllegalArg(() -> TermDepositConvention.of((String) null));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> TermDepositConvention.of((String) null));
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "spotAndConv")
-  static Object[][] data_spotAndConv() {
+  public static Object[][] data_spotAndConv() {
     return new Object[][] {
         {TermDepositConventions.GBP_DEPOSIT_T0, 0, BusinessDayConventions.MODIFIED_FOLLOWING},
         {TermDepositConventions.GBP_SHORT_DEPOSIT_T0, 0, BusinessDayConventions.FOLLOWING},
@@ -166,13 +177,34 @@ public class TermDepositConventionTest {
     };
   }
 
-  @Test(dataProvider = "spotAndConv")
+  @ParameterizedTest
+  @MethodSource("data_spotAndConv")
   public void test_spotAndConv(ImmutableTermDepositConvention convention, int spotT, BusinessDayConvention conv) {
-    assertEquals(convention.getSpotDateOffset().getDays(), spotT);
-    assertEquals(convention.getBusinessDayAdjustment().getConvention(), conv);
+    assertThat(convention.getSpotDateOffset().getDays()).isEqualTo(spotT);
+    assertThat(convention.getBusinessDayAdjustment().getConvention()).isEqualTo(conv);
   }
 
   //-------------------------------------------------------------------------
+  public static Object[][] data_dates() {
+    return new Object[][] {
+        {MarketTenor.ON, date(2020, 6, 22), date(2020, 6, 23)},
+        {MarketTenor.TN, date(2020, 6, 23), date(2020, 6, 24)},
+        {MarketTenor.SN, date(2020, 6, 24), date(2020, 6, 25)},
+        {MarketTenor.SW, date(2020, 6, 24), date(2020, 7, 1)},
+    };
+  }
+
+  @ParameterizedTest
+  @MethodSource("data_dates")
+  public void test_dates(MarketTenor marketTenor, LocalDate startDate, LocalDate endDate) {
+    TermDepositTrade trade = TermDepositConventions.EUR_SHORT_DEPOSIT_T2.createTrade(
+        date(2020, 6, 22), marketTenor, BuySell.BUY, 1_000_000, 0.01, ReferenceData.standard());
+    assertThat(trade.getProduct().getStartDate()).isEqualTo(startDate);
+    assertThat(trade.getProduct().getEndDate()).isEqualTo(endDate);
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     ImmutableTermDepositConvention test1 = ImmutableTermDepositConvention.of(
         "EUR-Deposit", EUR, BDA_MOD_FOLLOW, ACT_360, PLUS_TWO_DAYS);
@@ -185,6 +217,7 @@ public class TermDepositConventionTest {
     coverPrivateConstructor(StandardTermDepositConventions.class);
   }
 
+  @Test
   public void test_serialization() {
     ImmutableTermDepositConvention test = ImmutableTermDepositConvention.of(
         "EUR-Deposit", EUR, BDA_MOD_FOLLOW, ACT_360, PLUS_TWO_DAYS);

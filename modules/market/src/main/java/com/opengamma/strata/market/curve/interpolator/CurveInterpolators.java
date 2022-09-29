@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -105,6 +105,15 @@ public final class CurveInterpolators {
   public static final CurveInterpolator PRODUCT_NATURAL_SPLINE =
       CurveInterpolator.of(StandardCurveInterpolators.PRODUCT_NATURAL_SPLINE.getName());
   /**
+   * Product natural spline interpolator with monotonicity filter.
+   * <p>
+   * Given a data set {@code (x[i], y[i])}, interpolate {@code (x[i], x[i] * y[i])} by natural
+   * cubic spline with monotonicity filter.
+   */
+  public static final CurveInterpolator PRODUCT_NATURAL_SPLINE_MONOTONE_CUBIC =
+      CurveInterpolator.of(
+          StandardCurveInterpolators.PRODUCT_NATURAL_SPLINE_MONOTONE_CUBIC.getName());
+  /**
    * Product linear interpolator.
    * <p>
    * Given a data set {@code (x[i], y[i])}, interpolate {@code (x[i], x[i] * y[i])} by linear functions. 
@@ -115,6 +124,18 @@ public final class CurveInterpolators {
    */
   public static final CurveInterpolator PRODUCT_LINEAR =
       CurveInterpolator.of(StandardCurveInterpolators.PRODUCT_LINEAR.getName());
+  /**
+   * Step upper interpolator.
+   * <p>
+   * The interpolated value at <i>x</i> s.t. <i>x<sub>1</sub> < x =< x<sub>2</sub></i> is the value at <i>x<sub>2</sub></i>. 
+   */
+  public static final CurveInterpolator STEP_UPPER =
+      CurveInterpolator.of(StandardCurveInterpolators.STEP_UPPER.getName());
+  /**
+   * Piecewise cubic Hermite interpolator with monotonicity.
+   */
+  public static final CurveInterpolator PCHIP =
+      CurveInterpolator.of(StandardCurveInterpolators.PCHIP.getName());
 
   //-------------------------------------------------------------------------
   /**

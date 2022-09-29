@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,15 +12,14 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 
 import org.joda.beans.Bean;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
@@ -56,7 +55,7 @@ import com.opengamma.strata.product.swap.RateCalculationSwapLeg;
  */
 @BeanDefinition
 public final class IborRateSwapLegConvention
-    implements SwapLegConvention, ImmutableBean, Serializable {
+    implements FloatRateSwapLegConvention, ImmutableBean, Serializable {
 
   /**
    * The Ibor index.
@@ -64,7 +63,7 @@ public final class IborRateSwapLegConvention
    * The floating rate to be paid is based on this index
    * It will be a well known market index such as 'GBP-LIBOR-3M'.
    */
-  @PropertyDefinition(validate = "notNull")
+  @PropertyDefinition(validate = "notNull", overrideGet = true)
   private final IborIndex index;
 
   /**
@@ -138,7 +137,7 @@ public final class IborRateSwapLegConvention
    * remaining period occurs at the start or end of the schedule.
    * It also determines whether the irregular period is shorter or longer than the regular period.
    * <p>
-   * This will default to 'ShortInitial' if not specified.
+   * This will default to 'SmartInitial' if not specified.
    */
   @PropertyDefinition(get = "field")
   private final StubConvention stubConvention;
@@ -224,7 +223,7 @@ public final class IborRateSwapLegConvention
    * Obtains a convention based on the specified index.
    * <p>
    * The standard market convention for an Ibor rate leg is based on the index,
-   * with the stub convention set to 'ShortInitial'.
+   * with the stub convention set to 'SmartInitial'.
    * Use the {@linkplain #builder() builder} for unusual conventions.
    * 
    * @param index  the index, the market convention values are extracted from the index
@@ -233,7 +232,7 @@ public final class IborRateSwapLegConvention
   public static IborRateSwapLegConvention of(IborIndex index) {
     return IborRateSwapLegConvention.builder()
         .index(index)
-        .stubConvention(StubConvention.SHORT_INITIAL)
+        .stubConvention(StubConvention.SMART_INITIAL)
         .build();
   }
 
@@ -249,6 +248,7 @@ public final class IborRateSwapLegConvention
    * 
    * @return the start date business day adjustment, not null
    */
+  @Override
   public Currency getCurrency() {
     return currency != null ? currency : index.getCurrency();
   }
@@ -265,6 +265,7 @@ public final class IborRateSwapLegConvention
    * 
    * @return the day count, not null
    */
+  @Override
   public DayCount getDayCount() {
     return dayCount != null ? dayCount : index.getDayCount();
   }
@@ -294,9 +295,11 @@ public final class IborRateSwapLegConvention
    * 
    * @return the business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getAccrualBusinessDayAdjustment() {
     return accrualBusinessDayAdjustment != null ?
-        accrualBusinessDayAdjustment : BusinessDayAdjustment.of(MODIFIED_FOLLOWING, index.getFixingCalendar());
+        accrualBusinessDayAdjustment :
+        BusinessDayAdjustment.of(MODIFIED_FOLLOWING, index.getFixingCalendar());
   }
 
   /**
@@ -310,6 +313,7 @@ public final class IborRateSwapLegConvention
    * 
    * @return the start date business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getStartDateBusinessDayAdjustment() {
     return startDateBusinessDayAdjustment != null ? startDateBusinessDayAdjustment : getAccrualBusinessDayAdjustment();
   }
@@ -325,6 +329,7 @@ public final class IborRateSwapLegConvention
    * 
    * @return the end date business day adjustment, not null
    */
+  @Override
   public BusinessDayAdjustment getEndDateBusinessDayAdjustment() {
     return endDateBusinessDayAdjustment != null ? endDateBusinessDayAdjustment : getAccrualBusinessDayAdjustment();
   }
@@ -337,12 +342,12 @@ public final class IborRateSwapLegConvention
    * remaining period occurs at the start or end of the schedule.
    * It also determines whether the irregular period is shorter or longer than the regular period.
    * <p>
-   * This will default to 'ShortInitial' if not specified.
+   * This will default to 'SmartInitial' if not specified.
    * 
    * @return the stub convention, not null
    */
   public StubConvention getStubConvention() {
-    return stubConvention != null ? stubConvention : StubConvention.SHORT_INITIAL;
+    return stubConvention != null ? stubConvention : StubConvention.SMART_INITIAL;
   }
 
   /**
@@ -353,12 +358,12 @@ public final class IborRateSwapLegConvention
    * the frequency to the start date, or subtracting it from the end date.
    * The roll convention provides the detailed rule to adjust the day-of-month or day-of-week.
    * <p>
-   * This will default to 'None' if not specified.
+   * This will default to 'EOM' if not specified.
    * 
    * @return the roll convention, not null
    */
   public RollConvention getRollConvention() {
-    return rollConvention != null ? rollConvention : RollConventions.NONE;
+    return rollConvention != null ? rollConvention : RollConventions.EOM;
   }
 
   /**
@@ -420,6 +425,7 @@ public final class IborRateSwapLegConvention
    * 
    * @return the payment date offset, not null
    */
+  @Override
   public DaysAdjustment getPaymentDateOffset() {
     return paymentDateOffset != null ? paymentDateOffset : DaysAdjustment.NONE;
   }
@@ -516,7 +522,6 @@ public final class IborRateSwapLegConvention
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code IborRateSwapLegConvention}.
    * @return the meta-bean, not null
@@ -526,7 +531,7 @@ public final class IborRateSwapLegConvention
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(IborRateSwapLegConvention.Meta.INSTANCE);
+    MetaBean.register(IborRateSwapLegConvention.Meta.INSTANCE);
   }
 
   /**
@@ -581,16 +586,6 @@ public final class IborRateSwapLegConvention
     return IborRateSwapLegConvention.Meta.INSTANCE;
   }
 
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
-  }
-
   //-----------------------------------------------------------------------
   /**
    * Gets the Ibor index.
@@ -599,6 +594,7 @@ public final class IborRateSwapLegConvention
    * It will be a well known market index such as 'GBP-LIBOR-3M'.
    * @return the value of the property, not null
    */
+  @Override
   public IborIndex getIndex() {
     return index;
   }
@@ -676,20 +672,20 @@ public final class IborRateSwapLegConvention
   public String toString() {
     StringBuilder buf = new StringBuilder(512);
     buf.append("IborRateSwapLegConvention{");
-    buf.append("index").append('=').append(index).append(',').append(' ');
-    buf.append("currency").append('=').append(currency).append(',').append(' ');
-    buf.append("dayCount").append('=').append(dayCount).append(',').append(' ');
-    buf.append("accrualFrequency").append('=').append(accrualFrequency).append(',').append(' ');
-    buf.append("accrualBusinessDayAdjustment").append('=').append(accrualBusinessDayAdjustment).append(',').append(' ');
-    buf.append("startDateBusinessDayAdjustment").append('=').append(startDateBusinessDayAdjustment).append(',').append(' ');
-    buf.append("endDateBusinessDayAdjustment").append('=').append(endDateBusinessDayAdjustment).append(',').append(' ');
-    buf.append("stubConvention").append('=').append(stubConvention).append(',').append(' ');
-    buf.append("rollConvention").append('=').append(rollConvention).append(',').append(' ');
-    buf.append("fixingRelativeTo").append('=').append(fixingRelativeTo).append(',').append(' ');
-    buf.append("fixingDateOffset").append('=').append(fixingDateOffset).append(',').append(' ');
-    buf.append("paymentFrequency").append('=').append(paymentFrequency).append(',').append(' ');
-    buf.append("paymentDateOffset").append('=').append(paymentDateOffset).append(',').append(' ');
-    buf.append("compoundingMethod").append('=').append(compoundingMethod).append(',').append(' ');
+    buf.append("index").append('=').append(JodaBeanUtils.toString(index)).append(',').append(' ');
+    buf.append("currency").append('=').append(JodaBeanUtils.toString(currency)).append(',').append(' ');
+    buf.append("dayCount").append('=').append(JodaBeanUtils.toString(dayCount)).append(',').append(' ');
+    buf.append("accrualFrequency").append('=').append(JodaBeanUtils.toString(accrualFrequency)).append(',').append(' ');
+    buf.append("accrualBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(accrualBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("startDateBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(startDateBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("endDateBusinessDayAdjustment").append('=').append(JodaBeanUtils.toString(endDateBusinessDayAdjustment)).append(',').append(' ');
+    buf.append("stubConvention").append('=').append(JodaBeanUtils.toString(stubConvention)).append(',').append(' ');
+    buf.append("rollConvention").append('=').append(JodaBeanUtils.toString(rollConvention)).append(',').append(' ');
+    buf.append("fixingRelativeTo").append('=').append(JodaBeanUtils.toString(fixingRelativeTo)).append(',').append(' ');
+    buf.append("fixingDateOffset").append('=').append(JodaBeanUtils.toString(fixingDateOffset)).append(',').append(' ');
+    buf.append("paymentFrequency").append('=').append(JodaBeanUtils.toString(paymentFrequency)).append(',').append(' ');
+    buf.append("paymentDateOffset").append('=').append(JodaBeanUtils.toString(paymentDateOffset)).append(',').append(' ');
+    buf.append("compoundingMethod").append('=').append(JodaBeanUtils.toString(compoundingMethod)).append(',').append(' ');
     buf.append("notionalExchange").append('=').append(JodaBeanUtils.toString(notionalExchange));
     buf.append('}');
     return buf.toString();
@@ -1179,24 +1175,6 @@ public final class IborRateSwapLegConvention
     }
 
     @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public IborRateSwapLegConvention build() {
       return new IborRateSwapLegConvention(
           index,
@@ -1332,7 +1310,7 @@ public final class IborRateSwapLegConvention
      * remaining period occurs at the start or end of the schedule.
      * It also determines whether the irregular period is shorter or longer than the regular period.
      * <p>
-     * This will default to 'ShortInitial' if not specified.
+     * This will default to 'SmartInitial' if not specified.
      * @param stubConvention  the new value
      * @return this, for chaining, not null
      */
@@ -1478,6 +1456,5 @@ public final class IborRateSwapLegConvention
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

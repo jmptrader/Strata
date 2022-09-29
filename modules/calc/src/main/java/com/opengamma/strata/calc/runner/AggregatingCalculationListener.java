@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,7 +6,6 @@
 package com.opengamma.strata.calc.runner;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import com.opengamma.strata.basics.CalculationTarget;
@@ -30,25 +29,30 @@ public abstract class AggregatingCalculationListener<T>
 
   /**
    * Returns the aggregate result of the calculations, blocking until it is available.
+   * <p>
+   * If the thread is interrupted while this method is blocked, then a runtime exception
+   * is thrown, but with the interrupt flag set.
+   * For additional control, use {@link #getFuture()}.
    *
    * @return the aggregate result of the calculations, blocking until it is available
    */
   public T result() {
     try {
       return future.get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException("Exception getting result", e);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(ex);
+    } catch (ExecutionException ex) {
+      throw new RuntimeException("Exception getting result", ex);
     }
   }
 
   /**
-   * A completion stage providing asynchronous notification when the aggregate result of the
-   * calculations is available.
+   * A future providing asynchronous notification when the results are available.
    *
-   * @return a completion stage providing asynchronous notification when the aggregate result of the
-   *   calculations is available
+   * @return a future providing asynchronous notification when the results are available
    */
-  public CompletionStage<T> completionStage() {
+  public CompletableFuture<T> getFuture() {
     return future;
   }
 

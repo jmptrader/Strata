@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -20,6 +20,6 @@ public interface IntDoubleToDoubleFunction {
    * @param doubleValue  the second argument
    * @return the result
    */
-  double applyAsDouble(int intValue, double doubleValue);
+  public abstract double applyAsDouble(int intValue, double doubleValue);
 
 }

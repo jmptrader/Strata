@@ -1,31 +1,29 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.impl.volatility.smile;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.util.BitSet;
 
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.Test;
 
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
+import com.opengamma.strata.math.impl.cern.MersenneTwister;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
 import com.opengamma.strata.math.impl.minimization.NonLinearParameterTransforms;
 import com.opengamma.strata.math.impl.statistics.leastsquare.LeastSquareResultsWithTransform;
-
-import cern.jet.random.engine.MersenneTwister;
-import cern.jet.random.engine.RandomEngine;
 
 /**
  * Test {@link SabrModelFitter}.
  */
-@Test
 public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
 
   private static double ALPHA = 0.05;
@@ -58,7 +56,7 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
 
   @Override
   double[][] getStartValues() {
-    return new double[][] { {0.1, 0.7, 0.0, 0.3}, {0.01, 0.95, 0.9, 0.4}, {0.01, 0.5, -0.7, 0.6}};
+    return new double[][] {{0.1, 0.7, 0.0, 0.3}, {0.01, 0.95, 0.9, 0.4}, {0.01, 0.5, -0.7, 0.6}};
   }
 
   @Override
@@ -85,31 +83,34 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
     return new double[] {alpha, beta, rho, nu};
   }
 
+  @Test
   public void testExactFitOddStart() {
     double[] start = new double[] {0.01, 0.99, 0.9, 0.4};
     LeastSquareResultsWithTransform results = _fitter.solve(DoubleArray.copyOf(start));
     double[] res = results.getModelParameters().toArray();
     double eps = 1e-6;
-    assertEquals(ALPHA, res[0], eps);
-    assertEquals(BETA, res[1], eps);
-    assertEquals(RHO, res[2], eps);
-    assertEquals(NU, res[3], eps);
-    assertEquals(0.0, results.getChiSq(), eps);
+    assertThat(ALPHA).isCloseTo(res[0], offset(eps));
+    assertThat(BETA).isCloseTo(res[1], offset(eps));
+    assertThat(RHO).isCloseTo(res[2], offset(eps));
+    assertThat(NU).isCloseTo(res[3], offset(eps));
+    assertThat(0.0).isCloseTo(results.getChiSq(), offset(eps));
   }
 
+  @Test
   public void testExactFitWithTransform() {
     double[] start = new double[] {0.01, 0.99, 0.9, 0.4};
     NonLinearParameterTransforms transf = _fitter.getTransform(DoubleArray.copyOf(start));
     LeastSquareResultsWithTransform results = _fitter.solve(DoubleArray.copyOf(start), transf);
     double[] res = results.getModelParameters().toArray();
     double eps = 1e-6;
-    assertEquals(ALPHA, res[0], eps);
-    assertEquals(BETA, res[1], eps);
-    assertEquals(RHO, res[2], eps);
-    assertEquals(NU, res[3], eps);
-    assertEquals(0.0, results.getChiSq(), eps);
+    assertThat(ALPHA).isCloseTo(res[0], offset(eps));
+    assertThat(BETA).isCloseTo(res[1], offset(eps));
+    assertThat(RHO).isCloseTo(res[2], offset(eps));
+    assertThat(NU).isCloseTo(res[3], offset(eps));
+    assertThat(0.0).isCloseTo(results.getChiSq(), offset(eps));
   }
 
+  @Test
   public void testExactFitWithFixedBeta() {
     DoubleArray start = DoubleArray.of(0.1, 0.5, 0.0, 0.3);
     BitSet fixed = new BitSet();
@@ -117,11 +118,11 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
     LeastSquareResultsWithTransform results = _fitter.solve(start, fixed);
     double[] res = results.getModelParameters().toArray();
     double eps = 1e-6;
-    assertEquals(ALPHA, res[0], eps);
-    assertEquals(BETA, res[1], eps);
-    assertEquals(RHO, res[2], eps);
-    assertEquals(NU, res[3], eps);
-    assertEquals(0.0, results.getChiSq(), eps);
+    assertThat(ALPHA).isCloseTo(res[0], offset(eps));
+    assertThat(BETA).isCloseTo(res[1], offset(eps));
+    assertThat(RHO).isCloseTo(res[2], offset(eps));
+    assertThat(NU).isCloseTo(res[3], offset(eps));
+    assertThat(0.0).isCloseTo(results.getChiSq(), offset(eps));
 
     // sensitivity to data
     DoubleMatrix sensitivity = results.getModelParameterSensitivityToData();
@@ -140,10 +141,11 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
       LeastSquareResultsWithTransform resultsBumpedM = fitterM.solve(start, fixed);
       DoubleArray parameterBumpedM = resultsBumpedM.getModelParameters();
       DoubleArray sensitivityColumnFd = parameterBumpedP.minus(parameterBumpedM).dividedBy(2 * shiftFd);
-      assertTrue(sensitivityColumnFd.equalWithTolerance(sensitivity.column(i), 1.0E-6));
+      assertThat(sensitivityColumnFd.equalWithTolerance(sensitivity.column(i), 1.0E-6)).isTrue();
     }
   }
 
+  @Test
   public void testNoisyFitWithFixedBeta() {
     DoubleArray start = DoubleArray.of(0.1, 0.5, 0.0, 0.3);
     BitSet fixed = new BitSet();
@@ -151,11 +153,11 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
     LeastSquareResultsWithTransform results = _nosiyFitter.solve(start, fixed);
     double[] res = results.getModelParameters().toArray();
     double eps = 1e-2;
-    assertEquals(ALPHA, res[0], eps);
-    assertEquals(BETA, res[1], eps);
-    assertEquals(RHO, res[2], eps);
-    assertEquals(NU, res[3], eps);
-    assertEquals(0.0, results.getChiSq(), 10.0d);
+    assertThat(ALPHA).isCloseTo(res[0], offset(eps));
+    assertThat(BETA).isCloseTo(res[1], offset(eps));
+    assertThat(RHO).isCloseTo(res[2], offset(eps));
+    assertThat(NU).isCloseTo(res[3], offset(eps));
+    assertThat(0.0).isCloseTo(results.getChiSq(), offset(10.0d));
 
     // sensitivity to data
     DoubleMatrix sensitivity = results.getModelParameterSensitivityToData();
@@ -174,7 +176,7 @@ public class SabrModelFitterTest extends SmileModelFitterTest<SabrFormulaData> {
       LeastSquareResultsWithTransform resultsBumpedM = fitterM.solve(start, fixed);
       DoubleArray parameterBumpedM = resultsBumpedM.getModelParameters();
       DoubleArray sensitivityColumnFd = parameterBumpedP.minus(parameterBumpedM).dividedBy(2 * shiftFd);
-      assertTrue(sensitivityColumnFd.equalWithTolerance(sensitivity.column(i), 1.0E-2));
+      assertThat(sensitivityColumnFd.equalWithTolerance(sensitivity.column(i), 1.0E-2)).isTrue();
     }
   }
 

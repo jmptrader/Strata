@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.examples.finance;
@@ -47,8 +47,8 @@ import com.opengamma.strata.market.curve.CurveId;
 import com.opengamma.strata.market.curve.CurveParallelShifts;
 import com.opengamma.strata.measure.Measures;
 import com.opengamma.strata.measure.StandardComponents;
+import com.opengamma.strata.product.AttributeType;
 import com.opengamma.strata.product.Trade;
-import com.opengamma.strata.product.TradeAttributeType;
 import com.opengamma.strata.product.TradeInfo;
 import com.opengamma.strata.product.common.PayReceive;
 import com.opengamma.strata.product.swap.FixedRateCalculation;
@@ -114,7 +114,6 @@ public class CurveScenarioExample {
     // mappings that select which market data to apply perturbations to
     // this applies the perturbations above to all curves
     PerturbationMapping<Curve> mapping = PerturbationMapping.of(
-        Curve.class,
         MarketDataFilter.ofIdType(CurveId.class),
         // no shift for the base scenario, 1bp absolute shift to calibrated curves (zeros)
         CurveParallelShifts.absolute(0, ONE_BP));
@@ -138,12 +137,12 @@ public class CurveScenarioExample {
     // TODO Replace the results processing below with a report once the reporting framework supports scenarios
 
     // The results are lists of currency amounts containing one value for each scenario
-    ScenarioArray<?> pvList = (ScenarioArray<?>) results.get(0, 0).getValue();
-    ScenarioArray<?> pv01List = (ScenarioArray<?>) results.get(0, 1).getValue();
+    ScenarioArray<CurrencyAmount> pvList = results.getScenarios(0, 0, CurrencyAmount.class).getValue();
+    ScenarioArray<CurrencyAmount> pv01List = results.getScenarios(0, 1, CurrencyAmount.class).getValue();
 
-    double pvBase = ((CurrencyAmount) pvList.get(0)).getAmount();
-    double pvShifted = ((CurrencyAmount) pvList.get(1)).getAmount();
-    double pv01Base = ((CurrencyAmount) pv01List.get(0)).getAmount();
+    double pvBase = pvList.get(0).getAmount();
+    double pvShifted = pvList.get(1).getAmount();
+    double pv01Base = pv01List.get(0).getAmount();
     NumberFormat numberFormat = new DecimalFormat("###,##0.00", new DecimalFormatSymbols(Locale.ENGLISH));
 
     System.out.println("                         PV (base) = " + numberFormat.format(pvBase));
@@ -192,7 +191,7 @@ public class CurveScenarioExample {
     return SwapTrade.builder()
         .product(Swap.of(payLeg, receiveLeg))
         .info(TradeInfo.builder()
-            .addAttribute(TradeAttributeType.DESCRIPTION, "Fixed vs Libor 3m")
+            .addAttribute(AttributeType.DESCRIPTION, "Fixed vs Libor 3m")
             .counterparty(StandardId.of("example", "A"))
             .settlementDate(LocalDate.of(2014, 9, 12))
             .build())

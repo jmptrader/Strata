@@ -1,10 +1,11 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.examples.finance;
 
+import static com.opengamma.strata.basics.StandardSchemes.OG_TRADE_SCHEME;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_FOLLOWING;
 
 import java.time.LocalDate;
@@ -217,7 +218,7 @@ public class SwapTradeExample {
     // a SwapTrade combines the two legs
     SwapTrade trade = SwapTrade.builder()
         .info(TradeInfo.builder()
-            .id(StandardId.of("OG-Trade", "1"))
+            .id(StandardId.of(OG_TRADE_SCHEME, "1"))
             .tradeDate(LocalDate.of(2014, 9, 10))
             .build())
         .product(Swap.of(payLeg, receiveLeg))

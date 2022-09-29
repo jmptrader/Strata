@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,8 +6,10 @@
 package com.opengamma.strata.collect;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.google.common.base.CharMatcher;
@@ -118,7 +120,7 @@ public final class ArgChecker {
    * This will typically be the result of a caller-specific check.
    * For example:
    * <pre>
-   *  ArgChecker.isTrue(value > check, "Value must be greater than check: {}", value);
+   *  ArgChecker.isTrue(value &gt; check, "Value must be greater than check: {}", value);
    * </pre>
    * <p>
    * This returns {@code void}, and not the value being checked, as there is
@@ -147,7 +149,7 @@ public final class ArgChecker {
    * This will typically be the result of a caller-specific check.
    * For example:
    * <pre>
-   *  ArgChecker.isTrue(value > check, "Value must be greater than check: {}", value);
+   *  ArgChecker.isTrue(value &gt; check, "Value must be greater than check: {}", value);
    * </pre>
    * <p>
    * This returns {@code void}, and not the value being checked, as there is
@@ -683,6 +685,73 @@ public final class ArgChecker {
     return argument;
   }
 
+  //-----------------------------------------------------------------------
+  /**
+   * Checks that the specified argument array is non-null and does not contain any duplicate values.
+   * <p>
+   * Given the input argument, this returns only if it is non-null and does not contain duplicate values.
+   * For example, in a constructor:
+   * <pre>
+   *  this.values = ArgChecker.noDuplicates(values, "values");
+   * </pre>
+   * <p>
+   * If you know the argument is sorted increasing then {@link #noDuplicatesSorted(double[], String)} might be more
+   * performant.
+   *
+   * @param argument  the argument to check, null or duplicate values throws an exception
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}, not null
+   * @throws IllegalArgumentException if the input is null or contains duplicate values
+   */
+  public static double[] noDuplicates(double[] argument, String name) {
+    notNull(argument, name);
+    if (argument.length > 1) {
+      Set<Double> seen = new LinkedHashSet<>();
+      for (double v : argument) {
+        if (!seen.add(v)) {
+          throw new IllegalArgumentException(noDuplicatesArrayMsg(name));
+        }
+      }
+    }
+    return argument;
+  }
+
+  // extracted to aid inlining performance
+  private static String noDuplicatesArrayMsg(String name) {
+    return "Argument array '" + name + "' must not contain duplicates";
+  }
+
+  /**
+   * Checks that the specified argument array is non-null, sorted, and does not contain any duplicate values.
+   * <p>
+   * Given the input argument, this returns only if it is non-null, sorted, and does not contain duplicate values.
+   * For example, in a constructor:
+   * <pre>
+   *  this.values = ArgChecker.noDuplicatesSorted(values, "values");
+   * </pre>
+   *
+   * @param argument  the argument to check, null, out of order or duplicate values throws an exception
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}, not null
+   * @throws IllegalArgumentException if the input is null, unsorted, or contains duplicate values
+   */
+  public static double[] noDuplicatesSorted(double[] argument, String name) {
+    notNull(argument, name);
+    for (int i = 1; i < argument.length; i++) {
+      if (argument[i] == argument[i - 1]) {
+        throw new IllegalArgumentException(noDuplicatesArrayMsg(name));
+      } else if (argument[i] < argument[i - 1]) {
+        throw new IllegalArgumentException(noDuplicatesSortedArrayMsg(name));
+      }
+    }
+    return argument;
+  }
+
+  // extracted to aid inlining performance
+  private static String noDuplicatesSortedArrayMsg(String name) {
+    return "Argument array '" + name + "' must be sorted and not contain duplicates";
+  }
+
   //-------------------------------------------------------------------------
   /**
    * Checks that the argument is not negative.
@@ -700,14 +769,14 @@ public final class ArgChecker {
    */
   public static int notNegative(int argument, String name) {
     if (argument < 0) {
-      throw new IllegalArgumentException(notNegativeMsg(name));
+      throw new IllegalArgumentException(notNegativeMsg(name, argument));
     }
     return argument;
   }
 
   // extracted to aid inlining performance
-  private static String notNegativeMsg(String name) {
-    return "Argument '" + name + "' must not be negative";
+  private static String notNegativeMsg(String name, Object argument) {
+    return "Argument '" + name + "' must not be negative but has value " + argument;
   }
 
   /**
@@ -726,7 +795,7 @@ public final class ArgChecker {
    */
   public static long notNegative(long argument, String name) {
     if (argument < 0) {
-      throw new IllegalArgumentException(notNegativeMsg(name));
+      throw new IllegalArgumentException(notNegativeMsg(name, argument));
     }
     return argument;
   }
@@ -747,9 +816,57 @@ public final class ArgChecker {
    */
   public static double notNegative(double argument, String name) {
     if (argument < 0) {
-      throw new IllegalArgumentException(notNegativeMsg(name));
+      throw new IllegalArgumentException(notNegativeMsg(name, argument));
     }
     return argument;
+  }
+
+  /**
+   * Checks that the argument is not negative.
+   * <p>
+   * Given the input argument, this returns only if it is zero or greater.
+   * For example, in a constructor:
+   * <pre>
+   *  this.amount = ArgChecker.notNegative(amount, "amount");
+   * </pre>
+   * 
+   * @param argument  the argument to check
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the input is negative
+   */
+  public static Decimal notNegative(Decimal argument, String name) {
+    if (argument.unscaledValue() < 0) {
+      throw new IllegalArgumentException(notNegativeMsg(name, argument));
+    }
+    return argument;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Checks that the argument is a number and not NaN.
+   * <p>
+   * Given the input argument, this returns only if it is an actual number.
+   * For example, in a constructor:
+   * <pre>
+   *  this.amount = ArgChecker.notNaN(amount, "amount");
+   * </pre>
+   *
+   * @param argument  the argument to check
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the input is NaN
+   */
+  public static double notNaN(double argument, String name) {
+    if (Double.isNaN(argument)) {
+      throw new IllegalArgumentException(notNaNMsg(name));
+    }
+    return argument;
+  }
+
+  // extracted to aid inlining performance
+  private static String notNaNMsg(String name) {
+    return "Argument '" + name + "' must not be NaN";
   }
 
   //-------------------------------------------------------------------------
@@ -775,7 +892,7 @@ public final class ArgChecker {
   }
 
   // extracted to aid inlining performance
-  private static String notNegativeOrZeroMsg(String name, double argument) {
+  private static String notNegativeOrZeroMsg(String name, Object argument) {
     return "Argument '" + name + "' must not be negative or zero but has value " + argument;
   }
 
@@ -847,7 +964,50 @@ public final class ArgChecker {
     return argument;
   }
 
+  /**
+   * Checks that the argument is not negative or zero.
+   * <p>
+   * Given the input argument, this returns only if it is greater than zero.
+   * For example, in a constructor:
+   * <pre>
+   *  this.amount = ArgChecker.notNegativeOrZero(amount, "amount");
+   * </pre>
+   * 
+   * @param argument  the argument to check
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the input is negative or zero
+   */
+  public static Decimal notNegativeOrZero(Decimal argument, String name) {
+    if (argument.unscaledValue() <= 0) {
+      throw new IllegalArgumentException(notNegativeOrZeroMsg(name, argument));
+    }
+    return argument;
+  }
+
   //-------------------------------------------------------------------------
+  /**
+   * Checks that the argument is not equal to zero.
+   * <p>
+   * Given the input argument, this returns only if it is not zero.
+   * Both positive and negative zero are checked.
+   * For example, in a constructor:
+   * <pre>
+   *  this.amount = ArgChecker.notZero(amount, "amount");
+   * </pre>
+   *
+   * @param argument  the value to check
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the argument is zero
+   */
+  public static double notZero(double argument, String name) {
+    if (argument == 0d || argument == -0d) {
+      throw new IllegalArgumentException("Argument '" + name + "' must not be zero");
+    }
+    return argument;
+  }
+
   /**
    * Checks that the argument is not equal to zero to within a given accuracy.
    * <p>
@@ -953,7 +1113,7 @@ public final class ArgChecker {
    * lower boundary but excluding the upper boundary.
    * For example, in a constructor:
    * <pre>
-   *  this.amount = ArgChecker.inRange(amount, 0d, 1d, "amount");
+   *  this.amount = ArgChecker.inRange(amount, 0, 1, "amount");
    * </pre>
    *
    * @param argument  the value to check
@@ -977,7 +1137,7 @@ public final class ArgChecker {
    * Given a value, this returns true if it is within the specified range including both boundaries.
    * For example, in a constructor:
    * <pre>
-   *  this.amount = ArgChecker.inRangeInclusive(amount, 0d, 1d, "amount");
+   *  this.amount = ArgChecker.inRangeInclusive(amount, 0, 1, "amount");
    * </pre>
    *
    * @param argument  the value to check
@@ -1001,7 +1161,7 @@ public final class ArgChecker {
    * Given a value, this returns true if it is within the specified range excluding both boundaries.
    * For example, in a constructor:
    * <pre>
-   *  this.amount = ArgChecker.inRangeExclusive(amount, 0d, 1d, "amount");
+   *  this.amount = ArgChecker.inRangeExclusive(amount, 0, 1, "amount");
    * </pre>
    *
    * @param argument  the value to check
@@ -1013,6 +1173,83 @@ public final class ArgChecker {
    */
   public static int inRangeExclusive(int argument, int lowExclusive, int highExclusive, String name) {
     if (argument <= lowExclusive || argument >= highExclusive) {
+      throw new IllegalArgumentException(
+          Messages.format("Expected {} < '{}' < {}, but found {}", lowExclusive, name, highExclusive, argument));
+    }
+    return argument;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Checks that the argument is within the range defined by {@code low <= x < high} using the items' natural order.
+   * <p>
+   * Given a value, this returns true if it is within the specified range including the
+   * lower boundary but excluding the upper boundary.
+   * For example, in a constructor:
+   * <pre>
+   *  this.duration = ArgChecker.inRangeComparable(duration, Duration.ZERO, Duration.ofHours(1), "duration");
+   * </pre>
+   *
+   * @param <T>  the type of the value
+   * @param argument  the value to check
+   * @param lowInclusive  the low value of the range
+   * @param highExclusive  the high value of the range
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the argument is outside the valid range
+   */
+  public static <T extends Comparable<T>> T inRangeComparable(T argument, T lowInclusive, T highExclusive, String name) {
+    if (argument == null || argument.compareTo(lowInclusive) < 0 || argument.compareTo(highExclusive) >= 0) {
+      throw new IllegalArgumentException(
+          Messages.format("Expected {} <= '{}' < {}, but found {}", lowInclusive, name, highExclusive, argument));
+    }
+    return argument;
+  }
+
+  /**
+   * Checks that the argument is within the range defined by {@code low <= x <= high} using the items' natural order.
+   * <p>
+   * Given a value, this returns true if it is within the specified range including both boundaries.
+   * For example, in a constructor:
+   * <pre>
+   *  this.duration = ArgChecker.inRangeComparableInclusive(duration, Duration.ZERO, Duration.ofHours(1), "duration");
+   * </pre>
+   *
+   * @param <T>  the type of the value
+   * @param argument  the value to check
+   * @param lowInclusive  the low value of the range
+   * @param highInclusive  the high value of the range
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the argument is outside the valid range
+   */
+  public static <T extends Comparable<T>> T inRangeComparableInclusive(T argument, T lowInclusive, T highInclusive, String name) {
+    if (argument == null || argument.compareTo(lowInclusive) < 0 || argument.compareTo(highInclusive) > 0) {
+      throw new IllegalArgumentException(
+          Messages.format("Expected {} <= '{}' <= {}, but found {}", lowInclusive, name, highInclusive, argument));
+    }
+    return argument;
+  }
+
+  /**
+   * Checks that the argument is within the range defined by {@code low < x < high} using the items' natural order.
+   * <p>
+   * Given a value, this returns true if it is within the specified range excluding both boundaries.
+   * For example, in a constructor:
+   * <pre>
+   *  this.duration = ArgChecker.inRangeComparableExclusive(duration, Duration.ZERO, Duration.ofHours(1), "duration");
+   * </pre>
+   *
+   * @param <T>  the type of the value
+   * @param argument  the value to check
+   * @param lowExclusive  the low value of the range
+   * @param highExclusive  the high value of the range
+   * @param name  the name of the argument to use in the error message, not null
+   * @return the input {@code argument}
+   * @throws IllegalArgumentException if the argument is outside the valid range
+   */
+  public static <T extends Comparable<T>> T inRangeComparableExclusive(T argument, T lowExclusive, T highExclusive, String name) {
+    if (argument == null || argument.compareTo(lowExclusive) <= 0 || argument.compareTo(highExclusive) >= 0) {
       throw new IllegalArgumentException(
           Messages.format("Expected {} < '{}' < {}, but found {}", lowExclusive, name, highExclusive, argument));
     }
@@ -1038,7 +1275,7 @@ public final class ArgChecker {
     notNull(obj2, name2);
     if (obj1.compareTo(obj2) >= 0) {
       throw new IllegalArgumentException(
-          Messages.format("Invalid order: Expected '{}' < '{}', but found: '{}' >= '{}", name1, name2, obj1, obj2));
+          Messages.format("Invalid order: Expected '{}' < '{}', but found: '{}' >= '{}'", name1, name2, obj1, obj2));
     }
   }
 
@@ -1059,7 +1296,7 @@ public final class ArgChecker {
     notNull(obj2, name2);
     if (obj1.compareTo(obj2) > 0) {
       throw new IllegalArgumentException(
-          Messages.format("Invalid order: Expected '{}' <= '{}', but found: '{}' > '{}", name1, name2, obj1, obj2));
+          Messages.format("Invalid order: Expected '{}' <= '{}', but found: '{}' > '{}'", name1, name2, obj1, obj2));
     }
   }
 

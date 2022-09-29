@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -60,7 +60,7 @@ import com.opengamma.strata.product.swap.SwapLegType;
  *  OpenGamma implementation note: Replication pricing for linear and TEC format CMS, Version 1.2, March 2011.
  *  OpenGamma implementation note for the extrapolation: Smile extrapolation, version 1.2, May 2011.
  */
-public class SabrExtrapolationReplicationCmsPeriodPricer {
+public final class SabrExtrapolationReplicationCmsPeriodPricer {
 
   /**
    * Logger.
@@ -144,7 +144,35 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
   public static SabrExtrapolationReplicationCmsPeriodPricer of(double cutOffStrike, double mu) {
     return of(DiscountingSwapProductPricer.DEFAULT, cutOffStrike, mu);
   }
+  
+  /**
+   * Returns the underlying swap pricer.
+   * 
+   * @return the pricer
+   */
+  public DiscountingSwapProductPricer getSwapPricer() {
+    return swapPricer;
+  }
 
+  /**
+   * Returns the tail thickness parameter.
+   * 
+   * @return the parameter
+   */
+  public double getMu() {
+    return mu;
+  }
+
+  /**
+   * Returns the cut-off strike.
+   * 
+   * @return the strike
+   */
+  public double getCutOffStrike() {
+    return cutOffStrike;
+  }
+
+  // Private constructor
   private SabrExtrapolationReplicationCmsPeriodPricer(
       DiscountingSwapProductPricer swapPricer,
       double cutOffStrike,
@@ -554,13 +582,22 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
     return res;
   }
 
-  //explain PV for an Cms period
+  /**
+   * Explains the present value of the CMS period.
+   * <p>
+   * This returns explanatory information about the calculation.
+   * 
+   * @param period  the product
+   * @param ratesProvider  the rates provider
+   * @param swaptionVolatilities  the volatilities
+   * @param builder  the builder to populate
+   */
   public void explainPresentValue(
-      CmsPeriod period, 
-      RatesProvider ratesProvider, 
+      CmsPeriod period,
+      RatesProvider ratesProvider,
       SabrSwaptionVolatilities swaptionVolatilities,
       ExplainMapBuilder builder) {
-    
+
     String type = period.getCmsPeriodType().toString();
     Currency ccy = period.getCurrency();
     LocalDate paymentDate = period.getPaymentDate();
@@ -677,12 +714,12 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
           .of(forward + shift, timeToExpiry, sabrPoint, cutOffStrike + shift, mu);
       this.putCall = cmsPeriod.getCmsPeriodType().equals(CmsPeriodType.FLOORLET) ? PutCall.PUT : PutCall.CALL;
       this.strike = strike;
-      this.factor = g(forward) / h(forward);
       this.g0 = new double[4];
       g0[0] = nbFixedPeriod * tau;
       g0[1] = -0.5 * nbFixedPeriod * (nbFixedPeriod + 1.0d) * tau * tau;
       g0[2] = -2.0d / 3.0d * g0[1] * (nbFixedPeriod + 2.0d) * tau;
       g0[3] = -3.0d / 4.0d * g0[2] * (nbFixedPeriod + 2.0d) * tau;
+      this.factor = g(forward) / h(forward);
     }
 
     /**
@@ -714,8 +751,8 @@ public class SabrExtrapolationReplicationCmsPeriodPricer {
           double[] kD = kpkpp(x);
           // Implementation note: kD[0] contains the first derivative of k; kD[1] the second derivative of k.
           double xShifted = Math.max(x + shift, 0d); // handle tiny but negative number
-          DoubleArray priceDerivativeSABR = getSabrExtrapolation().priceAdjointSabr(xShifted, putCall).getDerivatives();
-          return priceDerivativeSABR.get(i) * (factor * (kD[1] * (x - strike) + 2d * kD[0]));
+          DoubleArray priceDerivativeSabr = getSabrExtrapolation().priceAdjointSabr(xShifted, putCall).getDerivatives();
+          return priceDerivativeSabr.get(i) * (factor * (kD[1] * (x - strike) + 2d * kD[0]));
         }
       };
     }

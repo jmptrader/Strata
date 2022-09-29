@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -43,8 +43,15 @@ final class StandardCurveInterpolators {
   // Product natural cubic spline interpolator.
   public static final CurveInterpolator PRODUCT_NATURAL_SPLINE =
       ProductNaturalSplineCurveInterpolator.INSTANCE;
+  // Product natural cubic spline interpolator with monotonicity filter.
+  public static final CurveInterpolator PRODUCT_NATURAL_SPLINE_MONOTONE_CUBIC =
+      ProductNaturalSplineMonotoneCubicInterpolator.INSTANCE;
   // Product linear interpolator.
   public static final CurveInterpolator PRODUCT_LINEAR = ProductLinearCurveInterpolator.INSTANCE;
+  // Step upper interpolator.
+  public static final CurveInterpolator STEP_UPPER = StepUpperCurveInterpolator.INSTANCE;
+  // Piecewise cubic Hermite interpolator with monotonicity.
+  public static final CurveInterpolator PCHIP = PiecewiseCubicHermiteMonotonicityCurveInterpolator.INSTANCE;
 
   //-------------------------------------------------------------------------
   /**

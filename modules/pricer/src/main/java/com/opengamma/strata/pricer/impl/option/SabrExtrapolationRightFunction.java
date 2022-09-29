@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -13,10 +13,10 @@ import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 import com.opengamma.strata.collect.tuple.Pair;
-import com.opengamma.strata.math.impl.linearalgebra.DecompositionResult;
 import com.opengamma.strata.math.impl.linearalgebra.SVDecompositionCommons;
 import com.opengamma.strata.math.impl.rootfinding.BracketRoot;
 import com.opengamma.strata.math.impl.rootfinding.RidderSingleRootFinder;
+import com.opengamma.strata.math.linearalgebra.DecompositionResult;
 import com.opengamma.strata.pricer.impl.volatility.smile.SabrFormulaData;
 import com.opengamma.strata.pricer.impl.volatility.smile.SabrHaganVolatilityFunctionProvider;
 import com.opengamma.strata.pricer.impl.volatility.smile.VolatilityFunctionProvider;
@@ -36,7 +36,7 @@ import com.opengamma.strata.product.common.PutCall;
  * <P>
  * OpenGamma implementation note: Smile extrapolation, version 1.2, May 2011.
  */
-public class SabrExtrapolationRightFunction {
+public final class SabrExtrapolationRightFunction {
 
   /**
    * Matrix decomposition.
@@ -163,7 +163,9 @@ public class SabrExtrapolationRightFunction {
     this.mu = mu;
     if (timeToExpiry > SMALL_EXPIRY) {
       parameter = computesFittingParameters();
-    } else { // Implementation note: when time to expiry is very small, the price above the cut-off strike and its derivatives should be 0 (or at least very small).
+    } else {
+      // Implementation note: when time to expiry is very small,
+      // the price above the cut-off strike and its derivatives should be 0 (or at least very small).
       parameter = new double[] {SMALL_PARAMETER, 0.0, 0.0};
       parameterDerivativeForward = new double[3];
       parameterDerivativeSabr = new double[4][3];
@@ -244,9 +246,8 @@ public class SabrExtrapolationRightFunction {
     double fDa = f;
     double fDb = f / strike;
     double fDc = fDb / strike;
-    double priceDerivative = fDa * parameterDerivativeForward[0]
-        + fDb * parameterDerivativeForward[1]
-        + fDc * parameterDerivativeForward[2];
+    double priceDerivative =
+        fDa * parameterDerivativeForward[0] + fDb * parameterDerivativeForward[1] + fDc * parameterDerivativeForward[2];
     if (putCall.isPut()) { // Put by call/put parity
       priceDerivative -= 1;
     }
@@ -275,7 +276,7 @@ public class SabrExtrapolationRightFunction {
       }
     } else { // Uses extrapolation for call.
       if (parameterDerivativeSabr == null) {
-        parameterDerivativeSabr = computesParametersDerivativeSabr(); 
+        parameterDerivativeSabr = computesParametersDerivativeSabr();
         // Derivatives computed only once and only when required
       }
       double f = extrapolation(strike);
@@ -370,14 +371,16 @@ public class SabrExtrapolationRightFunction {
     double[] vD = new double[6];
     double[][] vD2 = new double[2][2];
     volatilityK = sabrFunction.volatilityAdjoint2(forward, cutOffStrike, timeToExpiry, sabrData, vD, vD2);
-    Pair<ValueDerivatives, double[][]> pa2 = BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
+    Pair<ValueDerivatives, double[][]> pa2 =
+        BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
     double[] bsD = pa2.getFirst().getDerivatives().toArrayUnsafe();
     double[][] bsD2 = pa2.getSecond();
     priceK[0] = pa2.getFirst().getValue();
     priceK[1] = bsD[1] + bsD[3] * vD[1];
     priceK[2] = bsD2[1][1] + bsD2[1][2] * vD[1] + (bsD2[2][1] + bsD2[2][2] * vD[1]) * vD[1] + bsD[3] * vD2[1][1];
     if (Math.abs(priceK[0]) < SMALL_PRICE && Math.abs(priceK[1]) < SMALL_PRICE && Math.abs(priceK[2]) < SMALL_PRICE) {
-      // Implementation note: If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
+      // Implementation note:
+      // If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
       return new double[] {-100.0, 0, 0};
     }
     Function<Double, Double> toSolveC = getCFunction(priceK, cutOffStrike, mu);
@@ -402,7 +405,8 @@ public class SabrExtrapolationRightFunction {
    */
   private double[] computesParametersDerivativeForward() {
     if (Math.abs(priceK[0]) < SMALL_PRICE && Math.abs(priceK[1]) < SMALL_PRICE && Math.abs(priceK[2]) < SMALL_PRICE) {
-      // Implementation note: If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
+      // Implementation note:
+      // If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
       return new double[] {0.0, 0.0, 0.0};
     }
     // Derivative of price with respect to forward.
@@ -411,15 +415,18 @@ public class SabrExtrapolationRightFunction {
     double[] vD = new double[6];
     double[][] vD2 = new double[2][2];
     sabrFunction.volatilityAdjoint2(forward, cutOffStrike, timeToExpiry, sabrData, vD, vD2);
-    Pair<ValueDerivatives, double[][]> pa2 = BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
+    Pair<ValueDerivatives, double[][]> pa2 =
+        BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
     double[] bsD = pa2.getFirst().getDerivatives().toArrayUnsafe();
     double[][] bsD2 = pa2.getSecond();
     pDF[0] = bsD[0] + bsD[3] * vD[0];
     pDF[1] = bsD2[0][1] + bsD2[2][0] * vD[1] + (bsD2[1][2] + bsD2[2][2] * vD[1]) * vD[0] + bsD[3] * vD2[1][0];
-    Pair<ValueDerivatives, double[][]> pa2KP = BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike* (1 + shift), timeToExpiry, volatilityK, true);
+    Pair<ValueDerivatives, double[][]> pa2KP =
+        BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike * (1 + shift), timeToExpiry, volatilityK, true);
     double[][] bsD2KP = pa2KP.getSecond();
     double bsD3FKK = (bsD2KP[1][0] - bsD2[1][0]) / (cutOffStrike * shift);
-    Pair<ValueDerivatives, double[][]> pa2VP = BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK* (1 + shift), true);
+    Pair<ValueDerivatives, double[][]> pa2VP =
+        BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK * (1 + shift), true);
     double[][] bsD2VP = pa2VP.getSecond();
     double bsD3sss = (bsD2VP[2][2] - bsD2[2][2]) / (volatilityK * shift);
     double bsD3sFK = (bsD2VP[0][1] - bsD2[0][1]) / (volatilityK * shift);
@@ -431,8 +438,8 @@ public class SabrExtrapolationRightFunction {
     sabrFunction.volatilityAdjoint2(forward, cutOffStrike * (1 + shift), timeToExpiry, sabrData, vDKP, vD2KP);
     double vD3KKF = (vD2KP[1][0] - vD2[1][0]) / (cutOffStrike * shift);
     pDF[2] = bsD3FKK + bsD3sFK * vD[1] + (bsD3sFK + bsD3sFs * vD[1]) * vD[1] + bsD2[2][0] * vD2[1][1] +
-        (bsD3sKK + bsD3ssK * vD[1] + (bsD3ssK + bsD3sss * vD[1]) * vD[1] + bsD2[2][2] * vD2[1][1])
-        * vD[0] + 2 * (bsD2[1][2] + bsD2[2][2] * vD[1]) * vD2[1][0] + bsD[3] * vD3KKF;
+        (bsD3sKK + bsD3ssK * vD[1] + (bsD3ssK + bsD3sss * vD[1]) * vD[1] + bsD2[2][2] * vD2[1][1]) * vD[0] +
+        2 * (bsD2[1][2] + bsD2[2][2] * vD[1]) * vD2[1][0] + bsD[3] * vD3KKF;
     // Derivative of f with respect to abc.
     double[][] fD = new double[3][3]; // fD[i][j]: derivative with respect to jth variable of f_i
     double f = priceK[0];
@@ -466,7 +473,8 @@ public class SabrExtrapolationRightFunction {
   private double[][] computesParametersDerivativeSabr() {
     double[][] result = new double[4][3];
     if (Math.abs(priceK[0]) < SMALL_PRICE && Math.abs(priceK[1]) < SMALL_PRICE && Math.abs(priceK[2]) < SMALL_PRICE) {
-      // Implementation note: If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
+      // Implementation note:
+      // If value and its derivatives is too small, then parameters are such that the extrapolated price is "very small".
       return result;
     }
     // Derivative of price with respect to SABR parameters.
@@ -477,7 +485,8 @@ public class SabrExtrapolationRightFunction {
     sabrFunction.volatilityAdjoint2(forward, cutOffStrike, timeToExpiry, sabrData, vD, vD2);
     for (int loopparam = 0; loopparam < 4; loopparam++) {
       int paramIndex = 2 + loopparam;
-      Pair<ValueDerivatives, double[][]> pa2 = BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
+      Pair<ValueDerivatives, double[][]> pa2 =
+          BlackFormulaRepository.priceAdjoint2(forward, cutOffStrike, timeToExpiry, volatilityK, true);
       double[] bsD = pa2.getFirst().getDerivatives().toArrayUnsafe();
       double[][] bsD2 = pa2.getSecond();
       pdSabr[loopparam][0] = bsD[3] * vD[paramIndex];
@@ -519,8 +528,7 @@ public class SabrExtrapolationRightFunction {
       double bsD3sKK = (bsD2VP[1][1] - bsD2[1][1]) / (volatilityK * shift);
       double bsD3ssK = (bsD2VP[2][1] - bsD2[2][1]) / (volatilityK * shift);
       pdSabr[loopparam][2] = (bsD3sKK + bsD3ssK * vD[1] + (bsD3ssK + bsD3sss * vD[1]) * vD[1] + bsD2[2][2] * vD2[1][1]) *
-          vD[paramIndex] + 2 * (bsD2[2][1] + bsD2[2][2] * vD[1]) * vD2Kp + bsD[3]
-          * vD3KKa;
+          vD[paramIndex] + 2 * (bsD2[2][1] + bsD2[2][2] * vD[1]) * vD2Kp + bsD[3] * vD3KKa;
     }
     // Derivative of f with respect to abc.
     double[][] fD = new double[3][3]; // fD[i][j]: derivative with respect to jth variable of f_i

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -6,42 +6,52 @@
 package com.opengamma.strata.collect.result;
 
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
+import java.util.function.Function;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
-import org.joda.beans.ImmutableConstructor;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.ImmutableConstructor;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Interner;
 import com.google.common.collect.Interners;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.tuple.Pair;
 
 /**
  * Details of a single failed item.
  * <p>
- * This is used in {@link Failure} and {@link TolerantResult} to capture details of a single failure.
+ * This is used in {@link Failure} and {@link FailureItems} to capture details of a single failure.
  * Details include the reason, message and stack trace.
  */
 @BeanDefinition(builderScope = "private")
 public final class FailureItem
     implements ImmutableBean, Serializable {
 
+  /**
+   * Attribute used to store the exception message.
+   */
+  public static final String EXCEPTION_MESSAGE_ATTRIBUTE = FailureAttributeKeys.EXCEPTION_MESSAGE;
   /**
    * Header used when generating stack trace internally.
    */
@@ -63,6 +73,12 @@ public final class FailureItem
   @PropertyDefinition(validate = "notEmpty")
   private final String message;
   /**
+   * The attributes associated with this failure.
+   * Attributes can contain additional information about the failure. For example, a line number in a file or the ID of a trade.
+   */
+  @PropertyDefinition(validate = "notNull")
+  private final ImmutableMap<String, String> attributes;
+  /**
    * Stack trace where the failure occurred.
    * If the failure was caused by an {@code Exception} its stack trace is used, otherwise it's the
    * location where the failure was created.
@@ -70,21 +86,22 @@ public final class FailureItem
   @PropertyDefinition(validate = "notNull")
   private final String stackTrace;
   /**
-   * The type of the exception that caused the failure, not present if it wasn't caused by an exception.
+   * The type of the throwable that caused the failure, not present if it wasn't caused by a throwable.
    */
   @PropertyDefinition(get = "optional")
-  private final Class<? extends Exception> causeType;
+  private final Class<? extends Throwable> causeType;
 
   //-------------------------------------------------------------------------
   /**
    * Obtains a failure from a reason and message.
    * <p>
-   * The message is produced using a template that contains zero to many "{}" placeholders.
+   * The message is produced using a template that contains zero to many "{}" or "{abc}" placeholders.
    * Each placeholder is replaced by the next available argument.
+   * If the placeholder has a name, its value is added to the attributes map with the name as a key.
    * If there are too few arguments, then the message will be left with placeholders.
    * If there are too many arguments, then the excess arguments are appended to the
    * end of the message. No attempt is made to format the arguments.
-   * See {@link Messages#format(String, Object...)} for more details.
+   * See {@link Messages#formatWithAttributes(String, Object...)} for more details.
    * <p>
    * An exception will be created internally to obtain a stack trace.
    * The cause type will not be present in the resulting failure.
@@ -95,76 +112,181 @@ public final class FailureItem
    * @return the failure
    */
   public static FailureItem of(FailureReason reason, String message, Object... messageArgs) {
-    String msg = Messages.format(message, messageArgs);
-    return of(reason, msg, 1);
+    Pair<String, Map<String, String>> msg = Messages.formatWithAttributes(message, messageArgs);
+    return of(reason, msg.getFirst(), msg.getSecond());
   }
 
   /**
    * Obtains a failure from a reason and message.
    * <p>
    * The failure will still have a stack trace, but the cause type will not be present.
-   * 
+   *
    * @param reason  the reason
    * @param message  the failure message, not empty
    * @param skipFrames  the number of caller frames to skip, not including this one
    * @return the failure
    */
-  static FailureItem of(FailureReason reason, String message, int skipFrames) {
+  static FailureItem ofAutoStackTrace(FailureReason reason, String message, int skipFrames) {
     ArgChecker.notNull(reason, "reason");
     ArgChecker.notEmpty(message, "message");
     String stackTrace = localGetStackTraceAsString(message, skipFrames);
-    return new FailureItem(reason, message, stackTrace, null);
+    return new FailureItem(reason, message, ImmutableMap.of(), stackTrace, null);
+  }
+
+  /**
+   * Obtains a failure from a reason and message.
+   * <p>
+   * The failure will still have a stack trace, but the cause type will not be present.
+   *
+   * @param reason  the reason
+   * @param message  the failure message, not empty
+   * @param attributes the attributes associated with this failure
+   * @return the failure
+   */
+  private static FailureItem of(FailureReason reason, String message, Map<String, String> attributes) {
+    ArgChecker.notNull(reason, "reason");
+    ArgChecker.notEmpty(message, "message");
+    String stackTrace = localGetStackTraceAsString(message, 1);
+    return new FailureItem(reason, message, attributes, stackTrace, null);
   }
 
   private static String localGetStackTraceAsString(String message, int skipFrames) {
     StringBuilder builder = new StringBuilder();
     StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     // simulate full stack trace, pretending this class is a Throwable subclass
-    builder.append(FAILURE_EXCEPTION).append(message).append(System.lineSeparator());
+    builder.append(FAILURE_EXCEPTION).append(message).append("\n");
     // drop the first few frames because they are part of the immediate calling code
     for (int i = skipFrames + 3; i < stackTrace.length; i++) {
-      builder.append("\tat ").append(stackTrace[i]).append(System.lineSeparator());
+      builder.append("\tat ").append(stackTrace[i]).append("\n");
     }
     return builder.toString();
   }
 
   /**
    * Obtains a failure from a reason and exception.
+   * <p>
+   * This recognizes and handles {@link FailureItemProvider} exceptions.
    * 
    * @param reason  the reason
    * @param cause  the cause
    * @return the failure
    */
-  public static FailureItem of(FailureReason reason, Exception cause) {
+  public static FailureItem of(FailureReason reason, Throwable cause) {
     ArgChecker.notNull(reason, "reason");
     ArgChecker.notNull(cause, "cause");
-    String causeMessage = cause.getMessage();
-    String message = Strings.isNullOrEmpty(causeMessage) ? cause.getClass().getSimpleName() : causeMessage;
-    return FailureItem.of(reason, cause, message);
+    String causeMessage = extractCauseMessage(cause);
+    return FailureItem.of(reason, cause, causeMessage);
   }
 
   /**
-   * Obtains a failure from a reason, exception and message.
+   * Obtains a failure from a reason, throwable and message.
    * <p>
    * The message is produced using a template that contains zero to many "{}" placeholders.
    * Each placeholder is replaced by the next available argument.
    * If there are too few arguments, then the message will be left with placeholders.
    * If there are too many arguments, then the excess arguments are appended to the
    * end of the message. No attempt is made to format the arguments.
-   * See {@link Messages#format(String, Object...)} for more details.
+   * See {@link Messages#formatWithAttributes(String, Object...)} for more details.
+   * <p>
+   * It can be useful to capture the underlying exception message. This should be achieved by adding
+   * ': {exceptionMessage}' to the template and 'cause.toString()' or 'cause.getMessage()' to the arguments.
+   * <p>
+   * This recognizes and handles {@link FailureItemProvider} exceptions.
    * 
    * @param reason  the reason
    * @param cause  the cause
-   * @param message  a message explaining the failure, not empty, uses "{}" for inserting {@code messageArgs}
+   * @param messageTemplate  a message explaining the failure, not empty, uses "{}" for inserting {@code messageArgs}
    * @param messageArgs  the arguments for the message
    * @return the failure
    */
-  public static FailureItem of(FailureReason reason, Exception cause, String message, Object... messageArgs) {
+  public static FailureItem of(FailureReason reason, Throwable cause, String messageTemplate, Object... messageArgs) {
     ArgChecker.notNull(reason, "reason");
     ArgChecker.notNull(cause, "cause");
-    String msg = Messages.format(message, messageArgs);
-    String stackTrace = Throwables.getStackTraceAsString(cause);
-    return new FailureItem(reason, msg, stackTrace, cause.getClass());
+    if (cause instanceof FailureItemProvider) {
+      return ofWrappedFailureItem(((FailureItemProvider) cause).getFailureItem(), reason, messageTemplate, messageArgs);
+    }
+    Pair<String, Map<String, String>> msg = Messages.formatWithAttributes(messageTemplate, messageArgs);
+    String stackTrace = Throwables.getStackTraceAsString(cause).replace(System.lineSeparator(), "\n");
+    FailureItem base = new FailureItem(reason, msg.getFirst(), msg.getSecond(), stackTrace, cause.getClass());
+    String causeMessage = extractCauseMessage(cause);
+    if (!base.getAttributes().containsKey(EXCEPTION_MESSAGE_ATTRIBUTE) && !Strings.isNullOrEmpty(causeMessage)) {
+      return base.withAttribute(EXCEPTION_MESSAGE_ATTRIBUTE, causeMessage);
+    }
+    return base;
+  }
+
+  // extracts the cause message
+  private static String extractCauseMessage(Throwable cause) {
+    String causeMessage = cause.getMessage();
+    return Strings.isNullOrEmpty(causeMessage) ? cause.getClass().getSimpleName() : causeMessage;
+  }
+
+  // handles a cause that contains a FailureItem
+  private static FailureItem ofWrappedFailureItem(
+      FailureItem underlying,
+      FailureReason reason,
+      String messageTemplate,
+      Object... messageArgs) {
+
+    // strip trailing 'exceptionMessage'
+    if (messageTemplate.endsWith("{exceptionMessage}")) {
+      String adjustedTemplate = messageTemplate.substring(0, messageTemplate.length() - 18).trim();
+      adjustedTemplate = adjustedTemplate.endsWith(":") ? adjustedTemplate.substring(0, adjustedTemplate.length() - 1) : adjustedTemplate;
+      Object[] adjustedArgs = messageArgs.length >= 1 ? Arrays.copyOfRange(messageArgs, 0, messageArgs.length - 1) : messageArgs;
+      return ofWrappedFailureItem(underlying, reason, adjustedTemplate, adjustedArgs);
+    }
+
+    // format and combine message
+    Pair<String, Map<String, String>> msgPair = Messages.formatWithAttributes(messageTemplate, messageArgs);
+    String baseMsg = msgPair.getFirst() + ": ";
+    Map<String, String> baseAttrs = msgPair.getSecond();
+    String combinedMsg = baseMsg + underlying.message;
+
+    // combine attributes
+    String underlyingLocation = underlying.attributes.getOrDefault(FailureAttributeKeys.TEMPLATE_LOCATION, "");
+    String baseLocation = baseAttrs.getOrDefault(FailureAttributeKeys.TEMPLATE_LOCATION, "");
+    Map<String, String> combinedAttrs = new LinkedHashMap<>(baseAttrs);
+    combinedAttrs.remove(FailureAttributeKeys.TEMPLATE_LOCATION);
+    for (Entry<String, String> entry : underlying.attributes.entrySet()) {
+      String key = entry.getKey();
+      if (!FailureAttributeKeys.TEMPLATE_LOCATION.equals(key)) {
+        String adjKey = key;
+        int count = 1;
+        while (combinedAttrs.containsKey(adjKey)) {
+          adjKey = key + (count++);
+        }
+        if (!adjKey.equals(key)) {
+          underlyingLocation = underlyingLocation.replace(key, adjKey);
+        }
+        combinedAttrs.put(adjKey, entry.getValue());
+      }
+    }
+
+    // adjust location
+    String mergedLocation = Messages.mergeTemplateLocations(baseLocation, underlyingLocation, baseMsg.length());
+    if (!mergedLocation.isEmpty()) {
+      combinedAttrs.put(FailureAttributeKeys.TEMPLATE_LOCATION, mergedLocation);
+    }
+    return new FailureItem(underlying.reason, combinedMsg, combinedAttrs, underlying.stackTrace, underlying.causeType);
+  }
+
+  /**
+   * Creates a failure item from the throwable.
+   * <p>
+   * This recognizes and handles {@link FailureItemProvider} exceptions.
+   *
+   * @param th  the throwable to be processed
+   * @return the failure item
+   */
+  public static FailureItem from(Throwable th) {
+    try {
+      throw th;
+    } catch (Throwable ex) {
+      if (ex instanceof FailureItemProvider) {
+        return ((FailureItemProvider) ex).getFailureItem();
+      }
+      return of(FailureReason.ERROR, ex);
+    }
   }
 
   //-------------------------------------------------------------------------
@@ -172,8 +294,10 @@ public final class FailureItem
   private FailureItem(
       FailureReason reason,
       String message,
+      Map<String, String> attributes,
       String stackTrace,
-      Class<? extends Exception> causeType) {
+      Class<? extends Throwable> causeType) {
+    this.attributes = ImmutableMap.copyOf(attributes);
     JodaBeanUtils.notNull(reason, "reason");
     JodaBeanUtils.notEmpty(message, "message");
     JodaBeanUtils.notNull(stackTrace, "stackTrace");
@@ -181,6 +305,61 @@ public final class FailureItem
     this.message = message;
     this.stackTrace = INTERNER.intern(stackTrace);
     this.causeType = causeType;
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Gets the message template that was used to create the message.
+   * <p>
+   * This method derives the template from 'templateLocation' in the attributes.
+   * This only works if the template location correctly matches the message.
+   * 
+   * @return the message template
+   */
+  public String getMessageTemplate() {
+    return Messages.recreateTemplate(message, attributes.get(FailureAttributeKeys.TEMPLATE_LOCATION));
+  }
+
+  /**
+   * Returns an instance with the specified attribute added.
+   * <p>
+   * If the attribute map of this instance has the specified key, the value is replaced.
+   * 
+   * @param key  the key to add
+   * @param value  the value to add
+   * @return the new failure item
+   */
+  public FailureItem withAttribute(String key, String value) {
+    Map<String, String> attributes = new HashMap<>(this.attributes);
+    attributes.put(key, value);
+    return new FailureItem(reason, message, attributes, stackTrace, causeType);
+  }
+
+  /**
+   * Returns an instance with the specified attributes added.
+   * <p>
+   * If the attribute map of this instance has any of the new attribute keys, the values are replaced.
+   *
+   * @param attributes  the new attributes to add
+   * @return the new failure item
+   */
+  public FailureItem withAttributes(Map<String, String> attributes) {
+    Map<String, String> newAttributes = new HashMap<>(this.attributes);
+    newAttributes.putAll(attributes);
+    return new FailureItem(reason, message, newAttributes, stackTrace, causeType);
+  }
+
+  /**
+   * Processes the failure item by applying a function that alters the message.
+   * <p>
+   * This operation allows wrapping a failure message with additional information that may have not been available
+   * to the code that created the original failure.
+   *
+   * @param function  the function to transform the message with
+   * @return the transformed instance
+   */
+  public FailureItem mapMessage(Function<String, String> function) {
+    return new FailureItem(reason, function.apply(message), attributes, stackTrace, causeType);
   }
 
   /**
@@ -193,7 +372,8 @@ public final class FailureItem
     if (stackTrace.startsWith(FAILURE_EXCEPTION)) {
       return reason + ": " + message;
     }
-    String firstLine = stackTrace.substring(0, stackTrace.indexOf(System.lineSeparator()));
+    int endLine = stackTrace.indexOf("\n");
+    String firstLine = endLine < 0 ? stackTrace : stackTrace.substring(0, endLine);
     if (firstLine.endsWith(": " + message)) {
       return reason + ": " + message + ": " + firstLine.substring(0, firstLine.length() - message.length() - 2);
     }
@@ -201,7 +381,6 @@ public final class FailureItem
   }
 
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code FailureItem}.
    * @return the meta-bean, not null
@@ -211,7 +390,7 @@ public final class FailureItem
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(FailureItem.Meta.INSTANCE);
+    MetaBean.register(FailureItem.Meta.INSTANCE);
   }
 
   /**
@@ -222,16 +401,6 @@ public final class FailureItem
   @Override
   public FailureItem.Meta metaBean() {
     return FailureItem.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -254,6 +423,16 @@ public final class FailureItem
 
   //-----------------------------------------------------------------------
   /**
+   * Gets the attributes associated with this failure.
+   * Attributes can contain additional information about the failure. For example, a line number in a file or the ID of a trade.
+   * @return the value of the property, not null
+   */
+  public ImmutableMap<String, String> getAttributes() {
+    return attributes;
+  }
+
+  //-----------------------------------------------------------------------
+  /**
    * Gets stack trace where the failure occurred.
    * If the failure was caused by an {@code Exception} its stack trace is used, otherwise it's the
    * location where the failure was created.
@@ -265,10 +444,10 @@ public final class FailureItem
 
   //-----------------------------------------------------------------------
   /**
-   * Gets the type of the exception that caused the failure, not present if it wasn't caused by an exception.
+   * Gets the type of the throwable that caused the failure, not present if it wasn't caused by a throwable.
    * @return the optional value of the property, not null
    */
-  public Optional<Class<? extends Exception>> getCauseType() {
+  public Optional<Class<? extends Throwable>> getCauseType() {
     return Optional.ofNullable(causeType);
   }
 
@@ -282,6 +461,7 @@ public final class FailureItem
       FailureItem other = (FailureItem) obj;
       return JodaBeanUtils.equal(reason, other.reason) &&
           JodaBeanUtils.equal(message, other.message) &&
+          JodaBeanUtils.equal(attributes, other.attributes) &&
           JodaBeanUtils.equal(stackTrace, other.stackTrace) &&
           JodaBeanUtils.equal(causeType, other.causeType);
     }
@@ -293,6 +473,7 @@ public final class FailureItem
     int hash = getClass().hashCode();
     hash = hash * 31 + JodaBeanUtils.hashCode(reason);
     hash = hash * 31 + JodaBeanUtils.hashCode(message);
+    hash = hash * 31 + JodaBeanUtils.hashCode(attributes);
     hash = hash * 31 + JodaBeanUtils.hashCode(stackTrace);
     hash = hash * 31 + JodaBeanUtils.hashCode(causeType);
     return hash;
@@ -319,6 +500,12 @@ public final class FailureItem
     private final MetaProperty<String> message = DirectMetaProperty.ofImmutable(
         this, "message", FailureItem.class, String.class);
     /**
+     * The meta-property for the {@code attributes} property.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes" })
+    private final MetaProperty<ImmutableMap<String, String>> attributes = DirectMetaProperty.ofImmutable(
+        this, "attributes", FailureItem.class, (Class) ImmutableMap.class);
+    /**
      * The meta-property for the {@code stackTrace} property.
      */
     private final MetaProperty<String> stackTrace = DirectMetaProperty.ofImmutable(
@@ -327,7 +514,7 @@ public final class FailureItem
      * The meta-property for the {@code causeType} property.
      */
     @SuppressWarnings({"unchecked", "rawtypes" })
-    private final MetaProperty<Class<? extends Exception>> causeType = DirectMetaProperty.ofImmutable(
+    private final MetaProperty<Class<? extends Throwable>> causeType = DirectMetaProperty.ofImmutable(
         this, "causeType", FailureItem.class, (Class) Class.class);
     /**
      * The meta-properties.
@@ -336,6 +523,7 @@ public final class FailureItem
         this, null,
         "reason",
         "message",
+        "attributes",
         "stackTrace",
         "causeType");
 
@@ -352,6 +540,8 @@ public final class FailureItem
           return reason;
         case 954925063:  // message
           return message;
+        case 405645655:  // attributes
+          return attributes;
         case 2026279837:  // stackTrace
           return stackTrace;
         case -1443456189:  // causeType
@@ -393,6 +583,14 @@ public final class FailureItem
     }
 
     /**
+     * The meta-property for the {@code attributes} property.
+     * @return the meta-property, not null
+     */
+    public MetaProperty<ImmutableMap<String, String>> attributes() {
+      return attributes;
+    }
+
+    /**
      * The meta-property for the {@code stackTrace} property.
      * @return the meta-property, not null
      */
@@ -404,7 +602,7 @@ public final class FailureItem
      * The meta-property for the {@code causeType} property.
      * @return the meta-property, not null
      */
-    public MetaProperty<Class<? extends Exception>> causeType() {
+    public MetaProperty<Class<? extends Throwable>> causeType() {
       return causeType;
     }
 
@@ -416,6 +614,8 @@ public final class FailureItem
           return ((FailureItem) bean).getReason();
         case 954925063:  // message
           return ((FailureItem) bean).getMessage();
+        case 405645655:  // attributes
+          return ((FailureItem) bean).getAttributes();
         case 2026279837:  // stackTrace
           return ((FailureItem) bean).getStackTrace();
         case -1443456189:  // causeType
@@ -439,12 +639,13 @@ public final class FailureItem
   /**
    * The bean-builder for {@code FailureItem}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<FailureItem> {
+  private static final class Builder extends DirectPrivateBeanBuilder<FailureItem> {
 
     private FailureReason reason;
     private String message;
+    private Map<String, String> attributes = ImmutableMap.of();
     private String stackTrace;
-    private Class<? extends Exception> causeType;
+    private Class<? extends Throwable> causeType;
 
     /**
      * Restricted constructor.
@@ -460,6 +661,8 @@ public final class FailureItem
           return reason;
         case 954925063:  // message
           return message;
+        case 405645655:  // attributes
+          return attributes;
         case 2026279837:  // stackTrace
           return stackTrace;
         case -1443456189:  // causeType
@@ -479,11 +682,14 @@ public final class FailureItem
         case 954925063:  // message
           this.message = (String) newValue;
           break;
+        case 405645655:  // attributes
+          this.attributes = (Map<String, String>) newValue;
+          break;
         case 2026279837:  // stackTrace
           this.stackTrace = (String) newValue;
           break;
         case -1443456189:  // causeType
-          this.causeType = (Class<? extends Exception>) newValue;
+          this.causeType = (Class<? extends Throwable>) newValue;
           break;
         default:
           throw new NoSuchElementException("Unknown property: " + propertyName);
@@ -492,34 +698,11 @@ public final class FailureItem
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public FailureItem build() {
       return new FailureItem(
           reason,
           message,
+          attributes,
           stackTrace,
           causeType);
     }
@@ -527,10 +710,11 @@ public final class FailureItem
     //-----------------------------------------------------------------------
     @Override
     public String toString() {
-      StringBuilder buf = new StringBuilder(160);
+      StringBuilder buf = new StringBuilder(192);
       buf.append("FailureItem.Builder{");
       buf.append("reason").append('=').append(JodaBeanUtils.toString(reason)).append(',').append(' ');
       buf.append("message").append('=').append(JodaBeanUtils.toString(message)).append(',').append(' ');
+      buf.append("attributes").append('=').append(JodaBeanUtils.toString(attributes)).append(',').append(' ');
       buf.append("stackTrace").append('=').append(JodaBeanUtils.toString(stackTrace)).append(',').append(' ');
       buf.append("causeType").append('=').append(JodaBeanUtils.toString(causeType));
       buf.append('}');
@@ -539,6 +723,5 @@ public final class FailureItem
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

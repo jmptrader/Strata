@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -34,6 +34,19 @@ public class FraDummyData {
       .notional(NOTIONAL)
       .startDate(date(2014, 9, 12))
       .endDate(date(2014, 12, 12))
+      .index(GBP_LIBOR_3M)
+      .fixedRate(0.0125)
+      .currency(Currency.GBP)
+      .build();
+
+  /**
+   * Fra, default discounting method.
+   */
+  public static final Fra FRA_PAID = Fra.builder()
+      .buySell(BUY)
+      .notional(NOTIONAL)
+      .startDate(date(2014, 1, 12))
+      .endDate(date(2014, 4, 12))
       .index(GBP_LIBOR_3M)
       .fixedRate(0.0125)
       .currency(Currency.GBP)

@@ -1,13 +1,15 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.loader.csv;
 
+import static com.opengamma.strata.collect.Guavate.toImmutableList;
 import static java.util.stream.Collectors.toList;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -16,11 +18,14 @@ import java.util.Map;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharSource;
 import com.opengamma.strata.basics.index.Index;
+import com.opengamma.strata.basics.index.PriceIndex;
 import com.opengamma.strata.collect.MapStream;
-import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.io.CharSources;
 import com.opengamma.strata.collect.io.CsvFile;
 import com.opengamma.strata.collect.io.CsvRow;
 import com.opengamma.strata.collect.io.ResourceLocator;
+import com.opengamma.strata.collect.io.UnicodeBom;
+import com.opengamma.strata.collect.result.ParseFailureException;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeriesBuilder;
 import com.opengamma.strata.data.ObservableId;
@@ -34,7 +39,7 @@ import com.opengamma.strata.market.observable.IndexQuoteId;
  * {@code Reference, Date, Value}.
  * <ul>
  * <li>The 'Reference' column is the name of the index that the data is for, such as 'USD-LIBOR-3M'.
- * <li>The 'Date' column is the date that the fixing was taken.
+ * <li>The 'Date' column is the date that the fixing was taken, this should be a year-month for price indices.
  * <li>The 'Value' column is the fixed value.
  * </ul>
  * <p>
@@ -49,6 +54,9 @@ import com.opengamma.strata.market.observable.IndexQuoteId;
  * USD-LIBOR-3M, 1971-01-06, 0.0638
  * </pre>
  * Note that Microsoft Excel prefers the CSV file to have no space after the comma.
+ * <p>
+ * CSV files sometimes contain a Unicode Byte Order Mark.
+ * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
  */
 public final class FixingSeriesCsvLoader {
 
@@ -97,11 +105,21 @@ public final class FixingSeriesCsvLoader {
    */
   public static ImmutableMap<ObservableId, LocalDateDoubleTimeSeries> parse(Collection<CharSource> charSources) {
     // builder ensures keys can only be seen once
-    ImmutableMap.Builder<ObservableId, LocalDateDoubleTimeSeries> builder = ImmutableMap.builder();
-    for (CharSource charSource : charSources) {
-      builder.putAll(parseSingle(charSource));
+    try {
+      ImmutableMap.Builder<ObservableId, LocalDateDoubleTimeSeries> builder = ImmutableMap.builder();
+      for (CharSource charSource : charSources) {
+        builder.putAll(parseSingle(charSource));
+      }
+      return builder.build();
+    } catch (ParseFailureException ex) {
+      throw ex;
+    } catch (RuntimeException ex) {
+      throw new ParseFailureException(
+          ex, 
+          "Error parsing CSV files '{fileName}': {exceptionMessage}",
+          charSources.stream().map(source -> CharSources.extractFileName(source)).collect(toImmutableList()),
+          ex.getMessage());
     }
-    return builder.build();
   }
 
   //-------------------------------------------------------------------------
@@ -117,17 +135,35 @@ public final class FixingSeriesCsvLoader {
 
         Index index = LoaderUtils.findIndex(referenceStr);
         ObservableId id = IndexQuoteId.of(index);
-        LocalDate date = LocalDate.parse(dateStr);
         double value = Double.parseDouble(valueStr);
+        LocalDate date;
+        if (index instanceof PriceIndex) {
+          try {
+            YearMonth ym = LoaderUtils.parseYearMonth(dateStr);
+            date = ym.atEndOfMonth();
+          } catch (RuntimeException ex) {
+            date = LoaderUtils.parseDate(dateStr);
+            if (date.getDayOfMonth() != date.lengthOfMonth()) {
+              throw new ParseFailureException(
+                  "Unable to parse price index from '{fileName}', must have date at end of month",
+                  CharSources.extractFileName(resource));
+            }
+          }
+        } else {
+          date = LoaderUtils.parseDate(dateStr);
+        }
 
         LocalDateDoubleTimeSeriesBuilder builder = builders.computeIfAbsent(id, k -> LocalDateDoubleTimeSeries.builder());
         builder.put(date, value);
       }
+      return MapStream.of(builders).mapValues(builder -> builder.build()).toMap();
     } catch (RuntimeException ex) {
-      throw new IllegalArgumentException(
-          Messages.format("Error processing resource as CSV file: {}", resource), ex);
+      throw new ParseFailureException(
+          ex,
+          "Error parsing CSV file '{fileName}': {exceptionMessage}",
+          CharSources.extractFileName(resource),
+          ex.getMessage());
     }
-    return MapStream.of(builders).mapValues(builder -> builder.build()).toMap();
   }
 
   //-------------------------------------------------------------------------

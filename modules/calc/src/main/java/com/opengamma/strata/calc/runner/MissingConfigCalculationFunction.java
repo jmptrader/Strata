@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -20,7 +20,7 @@ import com.opengamma.strata.data.scenario.ScenarioMarketData;
 /**
  * Function used when there is no function registered that can calculate a requested value.
  */
-class MissingConfigCalculationFunction
+final class MissingConfigCalculationFunction
     implements CalculationFunction<CalculationTarget> {
 
   /**
@@ -40,7 +40,8 @@ class MissingConfigCalculationFunction
 
   @Override
   public Set<Measure> supportedMeasures() {
-    return ImmutableSet.of();
+    // pass all measures here so that the calculation is run to get the correct error message
+    return ImmutableSet.copyOf(Measure.extendedEnum().lookupAllNormalized().values());
   }
 
   @Override

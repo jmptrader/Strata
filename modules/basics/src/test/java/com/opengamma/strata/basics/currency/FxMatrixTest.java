@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -17,10 +17,11 @@ import static com.opengamma.strata.basics.currency.Currency.SEK;
 import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.currency.FxMatrix.entriesToFxMatrix;
 import static com.opengamma.strata.basics.currency.FxMatrix.pairsToFxMatrix;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
+import static com.opengamma.strata.collect.TestHelper.assertSerialization;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.offset;
 
 import java.util.LinkedHashMap;
@@ -29,17 +30,21 @@ import java.util.Map;
 import org.assertj.core.data.Offset;
 import org.joda.beans.Bean;
 import org.joda.beans.ser.JodaBeanSer;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.collect.tuple.Pair;
 
-@Test
+/**
+ * Test {@link FxMatrix}.
+ */
 public class FxMatrixTest {
 
   private static final double TOLERANCE = 1e-6;
   public static final Offset<Double> TOL = offset(TOLERANCE);
+  private static final Object ANOTHER_TYPE = "";
 
+  @Test
   public void emptyMatrixCanHandleTrivialRate() {
     FxMatrix matrix = FxMatrix.empty();
     assertThat(matrix.getCurrencies()).isEmpty();
@@ -47,12 +52,14 @@ public class FxMatrixTest {
     assertThat(matrix.toString()).isEqualTo("FxMatrix[ : ]");
   }
 
+  @Test
   public void emptyMatrixCannotDoConversion() {
     FxMatrix matrix = FxMatrix.builder().build();
     assertThat(matrix.getCurrencies()).isEmpty();
-    assertThrowsIllegalArg(() -> matrix.fxRate(USD, EUR));
+    assertThatIllegalArgumentException().isThrownBy(() -> matrix.fxRate(USD, EUR));
   }
 
+  @Test
   public void singleRateMatrixByOfCurrencyPairFactory() {
     FxMatrix matrix = FxMatrix.of(CurrencyPair.of(GBP, USD), 1.6);
     assertThat(matrix.getCurrencies()).containsOnly(GBP, USD);
@@ -61,6 +68,7 @@ public class FxMatrixTest {
     assertThat(matrix.toString()).isEqualTo("FxMatrix[GBP, USD : [1.0, 1.6],[0.625, 1.0]]");
   }
 
+  @Test
   public void singleRateMatrixByOfCurrenciesFactory() {
     FxMatrix matrix = FxMatrix.of(GBP, USD, 1.6);
     assertThat(matrix.getCurrencies()).containsOnly(GBP, USD);
@@ -68,6 +76,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(USD, GBP)).isEqualTo(0.625);
   }
 
+  @Test
   public void singleRateMatrixByBuilder() {
     FxMatrix matrix = FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
@@ -77,6 +86,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(USD, GBP)).isEqualTo(0.625);
   }
 
+  @Test
   public void canAddRateUsingCurrencyPair() {
     FxMatrix matrix = FxMatrix.builder()
         .addRate(CurrencyPair.of(GBP, USD), 1.6)
@@ -86,14 +96,16 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(USD, GBP)).isEqualTo(0.625);
   }
 
+  @Test
   public void singleRateMatrixCannotDoConversionForUnknownCurrency() {
     FxMatrix matrix = FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
         .build();
     assertThat(matrix.getCurrencies()).containsOnly(GBP, USD);
-    assertThrowsIllegalArg(() -> matrix.fxRate(USD, EUR));
+    assertThatIllegalArgumentException().isThrownBy(() -> matrix.fxRate(USD, EUR));
   }
 
+  @Test
   public void matrixCalculatesCrossRates() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -113,15 +125,17 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(EUR, CHF)).isEqualTo(1.2);
   }
 
+  @Test
   public void cannotAddEntryWithNoCommonCurrencyAndBuild() {
-    assertThrows(
-        () -> FxMatrix.builder()
-            .addRate(GBP, USD, 1.6)
-            .addRate(CHF, AUD, 1.6)
-            .build(),
-        IllegalStateException.class);
+    assertThatIllegalStateException()
+        .isThrownBy(
+            () -> FxMatrix.builder()
+                .addRate(GBP, USD, 1.6)
+                .addRate(CHF, AUD, 1.6)
+                .build());
   }
 
+  @Test
   public void canAddEntryWithNoCommonCurrencyIfSuppliedBySubsequentEntries() {
     FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
@@ -131,6 +145,7 @@ public class FxMatrixTest {
         .build();
   }
 
+  @Test
   public void rateCanBeUpdatedInBuilder() {
     FxMatrix matrix = FxMatrix.builder()
         .addRate(GBP, USD, 1.5)
@@ -141,6 +156,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(USD, GBP)).isEqualTo(0.625);
   }
 
+  @Test
   public void ratedCanBeUpdatedAndAddedViaBuilder() {
     FxMatrix matrix1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.5)
@@ -159,21 +175,22 @@ public class FxMatrixTest {
     assertThat(matrix2.fxRate(EUR, USD)).isEqualTo(1.4);
   }
 
+  @Test
   public void updatingRateIsNotSymmetric() {
 
     /*
     Expected data as produced from old analytics FxMatrix
-
+    
     [USD, GBP,    EUR] - {
     USD {1.0 ,0.666, 0.714283},
     GBP {1.5, 1.0,   1.071428},
     EUR {1.4, 0.933, 1.0}}
-
+    
     [USD,     GBP,    EUR] - {
     {1.0,     0.625,  0.66964},
     {1.6,     1.0,    1.071428},
     {1.49333, 0.9333, 1.0}}
-
+    
      [USD,    GBP,    EUR] - {
      {1.0,    0.625,  0.71428},
      {1.6,    1.0,    1.14285},
@@ -222,6 +239,7 @@ public class FxMatrixTest {
     assertThat(matrix3.fxRate(EUR, GBP)).isEqualTo((1.4 / 1.5) * (1.5 / 1.6), TOL); // = 0.875
   }
 
+  @Test
   public void rateCanBeUpdatedWithDirectionSwitched() {
     FxMatrix matrix1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
@@ -238,6 +256,7 @@ public class FxMatrixTest {
     assertThat(matrix2.fxRate(GBP, USD)).isEqualTo(1.6);
   }
 
+  @Test
   public void addSimpleMultipleRates() {
 
     // Use linked to force the order of evaluation
@@ -260,6 +279,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(GBP, EUR)).isEqualTo(1.6 / 1.4, TOL);
   }
 
+  @Test
   public void addMultipleRatesContainingEntryWithNoCommonCurrency() {
 
     LinkedHashMap<CurrencyPair, Double> rates = new LinkedHashMap<>();
@@ -267,11 +287,10 @@ public class FxMatrixTest {
     rates.put(CurrencyPair.of(EUR, USD), 1.4);
     rates.put(CurrencyPair.of(JPY, CAD), 0.01); // Neither currency linked to one of the others
 
-    assertThrows(
-        () -> FxMatrix.builder().addRates(rates).build(),
-        IllegalStateException.class);
+    assertThatIllegalStateException().isThrownBy(() -> FxMatrix.builder().addRates(rates).build());
   }
 
+  @Test
   public void addMultipleRates() {
 
     // Use linked map to force the order of evaluation
@@ -300,6 +319,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(EUR, CHF)).isEqualTo(1.2);
   }
 
+  @Test
   public void streamEntriesToMatrix() {
 
     // If we obtain a stream of rates we can collect to an fx matrix
@@ -322,6 +342,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(EUR, USD)).isEqualTo(1.4);
   }
 
+  @Test
   public void streamPairsToMatrix() {
 
     // If we obtain a stream of pairs with rates we can stream them
@@ -349,6 +370,7 @@ public class FxMatrixTest {
 
   // By adding more than 8 currencies we force a resizing
   // operation - ensure it causes no issues
+  @Test
   public void addMultipleRatesSingle() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -372,6 +394,7 @@ public class FxMatrixTest {
     assertThat(matrix.fxRate(EUR, CHF)).isEqualTo(1.2);
   }
 
+  @Test
   public void convertCurrencyAmount() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -392,6 +415,7 @@ public class FxMatrixTest {
         .hasAmount(2240);
   }
 
+  @Test
   public void convertMultipleCurrencyAmountWithNoEntries() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -414,6 +438,7 @@ public class FxMatrixTest {
         .hasAmount(0);
   }
 
+  @Test
   public void convertMultipleCurrencyAmountWithSingleEntry() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -436,6 +461,7 @@ public class FxMatrixTest {
         .hasAmount(2240);
   }
 
+  @Test
   public void convertMultipleCurrencyAmountWithMultipleEntries() {
 
     FxMatrix matrix = FxMatrix.builder()
@@ -461,6 +487,7 @@ public class FxMatrixTest {
         .hasAmount((1600d * 1.4) + 1200 + ((1500 / 1.6) * 1.4));
   }
 
+  @Test
   public void cannotMergeDisjointMatrices() {
 
     FxMatrix matrix1 = FxMatrix.builder()
@@ -473,9 +500,10 @@ public class FxMatrixTest {
         .addRate(SEK, AUD, 0.16)
         .build();
 
-    assertThrowsIllegalArg(() -> matrix1.merge(matrix2));
+    assertThatIllegalArgumentException().isThrownBy(() -> matrix1.merge(matrix2));
   }
 
+  @Test
   public void mergeIgnoresDuplicateCurrencies() {
 
     FxMatrix matrix1 = FxMatrix.builder()
@@ -494,6 +522,7 @@ public class FxMatrixTest {
     assertThat(result).isEqualTo(matrix1);
   }
 
+  @Test
   public void mergeAddsInAdditionalCurrencies() {
     FxMatrix matrix1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
@@ -518,6 +547,7 @@ public class FxMatrixTest {
     assertThat(result.fxRate(GBP, AUD)).isEqualTo((1.6 / 1.4) * 1.2 * 1.2, TOL);
   }
 
+  @Test
   public void equalsGood() {
     FxMatrix m1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.4)
@@ -543,14 +573,16 @@ public class FxMatrixTest {
     assertThat(m2.equals(m3)).isTrue();
   }
 
+  @Test
   public void equalsBad() {
     FxMatrix test = FxMatrix.builder()
         .addRate(USD, GBP, 1.4)
         .build();
-    assertThat(test.equals("")).isFalse();
+    assertThat(test.equals(ANOTHER_TYPE)).isFalse();
     assertThat(test.equals(null)).isFalse();
   }
 
+  @Test
   public void hashCodeCoverage() {
     FxMatrix m1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.4)
@@ -567,6 +599,7 @@ public class FxMatrixTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(FxMatrix.empty());
     coverImmutableBean(FxMatrix.builder()
@@ -575,21 +608,27 @@ public class FxMatrixTest {
         .addRate(EUR, CHF, 1.2)
         .build());
   }
-  
+
+  @Test
   public void testSerializeDeserialize() {
-    cycleBean(FxMatrix.empty());
-    cycleBean(FxMatrix.builder()
+    FxMatrix test1 = FxMatrix.builder()
         .addRate(GBP, USD, 1.6)
         .addRate(EUR, USD, 1.4)
         .addRate(EUR, CHF, 1.2)
-        .build());
-    cycleBean(FxMatrix.builder()
+        .build();
+    FxMatrix test2 = FxMatrix.builder()
         .addRate(GBP, USD, 1.7)
         .addRate(EUR, USD, 1.5)
         .addRate(EUR, CHF, 1.3)
-        .build());
+        .build();
+    cycleBean(FxMatrix.empty());
+    cycleBean(test1);
+    cycleBean(test2);
+    assertSerialization(FxMatrix.empty());
+    assertSerialization(test1);
+    assertSerialization(test2);
   }
-  
+
   private void cycleBean(Bean bean) {
     JodaBeanSer ser = JodaBeanSer.COMPACT;
     String result = ser.xmlWriter().write(bean);

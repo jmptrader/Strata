@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -55,5 +55,12 @@ public interface ScenarioPerturbation<T> {
    * @return the number of scenarios for which this perturbation generates data
    */
   public abstract int getScenarioCount();
+
+  /**
+   * Returns the market data type that the perturbation changes.
+   *
+   * @return the data type
+   */
+  public abstract Class<T> getMarketDataType();
 
 }

@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.descriptive;
@@ -15,7 +15,8 @@ import com.opengamma.strata.collect.ArgChecker;
  * unbiased estimator of the sample skewness is
  * $$
  * \begin{align*}
- * \mu_3 = \frac{\sqrt{n(n-1)}}{n-2}\frac{\frac{1}{n}\sum_{i=1}^n (x_i - \overline{x})^3}{\left(\frac{1}{n}\sum_{i=1}^n (x_i - \overline{x})^2\right)^\frac{3}{2}}
+ * \mu_3 = \frac{\sqrt{n(n-1)}}{n-2}\frac{\frac{1}{n}\sum_{i=1}^n 
+ * (x_i - \overline{x})^3}{\left(\frac{1}{n}\sum_{i=1}^n (x_i - \overline{x})^2\right)^\frac{3}{2}}
  * \end{align*}
  * $$
  * where $\overline{x}$ is the sample mean.
@@ -31,7 +32,7 @@ public class SampleSkewnessCalculator implements Function<double[], Double> {
     double sum = 0;
     double variance = 0;
     double mean = MEAN.apply(x);
-    for (Double d : x) {
+    for (double d : x) {
       double diff = d - mean;
       variance += diff * diff;
       sum += diff * diff * diff;

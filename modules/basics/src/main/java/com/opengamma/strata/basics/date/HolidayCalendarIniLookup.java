@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -19,16 +19,20 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.ReferenceData;
+import com.opengamma.strata.basics.currency.Currency;
 import com.opengamma.strata.collect.io.IniFile;
 import com.opengamma.strata.collect.io.PropertySet;
 import com.opengamma.strata.collect.io.ResourceConfig;
@@ -36,7 +40,7 @@ import com.opengamma.strata.collect.io.ResourceLocator;
 import com.opengamma.strata.collect.named.NamedLookup;
 
 /**
- * Loads holiday calendar implementations from CSV.
+ * Loads holiday calendar implementations from INI files.
  * <p>
  * These will form the standard holiday calendars available in {@link ReferenceData#standard()}.
  */
@@ -57,6 +61,10 @@ final class HolidayCalendarIniLookup
    */
   private static final String WEEKEND_KEY = "Weekend";
   /**
+   * The WorkingDays key name.
+   */
+  private static final String WORKING_DAYS_KEY = "WorkingDays";
+  /**
    * The lenient day-of-week parser.
    */
   private static final DateTimeFormatter DOW_PARSER = new DateTimeFormatterBuilder()
@@ -76,9 +84,14 @@ final class HolidayCalendarIniLookup
       .toFormatter(Locale.ENGLISH);
 
   /**
-   * The cache by name.
+   * The holiday calendars by name.
    */
   private static final ImmutableMap<String, HolidayCalendar> BY_NAME = loadFromIni("HolidayCalendarData.ini");
+  /**
+   * The default holiday calendars by currency.
+   */
+  private static final ImmutableMap<Currency, HolidayCalendarId> BY_CURRENCY =
+      loadDefaultsFromIni("HolidayCalendarDefaultData.ini");
 
   /**
    * Restricted constructor.
@@ -92,7 +105,20 @@ final class HolidayCalendarIniLookup
     return BY_NAME;
   }
 
-  // accessible for testing
+  // finds a default
+  HolidayCalendarId defaultByCurrency(Currency currency) {
+    Optional<HolidayCalendarId> calId = findDefaultByCurrency(currency);
+    return calId.orElseThrow(() -> new IllegalArgumentException(
+        "No default Holiday Calendar for currency " + currency));
+  }
+
+  // try to find a default
+  Optional<HolidayCalendarId> findDefaultByCurrency(Currency currency) {
+    return Optional.ofNullable(BY_CURRENCY.get(currency));
+  }
+
+  //-------------------------------------------------------------------------
+  @VisibleForTesting
   static ImmutableMap<String, HolidayCalendar> loadFromIni(String filename) {
     List<ResourceLocator> resources = ResourceConfig.orderedResources(filename);
     Map<String, HolidayCalendar> map = new HashMap<>();
@@ -103,6 +129,7 @@ final class HolidayCalendarIniLookup
           PropertySet section = ini.section(sectionName);
           HolidayCalendar parsed = parseHolidayCalendar(sectionName, section);
           map.put(parsed.getName(), parsed);
+          map.putIfAbsent(parsed.getName().toUpperCase(Locale.ENGLISH), parsed);
         }
       } catch (RuntimeException ex) {
         log.log(Level.SEVERE, "Error processing resource as Holiday Calendar INI file: " + resource, ex);
@@ -112,10 +139,12 @@ final class HolidayCalendarIniLookup
     return ImmutableMap.copyOf(map);
   }
 
+  // parses the holiday calendar
   private static HolidayCalendar parseHolidayCalendar(String calendarName, PropertySet section) {
     String weekendStr = section.value(WEEKEND_KEY);
     Set<DayOfWeek> weekends = parseWeekends(weekendStr);
     List<LocalDate> holidays = new ArrayList<>();
+    Set<LocalDate> workingDays = new HashSet<>();
     for (String key : section.keys()) {
       if (key.equals(WEEKEND_KEY)) {
         continue;
@@ -124,12 +153,14 @@ final class HolidayCalendarIniLookup
       if (key.length() == 4) {
         int year = Integer.parseInt(key);
         holidays.addAll(parseYearDates(year, value));
+      } else if (WORKING_DAYS_KEY.equals(key)) {
+        workingDays.addAll(parseDates(value));
       } else {
         holidays.add(LocalDate.parse(key));
       }
     }
     // build result
-    return ImmutableHolidayCalendar.of(HolidayCalendarId.of(calendarName), holidays, weekends);
+    return ImmutableHolidayCalendar.of(HolidayCalendarId.of(calendarName), holidays, weekends, workingDays);
   }
 
   // parse weekend format, such as 'Sat,Sun'
@@ -148,6 +179,14 @@ final class HolidayCalendarIniLookup
         .collect(toImmutableList());
   }
 
+  // parse comma separated date format such as "2015-01-01,2015-03-12"
+  private static List<LocalDate> parseDates(String str) {
+    List<String> split = Splitter.on(',').splitToList(str);
+    return split.stream()
+        .map(LocalDate::parse)
+        .collect(toImmutableList());
+  }
+
   private static LocalDate parseDate(int year, String str) {
     try {
       return MonthDay.parse(str, DAY_MONTH_PARSER).atYear(year);
@@ -158,6 +197,26 @@ final class HolidayCalendarIniLookup
       }
       return date;
     }
+  }
+
+  //-------------------------------------------------------------------------
+  @VisibleForTesting
+  static ImmutableMap<Currency, HolidayCalendarId> loadDefaultsFromIni(String filename) {
+    List<ResourceLocator> resources = ResourceConfig.orderedResources(filename);
+    Map<Currency, HolidayCalendarId> map = new HashMap<>();
+    for (ResourceLocator resource : resources) {
+      try {
+        IniFile ini = IniFile.of(resource.getCharSource());
+        PropertySet section = ini.section("defaultByCurrency");
+        for (String currencyCode : section.keys()) {
+          map.put(Currency.of(currencyCode), HolidayCalendarId.of(section.value(currencyCode)));
+        }
+      } catch (RuntimeException ex) {
+        log.log(Level.SEVERE, "Error processing resource as Holiday Calendar Defaults INI file: " + resource, ex);
+        return ImmutableMap.of();
+      }
+    }
+    return ImmutableMap.copyOf(map);
   }
 
 }

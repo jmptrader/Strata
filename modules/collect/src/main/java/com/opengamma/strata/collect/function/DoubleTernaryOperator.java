@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -21,6 +21,6 @@ public interface DoubleTernaryOperator {
    * @param c  the third argument
    * @return the result of the function
    */
-  double applyAsDouble(double a, double b, double c);
+  public abstract double applyAsDouble(double a, double b, double c);
 
 }

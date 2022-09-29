@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -9,7 +9,10 @@ import com.opengamma.strata.collect.named.ExtendedEnum;
 
 /**
  * Market standard Ibor future conventions.
+ * 
+ * @deprecated Use {@link IborFutureContractSpecs}
  */
+@Deprecated
 public final class IborFutureConventions {
 
   /**

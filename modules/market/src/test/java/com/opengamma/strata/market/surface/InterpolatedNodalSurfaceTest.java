@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,16 +7,15 @@ package com.opengamma.strata.market.surface;
 
 import static com.opengamma.strata.basics.date.DayCounts.ACT_365F;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.market.curve.interpolator.CurveExtrapolators.FLAT;
 import static com.opengamma.strata.market.curve.interpolator.CurveInterpolators.DOUBLE_QUADRATIC;
 import static com.opengamma.strata.market.curve.interpolator.CurveInterpolators.LINEAR;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.market.param.ParameterMetadata;
@@ -26,7 +25,6 @@ import com.opengamma.strata.market.surface.interpolator.GridSurfaceInterpolator;
 /**
  * Test {@link InterpolatedNodalSurface}.
  */
-@Test
 public class InterpolatedNodalSurfaceTest {
 
   private static final int SIZE = 9;
@@ -52,6 +50,7 @@ public class InterpolatedNodalSurfaceTest {
   private static final GridSurfaceInterpolator INTERPOLATOR = GridSurfaceInterpolator.of(LINEAR, LINEAR);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of_SurfaceMetadata() {
     InterpolatedNodalSurface test = InterpolatedNodalSurface.of(METADATA_ENTRIES, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     assertThat(test.getName()).isEqualTo(SURFACE_NAME);
@@ -71,28 +70,36 @@ public class InterpolatedNodalSurfaceTest {
     assertThat(test.getZValues()).isEqualTo(ZVALUES);
   }
 
+  @Test
   public void test_of_invalid() {
     // not enough nodes
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA, DoubleArray.of(1d), DoubleArray.of(2d), DoubleArray.of(3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA, DoubleArray.of(1d), DoubleArray.of(2d), DoubleArray.of(3d), INTERPOLATOR));
     // x node size != y node size
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA, XVALUES, DoubleArray.of(1d, 3d), ZVALUES, INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA, XVALUES, DoubleArray.of(1d, 3d), ZVALUES, INTERPOLATOR));
     // x node size != z node size
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA, XVALUES, YVALUES, DoubleArray.of(1d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA, XVALUES, YVALUES, DoubleArray.of(1d, 3d), INTERPOLATOR));
     // parameter metadata size != node size
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA_ENTRIES, DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA_ENTRIES, DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), DoubleArray.of(1d, 3d), INTERPOLATOR));
     // x not in order
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA, DoubleArray.of(2d, 1d), DoubleArray.of(1d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA, DoubleArray.of(2d, 1d), DoubleArray.of(1d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
     // y not in order
-    assertThrowsIllegalArg(() -> InterpolatedNodalSurface.of(
-        METADATA, DoubleArray.of(1d, 1d), DoubleArray.of(2d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> InterpolatedNodalSurface.of(
+            METADATA, DoubleArray.of(1d, 1d), DoubleArray.of(2d, 1d), DoubleArray.of(2d, 3d), INTERPOLATOR));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_lookup() {
     InterpolatedNodalSurface test = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     assertThat(test.zValue(XVALUES.get(0), YVALUES.get(0))).isEqualTo(ZVALUES.get(0));
@@ -105,10 +112,11 @@ public class InterpolatedNodalSurfaceTest {
     assertThat(test.zValue(1.5d, 3.7d)).isEqualTo(bound.interpolate(1.5d, 3.7d));
     DoubleArray sensiValues = test.zValueParameterSensitivity(1.5d, 1.5d).getSensitivity();
     DoubleArray sensiValuesInterp = bound.parameterSensitivity(1.5d, 1.5d);
-    assertTrue(sensiValues.equalWithTolerance(sensiValuesInterp, 1e-8));
+    assertThat(sensiValues.equalWithTolerance(sensiValuesInterp, 1e-8)).isTrue();
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withMetadata() {
     InterpolatedNodalSurface base = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     InterpolatedNodalSurface test = base.withMetadata(METADATA_ENTRIES);
@@ -120,12 +128,15 @@ public class InterpolatedNodalSurfaceTest {
     assertThat(test.getZValues()).isEqualTo(ZVALUES);
   }
 
+  @Test
   public void test_withMetadata_badSize() {
     InterpolatedNodalSurface base = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
-    assertThrowsIllegalArg(() -> base.withMetadata(METADATA_ENTRIES2));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withMetadata(METADATA_ENTRIES2));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_withZValues() {
     InterpolatedNodalSurface base = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     InterpolatedNodalSurface test = base.withZValues(ZVALUES_BUMPED);
@@ -137,13 +148,17 @@ public class InterpolatedNodalSurfaceTest {
     assertThat(test.getZValues()).isEqualTo(ZVALUES_BUMPED);
   }
 
+  @Test
   public void test_withZValues_badSize() {
     InterpolatedNodalSurface base = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
-    assertThrowsIllegalArg(() -> base.withZValues(DoubleArray.EMPTY));
-    assertThrowsIllegalArg(() -> base.withZValues(DoubleArray.of(4d, 6d)));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withZValues(DoubleArray.EMPTY));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> base.withZValues(DoubleArray.of(4d, 6d)));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     InterpolatedNodalSurface test = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     coverImmutableBean(test);
@@ -157,6 +172,7 @@ public class InterpolatedNodalSurfaceTest {
     coverBeanEquals(test, test2);
   }
 
+  @Test
   public void test_serialization() {
     InterpolatedNodalSurface test = InterpolatedNodalSurface.of(METADATA, XVALUES, YVALUES, ZVALUES, INTERPOLATOR);
     assertSerialization(test);

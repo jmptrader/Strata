@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,7 +8,7 @@ package com.opengamma.strata.measure.curve;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.calc.marketdata.MarketDataConfig;
@@ -33,17 +33,16 @@ import com.opengamma.strata.market.curve.CurveParallelShifts;
 /**
  * Test usage of {@link CurveParallelShifts}.
  */
-@Test
 public class CurveParallelShiftsUsageTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
 
+  @Test
   public void absoluteScenarios() {
     CurveName curveName = CurveName.of("curveName");
     CurveGroupName curveGroupName = CurveGroupName.of("curveGroupName");
     Curve curve = ConstantCurve.of(curveName, 2);
     PerturbationMapping<Curve> mapping = PerturbationMapping.of(
-        Curve.class,
         MarketDataFilter.ofName(curveName),
         CurveParallelShifts.absolute(0.1, 0.2, 0.3));
     CurveId curveId = CurveId.of(curveGroupName, curveName);

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -12,7 +12,8 @@ import static com.opengamma.strata.pricer.swaption.SwaptionCubeData.EXPIRIES;
 import static com.opengamma.strata.pricer.swaption.SwaptionCubeData.MONEYNESS;
 import static com.opengamma.strata.pricer.swaption.SwaptionCubeData.TENORS;
 import static com.opengamma.strata.product.swap.type.FixedIborSwapConventions.EUR_FIXED_1Y_EURIBOR_6M;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -20,7 +21,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.opengamma.strata.basics.ReferenceData;
@@ -29,8 +30,8 @@ import com.opengamma.strata.data.ImmutableMarketData;
 import com.opengamma.strata.loader.csv.QuotesCsvLoader;
 import com.opengamma.strata.loader.csv.RatesCalibrationCsvLoader;
 import com.opengamma.strata.market.ValueType;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.observable.QuoteId;
 import com.opengamma.strata.market.surface.ConstantSurface;
 import com.opengamma.strata.market.surface.DefaultSurfaceMetadata;
@@ -38,7 +39,7 @@ import com.opengamma.strata.market.surface.Surface;
 import com.opengamma.strata.market.surface.interpolator.GridSurfaceInterpolator;
 import com.opengamma.strata.market.surface.interpolator.SurfaceInterpolator;
 import com.opengamma.strata.pricer.curve.CalibrationMeasures;
-import com.opengamma.strata.pricer.curve.CurveCalibrator;
+import com.opengamma.strata.pricer.curve.RatesCurveCalibrator;
 import com.opengamma.strata.pricer.impl.option.BlackFormulaRepository;
 import com.opengamma.strata.pricer.impl.option.NormalFormulaRepository;
 import com.opengamma.strata.pricer.option.TenorRawOptionData;
@@ -51,7 +52,6 @@ import com.opengamma.strata.product.swap.SwapTrade;
 /**
  * Tests {@link SabrSwaptionCalibrator} for a cube. Realistic dimension and data.
  */
-@Test
 public class SabrSwaptionCalibratorCubeNormalTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -66,7 +66,7 @@ public class SabrSwaptionCalibratorCubeNormalTest {
   private static final String SETTINGS_FILE = "curve-config/EUR-DSCONOIS-E3BS-E6IRS-settings.csv";
   private static final String NODES_FILE = "curve-config/EUR-DSCONOIS-E3BS-E6IRS-nodes.csv";
   private static final String QUOTES_FILE = "quotes/quotes-20160229-eur.csv";
-  private static final CurveGroupDefinition CONFIGS =
+  private static final RatesCurveGroupDefinition CONFIGS =
       RatesCalibrationCsvLoader.load(
           ResourceLocator.of(BASE_DIR + GROUPS_FILE),
           ResourceLocator.of(BASE_DIR + SETTINGS_FILE),
@@ -76,7 +76,7 @@ public class SabrSwaptionCalibratorCubeNormalTest {
   private static final ImmutableMarketData MARKET_QUOTES = ImmutableMarketData.of(CALIBRATION_DATE, MAP_MQ);
 
   private static final CalibrationMeasures CALIBRATION_MEASURES = CalibrationMeasures.PAR_SPREAD;
-  private static final CurveCalibrator CALIBRATOR = CurveCalibrator.of(1e-9, 1e-9, 100, CALIBRATION_MEASURES);
+  private static final RatesCurveCalibrator CALIBRATOR = RatesCurveCalibrator.of(1e-9, 1e-9, 100, CALIBRATION_MEASURES);
   private static final RatesProvider MULTICURVE = CALIBRATOR.calibrate(CONFIGS, MARKET_QUOTES, REF_DATA);
 
   private static final DiscountingSwapProductPricer SWAP_PRICER = DiscountingSwapProductPricer.DEFAULT;
@@ -123,7 +123,7 @@ public class SabrSwaptionCalibratorCubeNormalTest {
                 time, volBlack, true);
             double priceNormal = NormalFormulaRepository.price(parRate, parRate + MONEYNESS.get(loopmoney),
                 time, DATA_ARRAY_SPARSE[looptenor][loopexpiry][loopmoney], PutCall.CALL);
-            assertEquals(priceComputed, priceNormal, TOLERANCE_PRICE_CALIBRATION_LS);
+            assertThat(priceComputed).isCloseTo(priceNormal, offset(TOLERANCE_PRICE_CALIBRATION_LS));
           }
         }
       }

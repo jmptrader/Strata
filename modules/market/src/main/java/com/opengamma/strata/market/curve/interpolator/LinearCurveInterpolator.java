@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -100,6 +100,19 @@ final class LinearCurveInterpolator
     protected double doInterpolate(double xValue) {
       // x-value is less than the x-value of the last node (lowerIndex < intervalCount)
       int lowerIndex = lowerBoundIndex(xValue, xValues);
+      double x1 = xValues[lowerIndex];
+      double y1 = yValues[lowerIndex];
+      return y1 + (xValue - x1) * gradients[lowerIndex];
+    }
+
+    @Override
+    protected double doInterpolateFromExtrapolator(double xValue) {
+      int lowerIndex = lowerBoundIndex(xValue, xValues);
+      // check if x-value is at the last node
+      if (lowerIndex == intervalCount) {
+        // if value is at last node, calculate the gradient from the previous interval
+        lowerIndex--;
+      }
       double x1 = xValues[lowerIndex];
       double y1 = yValues[lowerIndex];
       return y1 + (xValue - x1) * gradients[lowerIndex];

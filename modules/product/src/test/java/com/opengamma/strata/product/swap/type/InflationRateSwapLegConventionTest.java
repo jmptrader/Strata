@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,16 +10,17 @@ import static com.opengamma.strata.basics.date.BusinessDayConventions.MODIFIED_F
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.GBLO;
 import static com.opengamma.strata.basics.index.PriceIndices.GB_HICP;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.common.PayReceive.PAY;
-import static org.testng.Assert.assertEquals;
+import static com.opengamma.strata.product.swap.PriceIndexCalculationMethod.MONTHLY;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 import java.time.Period;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 import com.opengamma.strata.basics.date.DaysAdjustment;
@@ -34,7 +35,6 @@ import com.opengamma.strata.product.swap.RateCalculationSwapLeg;
 /**
  * Test {@link InflationRateSwapLegConvention}.
  */
-@Test
 public class InflationRateSwapLegConventionTest {
 
   private static final Period LAG_3M = Period.ofMonths(3);
@@ -43,32 +43,37 @@ public class InflationRateSwapLegConventionTest {
   private static final BusinessDayAdjustment BDA_MOD_FOLLOW = BusinessDayAdjustment.of(MODIFIED_FOLLOWING, GBLO);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of() {
-    InflationRateSwapLegConvention test = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, BDA_MOD_FOLLOW);
-    assertEquals(test.getIndex(), GB_HICP);
-    assertEquals(test.getLag(), LAG_3M);
-    assertEquals(test.getIndexCalculationMethod(), PriceIndexCalculationMethod.MONTHLY);
-    assertEquals(test.isNotionalExchange(), false);
-    assertEquals(test.getCurrency(), GBP);
+    InflationRateSwapLegConvention test = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, MONTHLY, BDA_MOD_FOLLOW);
+    assertThat(test.getIndex()).isEqualTo(GB_HICP);
+    assertThat(test.getLag()).isEqualTo(LAG_3M);
+    assertThat(test.getIndexCalculationMethod()).isEqualTo(MONTHLY);
+    assertThat(test.isNotionalExchange()).isFalse();
+    assertThat(test.getCurrency()).isEqualTo(GBP);
   }
 
+  @Test
   public void test_builder() {
     InflationRateSwapLegConvention test = InflationRateSwapLegConvention.builder()
         .index(GB_HICP)
         .lag(LAG_3M)
         .build();
-    assertEquals(test.getIndex(), GB_HICP);
-    assertEquals(test.getLag(), LAG_3M);
-    assertEquals(test.getIndexCalculationMethod(), PriceIndexCalculationMethod.MONTHLY);
-    assertEquals(test.isNotionalExchange(), false);
-    assertEquals(test.getCurrency(), GBP);
+    assertThat(test.getIndex()).isEqualTo(GB_HICP);
+    assertThat(test.getLag()).isEqualTo(LAG_3M);
+    assertThat(test.getIndexCalculationMethod()).isEqualTo(MONTHLY);
+    assertThat(test.isNotionalExchange()).isFalse();
+    assertThat(test.getCurrency()).isEqualTo(GBP);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder_notEnoughData() {
-    assertThrowsIllegalArg(() -> IborRateSwapLegConvention.builder().build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> IborRateSwapLegConvention.builder().build());
   }
 
+  @Test
   public void test_builderAllSpecified() {
     InflationRateSwapLegConvention test = InflationRateSwapLegConvention.builder()
         .index(GB_HICP)
@@ -76,22 +81,23 @@ public class InflationRateSwapLegConventionTest {
         .indexCalculationMethod(PriceIndexCalculationMethod.INTERPOLATED)
         .notionalExchange(true)
         .build();
-    assertEquals(test.getIndex(), GB_HICP);
-    assertEquals(test.getLag(), LAG_3M);
-    assertEquals(test.getIndexCalculationMethod(), PriceIndexCalculationMethod.INTERPOLATED);
-    assertEquals(test.isNotionalExchange(), true);
-    assertEquals(test.getCurrency(), GBP);
+    assertThat(test.getIndex()).isEqualTo(GB_HICP);
+    assertThat(test.getLag()).isEqualTo(LAG_3M);
+    assertThat(test.getIndexCalculationMethod()).isEqualTo(PriceIndexCalculationMethod.INTERPOLATED);
+    assertThat(test.isNotionalExchange()).isTrue();
+    assertThat(test.getCurrency()).isEqualTo(GBP);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_toLeg() {
-    InflationRateSwapLegConvention base = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, BDA_MOD_FOLLOW);
+    InflationRateSwapLegConvention base = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, MONTHLY, BDA_MOD_FOLLOW);
     LocalDate startDate = LocalDate.of(2015, 5, 5);
     LocalDate endDate = LocalDate.of(2020, 5, 5);
     RateCalculationSwapLeg test = base.toLeg(
         startDate,
         endDate,
-        PAY, 
+        PAY,
         NOTIONAL_2M);
 
     RateCalculationSwapLeg expected = RateCalculationSwapLeg.builder()
@@ -107,12 +113,13 @@ public class InflationRateSwapLegConventionTest {
             .paymentDateOffset(DaysAdjustment.NONE)
             .build())
         .notionalSchedule(NotionalSchedule.of(GBP, NOTIONAL_2M))
-        .calculation(InflationRateCalculation.of(GB_HICP, 3, PriceIndexCalculationMethod.MONTHLY))
+        .calculation(InflationRateCalculation.of(GB_HICP, 3, MONTHLY))
         .build();
-    assertEquals(test, expected);
+    assertThat(test).isEqualTo(expected);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     InflationRateSwapLegConvention test = InflationRateSwapLegConvention.builder()
         .index(GB_HICP)
@@ -128,8 +135,9 @@ public class InflationRateSwapLegConventionTest {
     coverBeanEquals(test, test2);
   }
 
+  @Test
   public void test_serialization() {
-    InflationRateSwapLegConvention test = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, BDA_MOD_FOLLOW);
+    InflationRateSwapLegConvention test = InflationRateSwapLegConvention.of(GB_HICP, LAG_3M, MONTHLY, BDA_MOD_FOLLOW);
     assertSerialization(test);
   }
 

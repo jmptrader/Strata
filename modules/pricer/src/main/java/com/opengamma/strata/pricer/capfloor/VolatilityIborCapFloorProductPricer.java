@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -53,6 +53,15 @@ public class VolatilityIborCapFloorProductPricer {
     this.payLegPricer = ArgChecker.notNull(payLegPricer, "payLegPricer");
   }
 
+  /**
+   * Gets the pay leg pricer.
+   * 
+   * @return the pay leg pricer
+   */
+  protected DiscountingSwapLegPricer getPayLegPricer() {
+    return payLegPricer;
+  }
+
   //-------------------------------------------------------------------------
   /**
    * Calculates the present value of the Ibor cap/floor product.
@@ -79,6 +88,28 @@ public class VolatilityIborCapFloorProductPricer {
     }
     CurrencyAmount pvPayLeg = payLegPricer.presentValue(capFloor.getPayLeg().get(), ratesProvider);
     return MultiCurrencyAmount.of(pvCapFloorLeg).plus(pvPayLeg);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the present value for each caplet/floorlet of the Ibor cap/floor product.
+   * <p>
+   * The present value of each caplet/floorlet is the value on the valuation date.
+   * The result is returned using the payment currency of the leg.
+   * <p>
+   * The present value will not be calculated for the pay leg if the product has one.
+   *
+   * @param capFloor  the Ibor cap/floor product
+   * @param ratesProvider  the rates provider
+   * @param volatilities  the volatilities
+   * @return the present values
+   */
+  public IborCapletFloorletPeriodCurrencyAmounts presentValueCapletFloorletPeriods(
+      ResolvedIborCapFloor capFloor,
+      RatesProvider ratesProvider,
+      IborCapletFloorletVolatilities volatilities) {
+
+    return capFloorLegPricer.presentValueCapletFloorletPeriods(capFloor.getCapFloorLeg(), ratesProvider, volatilities);
   }
 
   //-------------------------------------------------------------------------
@@ -245,6 +276,38 @@ public class VolatilityIborCapFloorProductPricer {
     }
     CurrencyAmount ccPayLeg = payLegPricer.currentCash(capFloor.getPayLeg().get(), ratesProvider);
     return MultiCurrencyAmount.of(ccPayLeg).plus(ccCapFloorLeg);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the forward rates for each caplet/floorlet of the Ibor cap/floor.
+   *
+   * @param capFloor  the Ibor cap/floor
+   * @param ratesProvider  the rates provider
+   * @return the forward rates
+   */
+  public IborCapletFloorletPeriodAmounts forwardRates(
+      ResolvedIborCapFloor capFloor,
+      RatesProvider ratesProvider) {
+
+    return capFloorLegPricer.forwardRates(capFloor.getCapFloorLeg(), ratesProvider);
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Calculates the implied volatilities for each caplet/floorlet of the Ibor cap/floor.
+   *
+   * @param capFloor  the Ibor cap/floor
+   * @param ratesProvider  the rates provider
+   * @param volatilities the volatilities
+   * @return the implied volatilities
+   */
+  public IborCapletFloorletPeriodAmounts impliedVolatilities(
+      ResolvedIborCapFloor capFloor,
+      RatesProvider ratesProvider,
+      IborCapletFloorletVolatilities volatilities) {
+
+    return capFloorLegPricer.impliedVolatilities(capFloor.getCapFloorLeg(), ratesProvider, volatilities);
   }
 
 }

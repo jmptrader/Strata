@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -18,7 +18,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Set;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -62,7 +62,6 @@ import com.opengamma.strata.product.index.ResolvedIborFutureOptionTrade;
 /**
  * Test {@link IborFutureOptionTradeCalculationFunction}.
  */
-@Test
 public class IborFutureOptionTradeCalculationFunctionTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -119,8 +118,9 @@ public class IborFutureOptionTradeCalculationFunctionTest {
   private static final CalculationParameters PARAMS = CalculationParameters.of(RATES_LOOKUP, OPTION_LOOKUP);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_requirementsAndCurrency() {
-    IborFutureOptionTradeCalculationFunction function = new IborFutureOptionTradeCalculationFunction();
+    IborFutureOptionTradeCalculationFunction<IborFutureOptionTrade> function = IborFutureOptionTradeCalculationFunction.TRADE;
     Set<Measure> measures = function.supportedMeasures();
     FunctionRequirements reqs = function.requirements(TRADE, measures, PARAMS, REF_DATA);
     assertThat(reqs.getOutputCurrencies()).containsOnly(CURRENCY);
@@ -130,8 +130,9 @@ public class IborFutureOptionTradeCalculationFunctionTest {
     assertThat(function.naturalCurrency(TRADE, REF_DATA)).isEqualTo(CURRENCY);
   }
 
+  @Test
   public void test_simpleMeasures() {
-    IborFutureOptionTradeCalculationFunction function = new IborFutureOptionTradeCalculationFunction();
+    IborFutureOptionTradeCalculationFunction<IborFutureOptionTrade> function = IborFutureOptionTradeCalculationFunction.TRADE;
     ScenarioMarketData md = marketData();
     RatesProvider provider = RATES_LOOKUP.ratesProvider(md.scenario(0));
     NormalIborFutureOptionMarginedTradePricer pricer = NormalIborFutureOptionMarginedTradePricer.DEFAULT;

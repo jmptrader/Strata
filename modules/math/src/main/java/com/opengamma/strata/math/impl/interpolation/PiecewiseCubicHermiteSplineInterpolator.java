@@ -1,11 +1,12 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.DoubleArrayMath;
@@ -17,7 +18,8 @@ import com.opengamma.strata.collect.array.DoubleMatrix;
  * Fritsch, F. N.; Carlson, R. E. (1980) 
  * "Monotone Piecewise Cubic Interpolation", SIAM Journal on Numerical Analysis 17 (2): 238–246. 
  * Fritsch, F. N. and Butland, J. (1984)
- * "A method for constructing local monotone piecewise cubic interpolants", SIAM Journal on Scientific and Statistical Computing 5 (2): 300-304.
+ * "A method for constructing local monotone piecewise cubic interpolants",
+ * SIAM Journal on Scientific and Statistical Computing 5 (2): 300-304.
  */
 public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomialInterpolator {
 
@@ -43,9 +45,7 @@ public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomial
     double[] yValuesSrt = Arrays.copyOf(yValues, nDataPts);
     DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
 
-    for (int i = 1; i < nDataPts; ++i) {
-      ArgChecker.isFalse(xValuesSrt[i - 1] == xValuesSrt[i], "xValues should be distinct");
-    }
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
 
     final DoubleMatrix coefMatrix = solve(xValuesSrt, yValuesSrt);
 
@@ -80,19 +80,14 @@ public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomial
       }
     }
 
-    for (int i = 0; i < nDataPts; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "xValues should be distinct");
-      }
-    }
-
-    double[] xValuesSrt = new double[nDataPts];
+    double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
+    int[] sortedPositions = IntStream.range(0, nDataPts).toArray();
+    DoubleArrayMath.sortPairs(xValuesSrt, sortedPositions);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
     DoubleMatrix[] coefMatrix = new DoubleMatrix[dim];
 
     for (int i = 0; i < dim; ++i) {
-      xValuesSrt = Arrays.copyOf(xValues, nDataPts);
-      double[] yValuesSrt = Arrays.copyOf(yValuesMatrix[i], nDataPts);
-      DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
+      double[] yValuesSrt = DoubleArrayMath.reorderedCopy(yValuesMatrix[i], sortedPositions);
 
       coefMatrix[i] = solve(xValuesSrt, yValuesSrt);
     }
@@ -126,7 +121,8 @@ public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomial
   /**
    * @param xValues X values of data
    * @param yValues Y values of data
-   * @return Coefficient matrix whose i-th row vector is {a3, a2, a1, a0} of f(x) = a3 * (x-x_i)^3 + a2 * (x-x_i)^2 +... for the i-th interval
+   * @return Coefficient matrix whose i-th row vector is
+   *  {a3, a2, a1, a0} of f(x) = a3 * (x-x_i)^3 + a2 * (x-x_i)^2 +... for the i-th interval
    */
   private DoubleMatrix solve(final double[] xValues, final double[] yValues) {
 
@@ -143,7 +139,7 @@ public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomial
 
     if (nDataPts == 2) {
       res[0][2] = grads[0];
-      res[0][3] = xValues[0];
+      res[0][3] = yValues[0];
     } else {
       double[] derivatives = slopeFinder(intervals, grads);
       for (int i = 0; i < nDataPts - 1; ++i) {
@@ -156,11 +152,7 @@ public class PiecewiseCubicHermiteSplineInterpolator extends PiecewisePolynomial
     return DoubleMatrix.copyOf(res);
   }
 
-  /**
-   * @param intervals 
-   * @param grads 
-   * @return A set of the first derivatives at knots
-   */
+  // calculates a set of the first derivatives at knots
   private double[] slopeFinder(final double[] intervals, final double[] grads) {
     final int nInts = intervals.length;
     double[] res = new double[nInts + 1];

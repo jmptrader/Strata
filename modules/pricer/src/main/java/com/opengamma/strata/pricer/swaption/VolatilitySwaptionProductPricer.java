@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -123,6 +123,24 @@ public class VolatilitySwaptionProductPricer {
       return cashParYieldPricer.impliedVolatility(swaption, ratesProvider, swaptionVolatilities);
     } else {
       return physicalPricer.impliedVolatility(swaption, ratesProvider, swaptionVolatilities);
+    }
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Provides the forward rate.
+   * <p>
+   * This is the par rate for the forward starting swap that is the underlying of the swaption.
+   *
+   * @param swaption the swaption
+   * @param ratesProvider the rates provider
+   * @return the forward rate
+   */
+  public double forwardRate(ResolvedSwaption swaption, RatesProvider ratesProvider) {
+    if (isCash(swaption)) {
+      return cashParYieldPricer.forwardRate(swaption, ratesProvider);
+    } else {
+      return physicalPricer.forwardRate(swaption, ratesProvider);
     }
   }
 

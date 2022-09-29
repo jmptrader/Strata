@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -93,7 +93,7 @@ public class HullWhiteIborFutureTradePricer {
       ResolvedIborFutureTrade trade,
       RatesProvider ratesProvider,
       HullWhiteOneFactorPiecewiseConstantParametersProvider hwProvider) {
-    
+
     return productPricer.priceSensitivityRates(trade.getProduct(), ratesProvider, hwProvider);
   }
 
@@ -109,9 +109,12 @@ public class HullWhiteIborFutureTradePricer {
    * @param lastSettlementPrice  the last settlement price used for margining, in decimal form
    * @return the reference price, in decimal form
    */
-  double referencePrice(ResolvedIborFutureTrade trade, LocalDate valuationDate, double lastSettlementPrice) {
+  private double referencePrice(ResolvedIborFutureTrade trade, LocalDate valuationDate, double lastSettlementPrice) {
     ArgChecker.notNull(valuationDate, "valuationDate");
-    return (trade.getTradeDate().equals(valuationDate) ? trade.getPrice() : lastSettlementPrice);
+    return trade.getTradedPrice()
+        .filter(tp -> tp.getTradeDate().equals(valuationDate))
+        .map(tp -> tp.getPrice())
+        .orElse(lastSettlementPrice);
   }
 
   //-------------------------------------------------------------------------

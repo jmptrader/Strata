@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -67,9 +67,9 @@ public class CurveSensitivityUtils {
    * Computes the row corresponding to a trade for the Jacobian matrix.
    * 
    * @param curveOrder  the curve order
-   * @param sensitivities  the sensitivities 
+   * @param parameterSensitivities  the sensitivities 
    * @param ccy  the currency common to all sensitivities
-   * @return
+   * @return the row
    */
   private static DoubleArray row(
       List<CurveParameterSize> curveOrder,
@@ -241,7 +241,7 @@ public class CurveSensitivityUtils {
       int indexSensitivityDate = 0;
       while (sensitivityDate.isAfter(targetDates.get(indexSensitivityDate))) {
         indexSensitivityDate++;
-      } // 'indexSensitivityDate' contains the index of the node after the sensitivity date 
+      } // 'indexSensitivityDate' contains the index of the node after the sensitivity date
       long intervalLength =
           targetDates.get(indexSensitivityDate).toEpochDay() - targetDates.get(indexSensitivityDate - 1).toEpochDay();
       double weight =
@@ -256,6 +256,11 @@ public class CurveSensitivityUtils {
     for (int loopdate = 0; loopdate < dates.size() - 1; loopdate++) {
       ArgChecker.inOrderNotEqual(dates.get(loopdate), dates.get(loopdate + 1), "first date", "following date");
     }
+  }
+
+  //-------------------------------------------------------------------------
+  // restricted constructor
+  private CurveSensitivityUtils() {
   }
 
 }

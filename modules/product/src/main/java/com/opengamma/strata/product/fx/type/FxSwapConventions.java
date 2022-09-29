@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -10,7 +10,7 @@ import com.opengamma.strata.collect.named.ExtendedEnum;
 /**
  * Market standard FX swap conventions.
  */
-public class FxSwapConventions {
+public final class FxSwapConventions {
 
   /**
    * The extended enum lookup from name to instance.
@@ -27,12 +27,20 @@ public class FxSwapConventions {
       FxSwapConvention.of(StandardFxSwapConventions.EUR_USD.getName());
 
   /**
-   * The "GBP/EUR" FX Swap convention.
+   * The "EUR/GBP" FX Swap convention.
    * <p>
-   * GBP/EUR convention with 2 days spot date.
+   * EUR/GBP convention with 2 days spot date.
    */
-  public static final FxSwapConvention GBP_EUR =
-      FxSwapConvention.of(StandardFxSwapConventions.GBP_EUR.getName());
+  public static final FxSwapConvention EUR_GBP =
+      FxSwapConvention.of(StandardFxSwapConventions.EUR_GBP.getName());
+
+  /**
+   * The "EUR/JPY" FX Swap convention.
+   * <p>
+   * EUR/JPY convention with 2 days spot date.
+   */
+  public static final FxSwapConvention EUR_JPY =
+      FxSwapConvention.of(StandardFxSwapConventions.EUR_JPY.getName());
 
   /**
    * The "GBP/USD" FX Swap convention.
@@ -41,6 +49,22 @@ public class FxSwapConventions {
    */
   public static final FxSwapConvention GBP_USD =
       FxSwapConvention.of(StandardFxSwapConventions.GBP_USD.getName());
+
+  /**
+   * The "GBP/JPY" FX Swap convention.
+   * <p>
+   * GBP/JPY convention with 2 days spot date.
+   */
+  public static final FxSwapConvention GBP_JPY =
+      FxSwapConvention.of(StandardFxSwapConventions.GBP_JPY.getName());
+
+  /**
+   * The "USD/JPY" FX Swap convention.
+   * <p>
+   * USD/JPY convention with 2 days spot date.
+   */
+  public static final FxSwapConvention USD_JPY =
+      FxSwapConvention.of(StandardFxSwapConventions.USD_JPY.getName());
 
   //-------------------------------------------------------------------------
   /**

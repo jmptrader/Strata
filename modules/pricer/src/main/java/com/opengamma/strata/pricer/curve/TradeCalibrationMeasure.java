@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.curve;
@@ -16,6 +16,7 @@ import com.opengamma.strata.pricer.deposit.DiscountingTermDepositProductPricer;
 import com.opengamma.strata.pricer.fra.DiscountingFraProductPricer;
 import com.opengamma.strata.pricer.fx.DiscountingFxSwapProductPricer;
 import com.opengamma.strata.pricer.index.DiscountingIborFutureTradePricer;
+import com.opengamma.strata.pricer.index.DiscountingOvernightFutureTradePricer;
 import com.opengamma.strata.pricer.rate.RatesProvider;
 import com.opengamma.strata.pricer.swap.DiscountingSwapProductPricer;
 import com.opengamma.strata.product.ResolvedTrade;
@@ -24,6 +25,7 @@ import com.opengamma.strata.product.deposit.ResolvedTermDepositTrade;
 import com.opengamma.strata.product.fra.ResolvedFraTrade;
 import com.opengamma.strata.product.fx.ResolvedFxSwapTrade;
 import com.opengamma.strata.product.index.ResolvedIborFutureTrade;
+import com.opengamma.strata.product.index.ResolvedOvernightFutureTrade;
 import com.opengamma.strata.product.swap.ResolvedSwapTrade;
 
 /**
@@ -33,7 +35,7 @@ import com.opengamma.strata.product.swap.ResolvedSwapTrade;
  * 
  * @param <T> the trade type
  */
-public class TradeCalibrationMeasure<T extends ResolvedTrade>
+public final class TradeCalibrationMeasure<T extends ResolvedTrade>
     implements CalibrationMeasure<T> {
 
   /**
@@ -55,6 +57,16 @@ public class TradeCalibrationMeasure<T extends ResolvedTrade>
           ResolvedIborFutureTrade.class,
           (trade, p) -> DiscountingIborFutureTradePricer.DEFAULT.parSpread(trade, p, 0.0),
           (trade, p) -> DiscountingIborFutureTradePricer.DEFAULT.parSpreadSensitivity(trade, p));
+
+  /**
+   * The calibrator for {@link ResolvedOvernightFutureTrade} using par spread discounting.
+   */
+  public static final TradeCalibrationMeasure<ResolvedOvernightFutureTrade> OVERNIGHT_FUTURE_PAR_SPREAD =
+      TradeCalibrationMeasure.of(
+          "OvernightFutureParSpreadDiscounting",
+          ResolvedOvernightFutureTrade.class,
+          (trade, p) -> DiscountingOvernightFutureTradePricer.DEFAULT.parSpread(trade, p, 0.0),
+          (trade, p) -> DiscountingOvernightFutureTradePricer.DEFAULT.parSpreadSensitivity(trade, p));
 
   /**
    * The calibrator for {@link ResolvedSwapTrade} using par spread discounting.
@@ -86,7 +98,7 @@ public class TradeCalibrationMeasure<T extends ResolvedTrade>
           "TermDepositParSpreadDiscounting",
           ResolvedTermDepositTrade.class,
           (trade, p) -> DiscountingTermDepositProductPricer.DEFAULT.parSpread(trade.getProduct(), p),
-              (trade, p) -> DiscountingTermDepositProductPricer.DEFAULT.parSpreadSensitivity(
+          (trade, p) -> DiscountingTermDepositProductPricer.DEFAULT.parSpreadSensitivity(
               trade.getProduct(), p));
 
   /**
@@ -136,7 +148,7 @@ public class TradeCalibrationMeasure<T extends ResolvedTrade>
       ToDoubleBiFunction<R, RatesProvider> valueFn,
       BiFunction<R, RatesProvider, PointSensitivities> sensitivityFn) {
 
-    return new TradeCalibrationMeasure<R>(name, tradeType, valueFn, sensitivityFn);
+    return new TradeCalibrationMeasure<>(name, tradeType, valueFn, sensitivityFn);
   }
 
   // restricted constructor

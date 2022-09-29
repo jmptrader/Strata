@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -166,6 +166,14 @@ public final class ExplainKey<T>
    */
   public static final ExplainKey<Index> INDEX = of("Index");
   /**
+   * The start date used to calculate the forward rate.
+   */
+  public static final ExplainKey<LocalDate> FORWARD_RATE_START_DATE = of("ForwardRateStartDate");
+  /**
+   * The end date used to calculate the forward rate.
+   */
+  public static final ExplainKey<LocalDate> FORWARD_RATE_END_DATE = of("ForwardRateEndDate");
+  /**
    * The fixing date.
    */
   public static final ExplainKey<LocalDate> FIXING_DATE = of("FixingDate");
@@ -174,6 +182,11 @@ public final class ExplainKey<T>
    * This may be known exactly if the fixing has occurred.
    */
   public static final ExplainKey<Double> INDEX_VALUE = of("IndexValue");
+  /**
+   * The flag to indicate that the that the observed value is from a fixing time-series.
+   * This will generally never be set to false.
+   */
+  public static final ExplainKey<Boolean> FROM_FIXING_SERIES = of("FromFixingSeries");
   /**
    * The weight of this observation.
    * Weighting applies when averaging more than one observation to produce the final rate.

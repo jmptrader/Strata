@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
@@ -13,42 +13,12 @@ import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.math.impl.FunctionUtils;
 
 /**
- * Generator for a set of basis functions
+ * Generator for a set of basis functions.
  */
 public class BasisFunctionGenerator {
 
   /**
-   * Generates a set of b-splines with knots a fixed distance apart
-   * @param xa minimum value of the function domain
-   * @param xb maximum value of the function domain
-   * @param nKnots number of internal knots (minimum of degree + 1)
-   * @param degree The order of the polynomial splines
-   * @return a List of functions
-   * @deprecated Use generateSet(BasisFunctionKnots knots)
-   */
-  @Deprecated
-  public List<Function<Double, Double>> generateSet(final double xa, final double xb, final int nKnots, final int degree) {
-    // args are checked in the constructor below
-    BasisFunctionKnots k = BasisFunctionKnots.fromUniform(xa, xb, nKnots, degree);
-    return generateSet(k);
-  }
-
-  /**
-   * Generates a set of b-splines a given polynomial degree on the specified knots
-   * @param internalKnots the internal knots. The start of the range is the first knot and the end is the last.
-   * @param degree the polynomial degree of the basis functions (this will determine how many external knots are required)
-   * @return a List of functions
-   * @deprecated Use generateSet(BasisFunctionKnots knots)
-   */
-  @Deprecated
-  public List<Function<Double, Double>> generateSet(final double[] internalKnots, final int degree) {
-    // args are checked in the constructor below
-    BasisFunctionKnots k = BasisFunctionKnots.fromInternalKnots(internalKnots, degree);
-    return generateSet(k);
-  }
-
-  /**
-   * Generate a set of b-splines with a given polynomial degree on the specified knots
+   * Generate a set of b-splines with a given polynomial degree on the specified knots.
    * @param knots holder for the knots and degree
    * @return a List of functions
    */
@@ -64,7 +34,7 @@ public class BasisFunctionGenerator {
   }
 
   /**
-   * Generate a set of N-dimensional b-splines as the produce of 1-dimensional b-splines with a given polynomial degree
+   * Generate a set of N-dimensional b-splines as the produce of 1-dimensional b-splines with a given polynomial degree.
    * on the specified knots
    * @param knots holder for the knots and degree in each dimension
    * @return a List of functions
@@ -90,33 +60,10 @@ public class BasisFunctionGenerator {
   }
 
   /**
-   * Generate a set of N-dimensional b-splines as the produce of 1-dimensional b-splines with a given polynomial degree
-   * @param xa minimum value of the function domain in each dimension
-   * @param xb maximum value of the function domain in each dimension
-   * @param nKnots number of internal knots (minimum of degree + 1) in each dimension
-   * @param degree The order of the polynomial splines in each dimension
-   * @return a List of functions
-   * @deprecated use generateSet(BasisFunctionKnots[] knots)
-   */
-  @Deprecated
-  public List<Function<double[], Double>> generateSet(final double[] xa, final double[] xb, final int[] nKnots, final int[] degree) {
-
-    final int dim = xa.length;
-    ArgChecker.isTrue(dim == xb.length, "xb wrong dimension");
-    ArgChecker.isTrue(dim == nKnots.length, "nKnots wrong dimension");
-    ArgChecker.isTrue(dim == degree.length, "degree wrong dimension");
-    BasisFunctionKnots[] knots = new BasisFunctionKnots[dim];
-    for (int i = 0; i < dim; i++) {
-      knots[i] = BasisFunctionKnots.fromUniform(xa[i], xb[i], nKnots[i], degree[i]);
-    }
-    return generateSet(knots);
-  }
-
-  /**
    * Generate the i^th basis function
    * @param data Container for the knots and degree of the basis function
    * @param index The index (from zero) of the function. Must be in range 0 to data.getNumSplines() (exclusive)
-   * For example if the degree is 1, and index is 0, this will cover the first three knots.
+   *   For example if the degree is 1, and index is 0, this will cover the first three knots.
    * @return The i^th basis function
    */
   protected Function<Double, Double> generate(BasisFunctionKnots data, final int index) {
@@ -152,10 +99,10 @@ public class BasisFunctionGenerator {
     };
   }
 
-  private List<Function<Double, Double>> generateSet(final double[] knots, final int degree, final List<Function<Double, Double>> degreeM1Set) {
+  private List<Function<Double, Double>> generateSet(double[] knots, int degree, List<Function<Double, Double>> degreeM1Set) {
 
     int nSplines = knots.length - degree - 1;
-    final List<Function<Double, Double>> functions = new ArrayList<>(nSplines);
+    List<Function<Double, Double>> functions = new ArrayList<>(nSplines);
     for (int i = 0; i < nSplines; i++) {
       functions.add(generate(knots, degree, i, degreeM1Set));
     }
@@ -170,7 +117,7 @@ public class BasisFunctionGenerator {
    * @param degreeM1Set Set of basis functions one degree lower than required (can be null)
    * @return The basis function
    */
-  private Function<Double, Double> generate(final double[] knots, final int degree, final int index, final List<Function<Double, Double>> degreeM1Set) {
+  private Function<Double, Double> generate(double[] knots, int degree, int index, List<Function<Double, Double>> degreeM1Set) {
 
     if (degree == 0) {
       return new Function<Double, Double>() {

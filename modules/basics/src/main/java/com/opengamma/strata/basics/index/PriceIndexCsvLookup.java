@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,6 +7,7 @@ package com.opengamma.strata.basics.index;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,7 +30,7 @@ import com.opengamma.strata.collect.named.NamedLookup;
 final class PriceIndexCsvLookup
     implements NamedLookup<PriceIndex> {
 
-  // http://www.opengamma.com/sites/default/files/interest-rate-instruments-and-market-conventions.pdf
+  // https://quant.opengamma.io/Interest-Rate-Instruments-and-Market-Conventions.pdf
 
   /**
    * The logger.
@@ -67,12 +68,14 @@ final class PriceIndexCsvLookup
   private static ImmutableMap<String, PriceIndex> loadFromCsv() {
     List<ResourceLocator> resources = ResourceConfig.orderedResources("PriceIndexData.csv");
     Map<String, PriceIndex> map = new HashMap<>();
+    // files are ordered lowest priority to highest, thus Map::put is used
     for (ResourceLocator resource : resources) {
       try {
         CsvFile csv = CsvFile.of(resource.getCharSource(), true);
         for (CsvRow row : csv.rows()) {
           PriceIndex parsed = parsePriceIndex(row);
           map.put(parsed.getName(), parsed);
+          map.put(parsed.getName().toUpperCase(Locale.ENGLISH), parsed);
         }
       } catch (RuntimeException ex) {
         log.log(Level.SEVERE, "Error processing resource as Price Index CSV file: " + resource, ex);

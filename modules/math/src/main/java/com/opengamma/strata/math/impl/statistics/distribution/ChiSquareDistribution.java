@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2009 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.distribution;
@@ -9,11 +9,10 @@ import java.util.Date;
 import java.util.function.DoubleBinaryOperator;
 
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.math.impl.cern.ChiSquare;
+import com.opengamma.strata.math.impl.cern.MersenneTwister64;
+import com.opengamma.strata.math.impl.cern.RandomEngine;
 import com.opengamma.strata.math.impl.function.special.InverseIncompleteGammaFunction;
-
-import cern.jet.random.ChiSquare;
-import cern.jet.random.engine.MersenneTwister64;
-import cern.jet.random.engine.RandomEngine;
 
 /**
  * A $\chi^2$ distribution with $k$ degrees of freedom is the distribution of
@@ -41,6 +40,8 @@ public class ChiSquareDistribution implements ProbabilityDistribution<Double> {
   private final double _degrees;
 
   /**
+   * Creates an instance.
+   * 
    * @param degrees The degrees of freedom of the distribution, not less than one
    */
   public ChiSquareDistribution(double degrees) {
@@ -48,6 +49,8 @@ public class ChiSquareDistribution implements ProbabilityDistribution<Double> {
   }
 
   /**
+   * Creates an instance.
+   * 
    * @param degrees The degrees of freedom of the distribution, not less than one
    * @param engine A uniform random number generator, not null
    */
@@ -95,6 +98,8 @@ public class ChiSquareDistribution implements ProbabilityDistribution<Double> {
   }
 
   /**
+   * Gets the degrees of freedom.
+   * 
    * @return The number of degrees of freedom
    */
   public double getDegreesOfFreedom() {

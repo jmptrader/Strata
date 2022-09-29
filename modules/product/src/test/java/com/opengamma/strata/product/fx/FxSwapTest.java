@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -11,15 +11,15 @@ import static com.opengamma.strata.basics.currency.Currency.USD;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.FOLLOWING;
 import static com.opengamma.strata.basics.date.HolidayCalendarIds.GBLO;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.collect.TestHelper.date;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
@@ -29,7 +29,6 @@ import com.opengamma.strata.basics.date.BusinessDayAdjustment;
 /**
  * Test {@link FxSwap}.
  */
-@Test
 public class FxSwapTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -45,32 +44,59 @@ public class FxSwapTest {
   private static final BusinessDayAdjustment BDA = BusinessDayAdjustment.of(FOLLOWING, GBLO);
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_of() {
     FxSwap test = sut();
-    assertEquals(test.getNearLeg(), NEAR_LEG);
-    assertEquals(test.getFarLeg(), FAR_LEG);
+    assertThat(test.getNearLeg()).isEqualTo(NEAR_LEG);
+    assertThat(test.getFarLeg()).isEqualTo(FAR_LEG);
+    assertThat(test.isCrossCurrency()).isTrue();
+    assertThat(test.allPaymentCurrencies()).containsOnly(GBP, USD);
+    assertThat(test.allCurrencies()).containsOnly(GBP, USD);
   }
 
+  @Test
   public void test_of_wrongOrder() {
-    assertThrowsIllegalArg(() -> FxSwap.of(FAR_LEG, NEAR_LEG));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(FAR_LEG, NEAR_LEG));
   }
 
+  @Test
   public void test_of_wrongBaseCurrency() {
     FxSingle nearLeg = FxSingle.of(EUR_P1590, USD_M1600, DATE_2011_11_21);
-    assertThrowsIllegalArg(() -> FxSwap.of(nearLeg, FAR_LEG));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(nearLeg, FAR_LEG));
   }
 
+  @Test
   public void test_of_wrongCounterCurrency() {
     FxSingle nearLeg = FxSingle.of(USD_P1550, EUR_P1590.negated(), DATE_2011_11_21);
     FxSingle farLeg = FxSingle.of(GBP_M1000, EUR_P1590, DATE_2011_12_21);
-    assertThrowsIllegalArg(() -> FxSwap.of(nearLeg, farLeg));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(nearLeg, farLeg));
   }
 
+  @Test
   public void test_of_sameSign() {
     FxSingle farLeg = FxSingle.of(GBP_M1000.negated(), USD_P1550.negated(), DATE_2011_12_21);
-    assertThrowsIllegalArg(() -> FxSwap.of(NEAR_LEG, farLeg));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(NEAR_LEG, farLeg));
   }
 
+  @Test
+  public void test_of_ratesCurrencyAmountMismatch() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(
+            GBP_P1000, FxRate.of(EUR, USD, 1.1), date(2018, 6, 1), FxRate.of(EUR, USD, 1.15), date(2018, 7, 1)));
+  }
+
+  @Test
+  public void test_of_ratesRateMismatch() {
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FxSwap.of(
+            GBP_P1000, FxRate.of(GBP, USD, 1.1), date(2018, 6, 1), FxRate.of(EUR, USD, 1.15), date(2018, 7, 1)));
+  }
+
+  @Test
   public void test_ofForwardPoints() {
     double nearRate = 1.6;
     double fwdPoint = 0.1;
@@ -78,10 +104,11 @@ public class FxSwapTest {
         FxSwap.ofForwardPoints(GBP_P1000, FxRate.of(GBP, USD, nearRate), fwdPoint, DATE_2011_11_21, DATE_2011_12_21);
     FxSingle nearLegExp = FxSingle.of(GBP_P1000, CurrencyAmount.of(USD, -1000.0 * nearRate), DATE_2011_11_21);
     FxSingle farLegExp = FxSingle.of(GBP_M1000, CurrencyAmount.of(USD, 1000.0 * (nearRate + fwdPoint)), DATE_2011_12_21);
-    assertEquals(test.getNearLeg(), nearLegExp);
-    assertEquals(test.getFarLeg(), farLegExp);
+    assertThat(test.getNearLeg()).isEqualTo(nearLegExp);
+    assertThat(test.getFarLeg()).isEqualTo(farLegExp);
   }
 
+  @Test
   public void test_ofForwardPoints_withAdjustment() {
     double nearRate = 1.6;
     double fwdPoint = 0.1;
@@ -89,24 +116,27 @@ public class FxSwapTest {
         FxSwap.ofForwardPoints(GBP_P1000, FxRate.of(GBP, USD, nearRate), fwdPoint, DATE_2011_11_21, DATE_2011_12_21, BDA);
     FxSingle nearLegExp = FxSingle.of(GBP_P1000, CurrencyAmount.of(USD, -1000.0 * nearRate), DATE_2011_11_21, BDA);
     FxSingle farLegExp = FxSingle.of(GBP_M1000, CurrencyAmount.of(USD, 1000.0 * (nearRate + fwdPoint)), DATE_2011_12_21, BDA);
-    assertEquals(test.getNearLeg(), nearLegExp);
-    assertEquals(test.getFarLeg(), farLegExp);
+    assertThat(test.getNearLeg()).isEqualTo(nearLegExp);
+    assertThat(test.getFarLeg()).isEqualTo(farLegExp);
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_resolve() {
     FxSwap base = sut();
     ResolvedFxSwap test = base.resolve(REF_DATA);
-    assertEquals(test.getNearLeg(), NEAR_LEG.resolve(REF_DATA));
-    assertEquals(test.getFarLeg(), FAR_LEG.resolve(REF_DATA));
+    assertThat(test.getNearLeg()).isEqualTo(NEAR_LEG.resolve(REF_DATA));
+    assertThat(test.getFarLeg()).isEqualTo(FAR_LEG.resolve(REF_DATA));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

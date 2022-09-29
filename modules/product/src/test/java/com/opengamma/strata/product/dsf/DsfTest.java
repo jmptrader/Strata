@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -14,16 +14,16 @@ import static com.opengamma.strata.basics.schedule.Frequency.P1M;
 import static com.opengamma.strata.basics.schedule.Frequency.P3M;
 import static com.opengamma.strata.basics.schedule.Frequency.P6M;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverBeanEquals;
 import static com.opengamma.strata.collect.TestHelper.coverImmutableBean;
 import static com.opengamma.strata.product.common.PayReceive.PAY;
 import static com.opengamma.strata.product.common.PayReceive.RECEIVE;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.date.BusinessDayAdjustment;
@@ -36,7 +36,6 @@ import com.opengamma.strata.basics.schedule.StubConvention;
 import com.opengamma.strata.basics.value.ValueSchedule;
 import com.opengamma.strata.product.SecurityId;
 import com.opengamma.strata.product.common.BuySell;
-import com.opengamma.strata.product.dsf.Dsf;
 import com.opengamma.strata.product.swap.FixedRateCalculation;
 import com.opengamma.strata.product.swap.IborRateCalculation;
 import com.opengamma.strata.product.swap.KnownAmountSwapLeg;
@@ -50,7 +49,6 @@ import com.opengamma.strata.product.swap.type.FixedIborSwapConventions;
 /**
  * Test {@link Dsf}.
  */
-@Test
 public class DsfTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -66,33 +64,42 @@ public class DsfTest {
   private static final SecurityId SECURITY_ID2 = SecurityId.of("OG-Test", "DSF2");
 
   //-------------------------------------------------------------------------
+  @Test
   public void test_builder() {
     Dsf test = sut();
-    assertEquals(test.getDeliveryDate(), DELIVERY_DATE);
-    assertEquals(test.getLastTradeDate(), LAST_TRADE_DATE);
-    assertEquals(test.getNotional(), NOTIONAL);
-    assertEquals(test.getCurrency(), USD);
-    assertEquals(test.getUnderlyingSwap(), SWAP);
+    assertThat(test.getDeliveryDate()).isEqualTo(DELIVERY_DATE);
+    assertThat(test.getLastTradeDate()).isEqualTo(LAST_TRADE_DATE);
+    assertThat(test.getNotional()).isEqualTo(NOTIONAL);
+    assertThat(test.getCurrency()).isEqualTo(USD);
+    assertThat(test.getUnderlyingSwap()).isEqualTo(SWAP);
+    assertThat(test.isCrossCurrency()).isFalse();
+    assertThat(test.allPaymentCurrencies()).containsOnly(USD);
+    assertThat(test.allCurrencies()).containsOnly(USD);
   }
 
+  @Test
   public void test_builder_deliveryAfterStart() {
-    assertThrowsIllegalArg(() -> Dsf.builder()
-        .notional(NOTIONAL)
-        .deliveryDate(LocalDate.of(2014, 9, 19))
-        .lastTradeDate(LAST_TRADE_DATE)
-        .underlyingSwap(SWAP)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Dsf.builder()
+            .notional(NOTIONAL)
+            .deliveryDate(LocalDate.of(2014, 9, 19))
+            .lastTradeDate(LAST_TRADE_DATE)
+            .underlyingSwap(SWAP)
+            .build());
   }
 
+  @Test
   public void test_builder_tradeAfterdelivery() {
-    assertThrowsIllegalArg(() -> Dsf.builder()
-        .notional(NOTIONAL)
-        .deliveryDate(DELIVERY_DATE)
-        .lastTradeDate(LocalDate.of(2014, 9, 11))
-        .underlyingSwap(SWAP)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Dsf.builder()
+            .notional(NOTIONAL)
+            .deliveryDate(DELIVERY_DATE)
+            .lastTradeDate(LocalDate.of(2014, 9, 11))
+            .underlyingSwap(SWAP)
+            .build());
   }
 
+  @Test
   public void test_builder_notUnitNotional() {
     SwapLeg fixedLeg10 = RateCalculationSwapLeg.builder()
         .payReceive(RECEIVE)
@@ -156,20 +163,22 @@ public class DsfTest {
     Swap swap1 = Swap.of(fixedLeg10, SWAP.getLeg(PAY).get());
     Swap swap2 = Swap.of(SWAP.getLeg(RECEIVE).get(), iborLeg500);
     Swap swap3 = Swap.of(knownAmountLeg, SWAP.getLeg(PAY).get());
-    assertThrowsIllegalArg(() -> Dsf.builder()
-        .securityId(SECURITY_ID)
-        .notional(NOTIONAL)
-        .deliveryDate(DELIVERY_DATE)
-        .lastTradeDate(LAST_TRADE_DATE)
-        .underlyingSwap(swap1)
-        .build());
-    assertThrowsIllegalArg(() -> Dsf.builder()
-        .securityId(SECURITY_ID)
-        .notional(NOTIONAL)
-        .deliveryDate(DELIVERY_DATE)
-        .lastTradeDate(LAST_TRADE_DATE)
-        .underlyingSwap(swap2)
-        .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Dsf.builder()
+            .securityId(SECURITY_ID)
+            .notional(NOTIONAL)
+            .deliveryDate(DELIVERY_DATE)
+            .lastTradeDate(LAST_TRADE_DATE)
+            .underlyingSwap(swap1)
+            .build());
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> Dsf.builder()
+            .securityId(SECURITY_ID)
+            .notional(NOTIONAL)
+            .deliveryDate(DELIVERY_DATE)
+            .lastTradeDate(LAST_TRADE_DATE)
+            .underlyingSwap(swap2)
+            .build());
     // should succeed normally (no notional to validate on known amount leg)
     Dsf.builder()
         .securityId(SECURITY_ID)
@@ -181,11 +190,13 @@ public class DsfTest {
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverImmutableBean(sut());
     coverBeanEquals(sut(), sut2());
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(sut());
   }

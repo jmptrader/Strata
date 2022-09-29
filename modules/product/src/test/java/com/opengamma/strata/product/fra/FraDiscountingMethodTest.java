@@ -1,28 +1,29 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.product.fra;
 
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrows;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import java.util.Locale;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * Test.
  */
-@Test
 public class FraDiscountingMethodTest {
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "name")
-  static Object[][] data_name() {
+  public static Object[][] data_name() {
     return new Object[][] {
         {FraDiscountingMethod.NONE, "None"},
         {FraDiscountingMethod.ISDA, "ISDA"},
@@ -30,33 +31,54 @@ public class FraDiscountingMethodTest {
     };
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_toString(FraDiscountingMethod convention, String name) {
-    assertEquals(convention.toString(), name);
+    assertThat(convention.toString()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_of_lookup(FraDiscountingMethod convention, String name) {
-    assertEquals(FraDiscountingMethod.of(name), convention);
+    assertThat(FraDiscountingMethod.of(name)).isEqualTo(convention);
   }
 
+  @ParameterizedTest
+  @MethodSource("data_name")
+  public void test_of_lookupUpperCase(FraDiscountingMethod convention, String name) {
+    assertThat(FraDiscountingMethod.of(name.toUpperCase(Locale.ENGLISH))).isEqualTo(convention);
+  }
+
+  @ParameterizedTest
+  @MethodSource("data_name")
+  public void test_of_lookupLowerCase(FraDiscountingMethod convention, String name) {
+    assertThat(FraDiscountingMethod.of(name.toLowerCase(Locale.ENGLISH))).isEqualTo(convention);
+  }
+
+  @Test
   public void test_of_lookup_notFound() {
-    assertThrows(() -> FraDiscountingMethod.of("Rubbish"), IllegalArgumentException.class);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FraDiscountingMethod.of("Rubbish"));
   }
 
+  @Test
   public void test_of_lookup_null() {
-    assertThrows(() -> FraDiscountingMethod.of(null), IllegalArgumentException.class);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> FraDiscountingMethod.of(null));
   }
 
   //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverEnum(FraDiscountingMethod.class);
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(FraDiscountingMethod.ISDA);
   }
 
+  @Test
   public void test_jodaConvert() {
     assertJodaConvert(FraDiscountingMethod.class, FraDiscountingMethod.ISDA);
   }

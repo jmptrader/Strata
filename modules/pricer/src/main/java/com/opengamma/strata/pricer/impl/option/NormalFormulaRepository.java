@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.impl.option;
@@ -279,15 +279,15 @@ public final class NormalFormulaRepository {
     if (Double.doubleToLongBits(optionPrice) == Double.doubleToLongBits(intrinsicPrice)) {
       return 0d;
     }
-    double sigma = (Math.abs(initialNormalVol) < 1e-10 ? 0.3 * forward : initialNormalVol);
-    double maxChange = 0.5 * forward;
+    double sigma = Math.min(Math.abs(initialNormalVol), 1e-10); // to start with a positive non zero vol
+    double maxChange = 0.5 * sigma; // to avoid jumping around too fast
     ValueDerivatives price = priceAdjoint(forward, strike, timeToExpiry, sigma, numeraire, putCall);
     double vega = price.getDerivative(1);
     double change = (price.getValue() - optionPrice) / vega;
     double sign = Math.signum(change);
     change = sign * Math.min(maxChange, Math.abs(change));
     if (change > 0 && change > sigma) {
-      change = sigma;
+      change = 0.9d * sigma; // to avoid jumping through 0
     }
     int count = 0;
     while (Math.abs(change) > EPS) {
@@ -298,7 +298,7 @@ public final class NormalFormulaRepository {
       sign = Math.signum(change);
       change = sign * Math.min(maxChange, Math.abs(change));
       if (change > 0 && change > sigma) {
-        change = sigma;
+        change = 0.9d * sigma;
       }
       if (count++ > MAX_ITERATIONS) {
         BracketRoot bracketer = new BracketRoot();
@@ -345,7 +345,7 @@ public final class NormalFormulaRepository {
     double factor2 = 1.0d / (1.0d + (1.0d - lnFK * lnFK / 120.0d) / 24.0d * s2t + s2t * s2t / 5670.0d);
     return blackVolatility * factor1 * factor2;
   }
-  
+
   /**
    * Compute the implied volatility using an approximate explicit transformation formula and its derivative 
    * with respect to the input Black volatility.
@@ -363,6 +363,7 @@ public final class NormalFormulaRepository {
       double strike,
       double timeToExpiry,
       double blackVolatility) {
+
     ArgChecker.isTrue(strike > 0, "strike must be strictly positive");
     ArgChecker.isTrue(forward > 0, "strike must be strictly positive");
     double lnFK = Math.log(forward / strike);

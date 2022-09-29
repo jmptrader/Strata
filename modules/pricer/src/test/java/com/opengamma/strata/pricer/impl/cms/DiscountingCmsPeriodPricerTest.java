@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -7,14 +7,14 @@ package com.opengamma.strata.pricer.impl.cms;
 
 import static com.opengamma.strata.basics.currency.Currency.EUR;
 import static com.opengamma.strata.basics.date.DayCounts.ACT_360;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.product.swap.SwapIndices.EUR_EURIBOR_1100_5Y;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.data.Offset.offset;
 
 import java.time.LocalDate;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.currency.CurrencyAmount;
@@ -30,12 +30,11 @@ import com.opengamma.strata.product.cms.CmsPeriod;
 import com.opengamma.strata.product.common.BuySell;
 import com.opengamma.strata.product.swap.ResolvedSwap;
 import com.opengamma.strata.product.swap.Swap;
-import com.opengamma.strata.product.swap.type.FixedIborSwapConvention;
+import com.opengamma.strata.product.swap.type.FixedFloatSwapConvention;
 
 /**
  * Test {@link DiscountingCmsPeriodPricer}.
  */
-@Test
 public class DiscountingCmsPeriodPricerTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -87,31 +86,38 @@ public class DiscountingCmsPeriodPricerTest {
   private static final double TOLERANCE_DELTA = 1.0E+2;
 
   // Present Value
+  @Test
   public void presentValue_beforeFixing_coupon() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER);
     double df = RATES_PROVIDER.discountFactor(EUR, END);
     double forward = PRICER_SWAP.parRate(COUPON.getUnderlyingSwap(), RATES_PROVIDER);
-    assertEquals(pv.getAmount(), forward * df * NOTIONAL * ACC_FACTOR, TOLERANCE_PV);    
+    assertThat(pv.getAmount()).isCloseTo(forward * df * NOTIONAL * ACC_FACTOR, offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_beforeFixing_capfloor() {
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER));
   }
 
+  @Test
   public void presentValue_buySell() {
     CurrencyAmount pvBuy = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER);
     CurrencyAmount pvSell = PRICER_CMS.presentValue(COUPON_SELL, RATES_PROVIDER);
-    assertEquals(pvBuy.getAmount(), -pvSell.getAmount(), TOLERANCE_PV);
+    assertThat(pvBuy.getAmount()).isCloseTo(-pvSell.getAmount(), offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_onFix_nots() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_ON_FIX);
     double factor = RATES_PROVIDER_ON_FIX.discountFactor(EUR, PAYMENT) * NOTIONAL * COUPON.getYearFraction();
     double forward = PRICER_SWAP.parRate(COUPON.getUnderlyingSwap(), RATES_PROVIDER_ON_FIX);
-    assertEquals(pv.getAmount(), forward * factor, TOLERANCE_PV);
+    assertThat(pv.getAmount()).isCloseTo(forward * factor, offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_onFix_ts() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_ON_FIX_TS);
     CurrencyAmount pvCapletOtm = PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_ON_FIX_TS);
@@ -119,13 +125,14 @@ public class DiscountingCmsPeriodPricerTest {
     CurrencyAmount pvFloorletItm = PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_ON_FIX_TS);
     CurrencyAmount pvFloorletOtm = PRICER_CMS.presentValue(FLOORLET_NEGATIVE, RATES_PROVIDER_ON_FIX_TS);
     double factor = RATES_PROVIDER_ON_FIX_TS.discountFactor(EUR, PAYMENT) * NOTIONAL * COUPON.getYearFraction();
-    assertEquals(pv.getAmount(), OBS_INDEX * factor, TOLERANCE_PV);
-    assertEquals(pvCapletOtm.getAmount(), 0d, TOLERANCE_PV);
-    assertEquals(pvCapletItm.getAmount(), (OBS_INDEX - STRIKE_NEGATIVE) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletItm.getAmount(), (STRIKE - OBS_INDEX) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletOtm.getAmount(), 0d, TOLERANCE_PV);
+    assertThat(pv.getAmount()).isCloseTo(OBS_INDEX * factor, offset(TOLERANCE_PV));
+    assertThat(pvCapletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
+    assertThat(pvCapletItm.getAmount()).isCloseTo((OBS_INDEX - STRIKE_NEGATIVE) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletItm.getAmount()).isCloseTo((STRIKE - OBS_INDEX) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_afterFix() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_AFTER_FIX);
     CurrencyAmount pvCapletOtm = PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_AFTER_FIX);
@@ -133,13 +140,14 @@ public class DiscountingCmsPeriodPricerTest {
     CurrencyAmount pvFloorletItm = PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_AFTER_FIX);
     CurrencyAmount pvFloorletOtm = PRICER_CMS.presentValue(FLOORLET_NEGATIVE, RATES_PROVIDER_AFTER_FIX);
     double factor = RATES_PROVIDER_AFTER_FIX.discountFactor(EUR, PAYMENT) * NOTIONAL * COUPON.getYearFraction();
-    assertEquals(pv.getAmount(), OBS_INDEX * factor, TOLERANCE_PV);
-    assertEquals(pvCapletOtm.getAmount(), 0d, TOLERANCE_PV);
-    assertEquals(pvCapletItm.getAmount(), (OBS_INDEX - STRIKE_NEGATIVE) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletItm.getAmount(), (STRIKE - OBS_INDEX) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletOtm.getAmount(), 0d, TOLERANCE_PV);
+    assertThat(pv.getAmount()).isCloseTo(OBS_INDEX * factor, offset(TOLERANCE_PV));
+    assertThat(pvCapletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
+    assertThat(pvCapletItm.getAmount()).isCloseTo((OBS_INDEX - STRIKE_NEGATIVE) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletItm.getAmount()).isCloseTo((STRIKE - OBS_INDEX) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_onPayment() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_ON_PAY);
     CurrencyAmount pvCapletOtm = PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_ON_PAY);
@@ -147,39 +155,48 @@ public class DiscountingCmsPeriodPricerTest {
     CurrencyAmount pvFloorletItm = PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_ON_PAY);
     CurrencyAmount pvFloorletOtm = PRICER_CMS.presentValue(FLOORLET_NEGATIVE, RATES_PROVIDER_ON_PAY);
     double factor = NOTIONAL * COUPON.getYearFraction();
-    assertEquals(pv.getAmount(), OBS_INDEX * factor, TOLERANCE_PV);
-    assertEquals(pvCapletOtm.getAmount(), 0d, TOLERANCE_PV);
-    assertEquals(pvCapletItm.getAmount(), (OBS_INDEX - STRIKE_NEGATIVE) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletItm.getAmount(), (STRIKE - OBS_INDEX) * factor, TOLERANCE_PV);
-    assertEquals(pvFloorletOtm.getAmount(), 0d, TOLERANCE_PV);
+    assertThat(pv.getAmount()).isCloseTo(OBS_INDEX * factor, offset(TOLERANCE_PV));
+    assertThat(pvCapletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
+    assertThat(pvCapletItm.getAmount()).isCloseTo((OBS_INDEX - STRIKE_NEGATIVE) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletItm.getAmount()).isCloseTo((STRIKE - OBS_INDEX) * factor, offset(TOLERANCE_PV));
+    assertThat(pvFloorletOtm.getAmount()).isCloseTo(0d, offset(TOLERANCE_PV));
   }
 
+  @Test
   public void presentValue_afterPayment() {
     CurrencyAmount pv = PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_AFTER_PAY);
     CurrencyAmount pvCaplet = PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_AFTER_PAY);
     CurrencyAmount pvFloorlet = PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_AFTER_PAY);
-    assertEquals(pv, CurrencyAmount.zero(EUR));
-    assertEquals(pvCaplet, CurrencyAmount.zero(EUR));
-    assertEquals(pvFloorlet, CurrencyAmount.zero(EUR));
+    assertThat(pv).isEqualTo(CurrencyAmount.zero(EUR));
+    assertThat(pvCaplet).isEqualTo(CurrencyAmount.zero(EUR));
+    assertThat(pvFloorlet).isEqualTo(CurrencyAmount.zero(EUR));
   }
 
+  @Test
   public void presentValue_afterFix_noTimeSeries() {
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_NO_TS));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_NO_TS));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValue(COUPON, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValue(CAPLET, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValue(FLOORLET, RATES_PROVIDER_NO_TS));
   }
 
+  @Test
   public void forward_rate() {
     double fwdComputed = PRICER_CMS.forwardRate(COUPON, RATES_PROVIDER);
     double fwdExpected = PRICER_SWAP.parRate(COUPON.getUnderlyingSwap(), RATES_PROVIDER);
-    assertEquals(fwdComputed, fwdExpected, TOLERANCE_DELTA);
+    assertThat(fwdComputed).isCloseTo(fwdExpected, offset(TOLERANCE_DELTA));
   }  
 
+  @Test
   public void forward_rate_after_fixing() {
-    assertThrowsIllegalArg(() -> PRICER_CMS.forwardRate(COUPON, RATES_PROVIDER_AFTER_FIX));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.forwardRate(COUPON, RATES_PROVIDER_AFTER_FIX));
   }  
 
   // Present Value Curve Sensitivity
+  @Test
   public void presentValueSensitivity_beforeFixing_coupon() {
     PointSensitivities pv = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER).build();
     double df = RATES_PROVIDER.discountFactor(EUR, PAYMENT);
@@ -188,22 +205,27 @@ public class DiscountingCmsPeriodPricerTest {
     PointSensitivities forwarddr = PRICER_SWAP.parRateSensitivity(COUPON.getUnderlyingSwap(), RATES_PROVIDER).build();
     PointSensitivities expected = forwarddr.multipliedBy(df).combinedWith(dfdr.multipliedBy(forward).build())
         .multipliedBy(NOTIONAL * ACC_FACTOR);
-    assertTrue(pv.equalWithTolerance(expected, TOLERANCE_DELTA));    
+    assertThat(pv.equalWithTolerance(expected, TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_beforeFixing_capfloor() {
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER));
   }
 
+  @Test
   public void presentValueSensitivity_buySell() {
     PointSensitivityBuilder pvBuy = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER);
     PointSensitivityBuilder pvSell = PRICER_CMS.presentValueSensitivity(COUPON_SELL, RATES_PROVIDER);
     CurrencyParameterSensitivities ps = 
         RATES_PROVIDER.parameterSensitivity(pvBuy.combinedWith(pvSell).build());
-    assertTrue(ps.equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
+    assertThat(ps.equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_onFix_nots() {
     PointSensitivities pv = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_ON_FIX).build();
     double df = RATES_PROVIDER_ON_FIX.discountFactor(EUR, PAYMENT);
@@ -212,9 +234,10 @@ public class DiscountingCmsPeriodPricerTest {
     PointSensitivities forwarddr = PRICER_SWAP.parRateSensitivity(COUPON.getUnderlyingSwap(), RATES_PROVIDER_ON_FIX).build();
     PointSensitivities expected = forwarddr.multipliedBy(df).combinedWith(dfdr.multipliedBy(forward).build())
         .multipliedBy(NOTIONAL * ACC_FACTOR);
-    assertTrue(pv.equalWithTolerance(expected, TOLERANCE_DELTA));    
+    assertThat(pv.equalWithTolerance(expected, TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_onFix_ts() {
     PointSensitivities ptsCpn = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_ON_FIX_TS).build();
     PointSensitivities ptsCapletOtm = PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_ON_FIX_TS).build();
@@ -223,13 +246,14 @@ public class DiscountingCmsPeriodPricerTest {
     PointSensitivities ptsFloorletOtm = PRICER_CMS.presentValueSensitivity(FLOORLET_NEGATIVE, RATES_PROVIDER_ON_FIX_TS).build();
     double factor = NOTIONAL * COUPON.getYearFraction();
     ZeroRateSensitivity pts = RATES_PROVIDER_ON_FIX_TS.discountFactors(EUR).zeroRatePointSensitivity(PAYMENT);
-    assertTrue(ptsCpn.equalWithTolerance(pts.build().multipliedBy(factor * OBS_INDEX), TOLERANCE_DELTA));
-    assertTrue(ptsCapletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA));
-    assertTrue(ptsCapletItm.equalWithTolerance(pts.build().multipliedBy(factor * (OBS_INDEX - STRIKE_NEGATIVE)), TOLERANCE_DELTA));
-    assertTrue(ptsFloorletItm.equalWithTolerance(pts.build().multipliedBy(factor * (STRIKE - OBS_INDEX)), TOLERANCE_DELTA));
-    assertTrue(ptsFloorletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA));
+    assertThat(ptsCpn.equalWithTolerance(pts.build().multipliedBy(factor * OBS_INDEX), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsCapletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsCapletItm.equalWithTolerance(pts.build().multipliedBy(factor * (OBS_INDEX - STRIKE_NEGATIVE)), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsFloorletItm.equalWithTolerance(pts.build().multipliedBy(factor * (STRIKE - OBS_INDEX)), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsFloorletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_afterFix() {
     PointSensitivities ptsCpn = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_AFTER_FIX).build();
     PointSensitivities ptsCapletOtm = PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_AFTER_FIX).build();
@@ -238,44 +262,50 @@ public class DiscountingCmsPeriodPricerTest {
     PointSensitivities ptsFloorletOtm = PRICER_CMS.presentValueSensitivity(FLOORLET_NEGATIVE, RATES_PROVIDER_AFTER_FIX).build();
     double factor = NOTIONAL * COUPON.getYearFraction();
     ZeroRateSensitivity pts = RATES_PROVIDER_AFTER_FIX.discountFactors(EUR).zeroRatePointSensitivity(PAYMENT);
-    assertTrue(ptsCpn.equalWithTolerance(pts.build().multipliedBy(factor * OBS_INDEX), TOLERANCE_DELTA));
-    assertTrue(ptsCapletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA));
-    assertTrue(ptsCapletItm.equalWithTolerance(pts.build().multipliedBy(factor * (OBS_INDEX - STRIKE_NEGATIVE)), TOLERANCE_DELTA));
-    assertTrue(ptsFloorletItm.equalWithTolerance(pts.build().multipliedBy(factor * (STRIKE - OBS_INDEX)), TOLERANCE_DELTA));
-    assertTrue(ptsFloorletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA));
+    assertThat(ptsCpn.equalWithTolerance(pts.build().multipliedBy(factor * OBS_INDEX), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsCapletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsCapletItm.equalWithTolerance(pts.build().multipliedBy(factor * (OBS_INDEX - STRIKE_NEGATIVE)), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsFloorletItm.equalWithTolerance(pts.build().multipliedBy(factor * (STRIKE - OBS_INDEX)), TOLERANCE_DELTA)).isTrue();
+    assertThat(ptsFloorletOtm.equalWithTolerance(pts.build().multipliedBy(0d), TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_onPayment() {
     PointSensitivities ptsCpn = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_ON_PAY).build();
     PointSensitivities ptsCapletOtm = PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_ON_PAY).build();
     PointSensitivities ptsCapletItm = PRICER_CMS.presentValueSensitivity(CAPLET_NEGATIVE, RATES_PROVIDER_ON_PAY).build();
     PointSensitivities ptsFloorletItm = PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER_ON_PAY).build();
     PointSensitivities ptsFloorletOtm = PRICER_CMS.presentValueSensitivity(FLOORLET_NEGATIVE, RATES_PROVIDER_ON_PAY).build();
-    assertTrue(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCpn)
-        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
-    assertTrue(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCapletOtm)
-        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
-    assertTrue(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCapletItm)
-        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
-    assertTrue(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsFloorletItm)
-        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
-    assertTrue(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsFloorletOtm)
-        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA));
+    assertThat(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCpn)
+        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
+    assertThat(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCapletOtm)
+        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
+    assertThat(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsCapletItm)
+        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
+    assertThat(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsFloorletItm)
+        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
+    assertThat(RATES_PROVIDER_ON_PAY.parameterSensitivity(ptsFloorletOtm)
+        .equalWithTolerance(CurrencyParameterSensitivities.empty(), TOLERANCE_DELTA)).isTrue();
   }
 
+  @Test
   public void presentValueSensitivity_afterPayment() {
     PointSensitivityBuilder pv = PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_AFTER_PAY);
     PointSensitivityBuilder pvCaplet = PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_AFTER_PAY);
     PointSensitivityBuilder pvFloorlet = PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER_AFTER_PAY);
-    assertEquals(pv, PointSensitivityBuilder.none());
-    assertEquals(pvCaplet, PointSensitivityBuilder.none());
-    assertEquals(pvFloorlet, PointSensitivityBuilder.none());
+    assertThat(pv).isEqualTo(PointSensitivityBuilder.none());
+    assertThat(pvCaplet).isEqualTo(PointSensitivityBuilder.none());
+    assertThat(pvFloorlet).isEqualTo(PointSensitivityBuilder.none());
   }
 
+  @Test
   public void presentValueSensitivity_afterFix_noTimeSeries() {
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_NO_TS));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_NO_TS));
-    assertThrowsIllegalArg(() -> PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValueSensitivity(COUPON, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValueSensitivity(CAPLET, RATES_PROVIDER_NO_TS));
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> PRICER_CMS.presentValueSensitivity(FLOORLET, RATES_PROVIDER_NO_TS));
   }
 
   private static CmsPeriod createCmsCaplet(boolean isBuy, double strike) {
@@ -330,7 +360,7 @@ public class DiscountingCmsPeriodPricerTest {
 
   // creates and resolves the underlying swap
   private static ResolvedSwap createUnderlyingSwap(LocalDate fixingDate) {
-    FixedIborSwapConvention conv = EUR_EURIBOR_1100_5Y.getTemplate().getConvention();
+    FixedFloatSwapConvention conv = EUR_EURIBOR_1100_5Y.getTemplate().getConvention();
     LocalDate effectiveDate = conv.calculateSpotDateFromTradeDate(fixingDate, REF_DATA);
     LocalDate maturityDate = effectiveDate.plus(EUR_EURIBOR_1100_5Y.getTemplate().getTenor());
     Swap swap = conv.toTrade(fixingDate, effectiveDate, maturityDate, BuySell.BUY, 1d, 1d).getProduct();

@@ -1,30 +1,33 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.interpolation;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 import com.google.common.primitives.Doubles;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.DoubleArrayMath;
+import com.opengamma.strata.collect.array.DoubleArray;
 import com.opengamma.strata.collect.array.DoubleMatrix;
 
 /**
- * C2 cubic spline interpolator with Clamped/Not-A-Knot endpoint conditions
+ * C2 cubic spline interpolator with Clamped/Not-A-Knot endpoint conditions.
  */
 public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
 
   private CubicSplineSolver _solver;
 
   /**
-   * If (xValues length) = (yValues length), Not-A-Knot endpoint conditions are used
-   * If (xValues length) + 2 = (yValues length), Clamped endpoint conditions are used 
+   * If (xValues length) = (yValues length), Not-A-Knot endpoint conditions are used.
+   * If (xValues length) + 2 = (yValues length), Clamped endpoint conditions are used.
    * @param xValues X values of data
    * @param yValues Y values of data
-   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials, number of intervals, degree of polynomials, dimension of spline
+   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials,
+   *  number of intervals, degree of polynomials, dimension of spline
    */
   @Override
   public PiecewisePolynomialResult interpolate(final double[] xValues, final double[] yValues) {
@@ -32,7 +35,9 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
     ArgChecker.notNull(xValues, "xValues");
     ArgChecker.notNull(yValues, "yValues");
 
-    ArgChecker.isTrue(xValues.length == yValues.length | xValues.length + 2 == yValues.length, "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
+    ArgChecker.isTrue(
+        xValues.length == yValues.length | xValues.length + 2 == yValues.length,
+        "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
     ArgChecker.isTrue(xValues.length > 1, "Data points should be more than 1");
 
     final int nDataPts = xValues.length;
@@ -47,16 +52,8 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yData containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "Data should be distinct");
-      }
-    }
-
-    double[] xValuesSrt = new double[nDataPts];
-    double[] yValuesSrt = new double[nDataPts];
-
-    xValuesSrt = Arrays.copyOf(xValues, nDataPts);
+    double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
+    double[] yValuesSrt;
 
     if (xValues.length + 2 == yValues.length) {
       _solver = new CubicSplineClampedSolver(yValues[0], yValues[nDataPts + 1]);
@@ -66,27 +63,30 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
       yValuesSrt = Arrays.copyOf(yValues, nDataPts);
     }
     DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
 
     final DoubleMatrix coefMatrix = _solver.solve(xValuesSrt, yValuesSrt);
     final int nCoefs = coefMatrix.columnCount();
 
-    for (int i = 0; i < _solver.getKnotsMat1D(xValuesSrt).size() - 1; ++i) {
+    DoubleArray knotsMat1D = _solver.getKnotsMat1D(xValuesSrt);
+    for (int i = 0; i < knotsMat1D.size() - 1; ++i) {
       for (int j = 0; j < nCoefs; ++j) {
         ArgChecker.isFalse(Double.isNaN(coefMatrix.get(i, j)), "Too large input");
         ArgChecker.isFalse(Double.isInfinite(coefMatrix.get(i, j)), "Too large input");
       }
     }
 
-    return new PiecewisePolynomialResult(_solver.getKnotsMat1D(xValuesSrt), coefMatrix, nCoefs, 1);
+    return new PiecewisePolynomialResult(knotsMat1D, coefMatrix, nCoefs, 1);
 
   }
 
   /**
-   * If (xValues length) = (yValuesMatrix NumberOfColumn), Not-A-Knot endpoint conditions are used
-   * If (xValues length) + 2 = (yValuesMatrix NumberOfColumn), Clamped endpoint conditions are used 
+   * If (xValues length) = (yValuesMatrix NumberOfColumn), Not-A-Knot endpoint conditions are used.
+   * If (xValues length) + 2 = (yValuesMatrix NumberOfColumn), Clamped endpoint conditions are used.
    * @param xValues X values of data
    * @param yValuesMatrix Y values of data, where NumberOfRow defines dimension of the spline
-   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials, number of intervals, degree of polynomials, dimension of spline
+   * @return {@link PiecewisePolynomialResult} containing knots, coefficients of piecewise polynomials,
+   *  number of intervals, degree of polynomials, dimension of spline
    */
   @Override
   public PiecewisePolynomialResult interpolate(final double[] xValues, final double[][] yValuesMatrix) {
@@ -113,17 +113,12 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
       }
     }
 
-    for (int k = 0; k < dim; ++k) {
-      for (int i = 0; i < nDataPts; ++i) {
-        for (int j = i + 1; j < nDataPts; ++j) {
-          ArgChecker.isFalse(xValues[i] == xValues[j], "Data should be distinct");
-        }
-      }
-    }
-
-    double[] xValuesSrt = new double[nDataPts];
+    double[] xValuesSrt = Arrays.copyOf(xValues, nDataPts);
     double[][] yValuesMatrixSrt = new double[dim][nDataPts];
 
+    int[] sortedPositions = IntStream.range(0, nDataPts).toArray();
+    DoubleArrayMath.sortPairs(xValuesSrt, sortedPositions);
+    ArgChecker.noDuplicatesSorted(xValuesSrt, "xValues");
     if (xValues.length + 2 == yValuesMatrix[0].length) {
       double[] iniConds = new double[dim];
       double[] finConds = new double[dim];
@@ -132,22 +127,14 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
         finConds[i] = yValuesMatrix[i][nDataPts + 1];
       }
       _solver = new CubicSplineClampedSolver(iniConds, finConds);
-
       for (int i = 0; i < dim; ++i) {
-        xValuesSrt = Arrays.copyOf(xValues, nDataPts);
         double[] yValuesSrt = Arrays.copyOfRange(yValuesMatrix[i], 1, nDataPts + 1);
-        DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
-
-        yValuesMatrixSrt[i] = Arrays.copyOf(yValuesSrt, nDataPts);
+        yValuesMatrixSrt[i] = DoubleArrayMath.reorderedCopy(yValuesSrt, sortedPositions);
       }
     } else {
       _solver = new CubicSplineNakSolver();
       for (int i = 0; i < dim; ++i) {
-        xValuesSrt = Arrays.copyOf(xValues, nDataPts);
-        double[] yValuesSrt = Arrays.copyOf(yValuesMatrix[i], nDataPts);
-        DoubleArrayMath.sortPairs(xValuesSrt, yValuesSrt);
-
-        yValuesMatrixSrt[i] = Arrays.copyOf(yValuesSrt, nDataPts);
+        yValuesMatrixSrt[i] = DoubleArrayMath.reorderedCopy(yValuesMatrix[i], sortedPositions);
       }
     }
 
@@ -178,7 +165,9 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
     ArgChecker.notNull(xValues, "xValues");
     ArgChecker.notNull(yValues, "yValues");
 
-    ArgChecker.isTrue(xValues.length == yValues.length | xValues.length + 2 == yValues.length, "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
+    ArgChecker.isTrue(
+        xValues.length == yValues.length | xValues.length + 2 == yValues.length,
+        "(xValues length = yValues length) or (xValues length + 2 = yValues length)");
     ArgChecker.isTrue(xValues.length > 1, "Data points should be more than 1");
 
     final int nDataPts = xValues.length;
@@ -193,13 +182,9 @@ public class CubicSplineInterpolator extends PiecewisePolynomialInterpolator {
       ArgChecker.isFalse(Double.isInfinite(yValues[i]), "yData containing Infinity");
     }
 
-    for (int i = 0; i < nDataPts; ++i) {
-      for (int j = i + 1; j < nDataPts; ++j) {
-        ArgChecker.isFalse(xValues[i] == xValues[j], "Data should be distinct");
-      }
-    }
+    ArgChecker.noDuplicates(xValues, "xValues");
 
-    double[] yValuesSrt = new double[nDataPts];
+    double[] yValuesSrt;
 
     if (xValues.length + 2 == yValues.length) {
       _solver = new CubicSplineClampedSolver(yValues[0], yValues[nDataPts + 1]);

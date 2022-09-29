@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.loader.csv;
@@ -9,7 +9,6 @@ import static com.opengamma.strata.collect.Guavate.toImmutableList;
 import static com.opengamma.strata.collect.Guavate.toImmutableMap;
 import static java.util.stream.Collectors.toList;
 
-import java.time.LocalDate;
 import java.time.Period;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -20,28 +19,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharSource;
 import com.google.common.math.DoubleMath;
 import com.opengamma.strata.basics.StandardId;
+import com.opengamma.strata.basics.date.SequenceDate;
 import com.opengamma.strata.basics.date.Tenor;
-import com.opengamma.strata.collect.Messages;
+import com.opengamma.strata.collect.io.CharSources;
 import com.opengamma.strata.collect.io.CsvFile;
 import com.opengamma.strata.collect.io.CsvRow;
 import com.opengamma.strata.collect.io.ResourceLocator;
+import com.opengamma.strata.collect.io.UnicodeBom;
+import com.opengamma.strata.collect.result.ParseFailureException;
 import com.opengamma.strata.data.FieldName;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
+import com.opengamma.strata.loader.LoaderUtils;
+import com.opengamma.strata.market.curve.CurveDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.CurveNode;
 import com.opengamma.strata.market.curve.CurveNodeClashAction;
 import com.opengamma.strata.market.curve.CurveNodeDate;
 import com.opengamma.strata.market.curve.CurveNodeDateOrder;
-import com.opengamma.strata.market.curve.NodalCurveDefinition;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
+import com.opengamma.strata.market.curve.SeasonalityDefinition;
 import com.opengamma.strata.market.curve.node.FixedIborSwapCurveNode;
 import com.opengamma.strata.market.curve.node.FixedInflationSwapCurveNode;
 import com.opengamma.strata.market.curve.node.FixedOvernightSwapCurveNode;
@@ -50,10 +56,12 @@ import com.opengamma.strata.market.curve.node.FxSwapCurveNode;
 import com.opengamma.strata.market.curve.node.IborFixingDepositCurveNode;
 import com.opengamma.strata.market.curve.node.IborFutureCurveNode;
 import com.opengamma.strata.market.curve.node.IborIborSwapCurveNode;
+import com.opengamma.strata.market.curve.node.OvernightFutureCurveNode;
 import com.opengamma.strata.market.curve.node.OvernightIborSwapCurveNode;
 import com.opengamma.strata.market.curve.node.TermDepositCurveNode;
 import com.opengamma.strata.market.curve.node.ThreeLegBasisSwapCurveNode;
 import com.opengamma.strata.market.curve.node.XCcyIborIborSwapCurveNode;
+import com.opengamma.strata.market.curve.node.XCcyOvernightOvernightSwapCurveNode;
 import com.opengamma.strata.market.observable.QuoteId;
 import com.opengamma.strata.product.deposit.type.IborFixingDepositConvention;
 import com.opengamma.strata.product.deposit.type.IborFixingDepositTemplate;
@@ -63,8 +71,10 @@ import com.opengamma.strata.product.fra.type.FraConvention;
 import com.opengamma.strata.product.fra.type.FraTemplate;
 import com.opengamma.strata.product.fx.type.FxSwapConvention;
 import com.opengamma.strata.product.fx.type.FxSwapTemplate;
-import com.opengamma.strata.product.index.type.IborFutureConvention;
+import com.opengamma.strata.product.index.type.IborFutureContractSpec;
 import com.opengamma.strata.product.index.type.IborFutureTemplate;
+import com.opengamma.strata.product.index.type.OvernightFutureContractSpec;
+import com.opengamma.strata.product.index.type.OvernightFutureTemplate;
 import com.opengamma.strata.product.swap.type.FixedIborSwapConvention;
 import com.opengamma.strata.product.swap.type.FixedIborSwapTemplate;
 import com.opengamma.strata.product.swap.type.FixedInflationSwapConvention;
@@ -79,6 +89,8 @@ import com.opengamma.strata.product.swap.type.ThreeLegBasisSwapConvention;
 import com.opengamma.strata.product.swap.type.ThreeLegBasisSwapTemplate;
 import com.opengamma.strata.product.swap.type.XCcyIborIborSwapConvention;
 import com.opengamma.strata.product.swap.type.XCcyIborIborSwapTemplate;
+import com.opengamma.strata.product.swap.type.XCcyOvernightOvernightSwapConvention;
+import com.opengamma.strata.product.swap.type.XCcyOvernightOvernightSwapTemplate;
 
 /**
  * Loads a set of definitions to calibrate rates curves by reading from CSV resources.
@@ -128,6 +140,9 @@ import com.opengamma.strata.product.swap.type.XCcyIborIborSwapTemplate;
  * <p>
  * Each curve must be contained entirely within a single file, but each file may contain more than
  * one curve. The curve points do not need to be ordered.
+ * <p>
+ * CSV files sometimes contain a Unicode Byte Order Mark.
+ * Callers are responsible for handling this, such as by using {@link UnicodeBom}.
  */
 public final class RatesCalibrationCsvLoader {
 
@@ -145,18 +160,22 @@ public final class RatesCalibrationCsvLoader {
   private static final String CURVE_MIN_GAP = "Min Gap";
   private static final String CURVE_CLASH_ACTION = "Clash Action";
 
+  // these regexes use possessive ?+ and ++ to prevent unnecessary backtracking
+
   // Regex to parse FRA time string
-  private static final Pattern FRA_TIME_REGEX = Pattern.compile("P?([0-9]+)M? ?X ?P?([0-9]+)M?");
+  private static final Pattern FRA_TIME_REGEX = Pattern.compile("P?+([0-9]++)M?+ ?+X ?+P?+([0-9]++)M?+");
   // Regex to parse future time string
-  private static final Pattern FUT_TIME_REGEX = Pattern.compile("P?((?:[0-9]+D)?(?:[0-9]+W)?(?:[0-9]+M)?) ?[+] ?([0-9]+)");
+  private static final Pattern FUT_TIME_REGEX =
+      Pattern.compile("P?+((?:[0-9]++D)?+(?:[0-9]++W)?+(?:[0-9]++M)?+) ?+[+] ?+([0-9]++)([BF]?)");
   // Regex to parse future month string
-  private static final Pattern FUT_MONTH_REGEX = Pattern.compile("([A-Z][A-Z][A-Z][0-9][0-9])");
+  private static final Pattern FUT_MONTH_REGEX = Pattern.compile("([A-Z]{3}[0-9]{2})");
   // Regex to parse simple time string with years, months and days
-  private static final Pattern SIMPLE_YMD_TIME_REGEX = Pattern.compile("P?(([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?)");
+  private static final Pattern SIMPLE_YMD_TIME_REGEX =
+      Pattern.compile("P?+(([0-9]++Y)?+([0-9]++M)?+([0-9]++W)?+([0-9]++D)?+)");
   // Regex to parse simple time string with years and months
-  private static final Pattern SIMPLE_YM_TIME_REGEX = Pattern.compile("P?(([0-9]+Y)?([0-9]+M)?)");
+  private static final Pattern SIMPLE_YM_TIME_REGEX = Pattern.compile("P?+(([0-9]++Y)?+([0-9]++M)?+)");
   // Regex to parse simple time string with days
-  private static final Pattern SIMPLE_DAYS_REGEX = Pattern.compile("P?([0-9]+D)?");
+  private static final Pattern SIMPLE_DAYS_REGEX = Pattern.compile("P?+([0-9]++D)?+");
   // parse year-month
   private static final DateTimeFormatter YM_FORMATTER = new DateTimeFormatterBuilder()
       .parseCaseInsensitive().appendPattern("MMMuu").toFormatter(Locale.ENGLISH);
@@ -173,7 +192,7 @@ public final class RatesCalibrationCsvLoader {
    * @return the group definitions, mapped by name
    * @throws IllegalArgumentException if the files contain a duplicate entry
    */
-  public static ImmutableMap<CurveGroupName, CurveGroupDefinition> load(
+  public static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> load(
       ResourceLocator groupsResource,
       ResourceLocator settingsResource,
       ResourceLocator... curveNodeResources) {
@@ -192,13 +211,39 @@ public final class RatesCalibrationCsvLoader {
    * @return the group definitions, mapped by name
    * @throws IllegalArgumentException if the files contain a duplicate entry
    */
-  public static ImmutableMap<CurveGroupName, CurveGroupDefinition> load(
+  public static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> load(
       ResourceLocator groupsResource,
       ResourceLocator settingsResource,
       Collection<ResourceLocator> curveNodeResources) {
 
     Collection<CharSource> curveNodeCharSources = curveNodeResources.stream().map(r -> r.getCharSource()).collect(toList());
     return parse(groupsResource.getCharSource(), settingsResource.getCharSource(), curveNodeCharSources);
+  }
+
+  /**
+   * Loads one or more CSV format curve calibration files with seasonality.
+   * <p>
+   * If the files contain a duplicate entry an exception will be thrown.
+   * 
+   * @param groupsResource  the curve groups CSV resource
+   * @param settingsResource  the curve settings CSV resource
+   * @param seasonalityResource  the curve seasonality CSV resource
+   * @param curveNodeResources  the CSV resources for curve nodes
+   * @return the group definitions, mapped by name
+   * @throws IllegalArgumentException if the files contain a duplicate entry
+   */
+  public static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> loadWithSeasonality(
+      ResourceLocator groupsResource,
+      ResourceLocator settingsResource,
+      ResourceLocator seasonalityResource,
+      Collection<ResourceLocator> curveNodeResources) {
+
+    Collection<CharSource> curveNodeCharSources = curveNodeResources.stream().map(r -> r.getCharSource()).collect(toList());
+    return parseWithSeasonality(
+        groupsResource.getCharSource(),
+        settingsResource.getCharSource(),
+        seasonalityResource.getCharSource(),
+        curveNodeCharSources);
   }
 
   //-------------------------------------------------------------------------
@@ -213,61 +258,123 @@ public final class RatesCalibrationCsvLoader {
    * @return the group definitions, mapped by name
    * @throws IllegalArgumentException if the files contain a duplicate entry
    */
-  public static ImmutableMap<CurveGroupName, CurveGroupDefinition> parse(
+  public static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> parse(
       CharSource groupsCharSource,
       CharSource settingsCharSource,
       Collection<CharSource> curveNodeCharSources) {
 
-    // load curve groups and settings
-    List<CurveGroupDefinition> curveGroups = CurveGroupDefinitionCsvLoader.parseCurveGroupDefinitions(groupsCharSource);
-    Map<CurveName, LoadedCurveSettings> settingsMap = RatesCurvesCsvLoader.parseCurveSettings(settingsCharSource);
+    return parse0(groupsCharSource, settingsCharSource, ImmutableMap.of(), curveNodeCharSources);
+  }
 
-    // load curve definitions
-    List<NodalCurveDefinition> curveDefinitions = curveNodeCharSources.stream()
-        .flatMap(res -> parseSingle(res, settingsMap).stream())
-        .collect(toImmutableList());
+  /**
+   * Parses one or more CSV format curve calibration files with seasonality.
+   * <p>
+   * If the files contain a duplicate entry an exception will be thrown.
+   * 
+   * @param groupsCharSource  the curve groups CSV character source
+   * @param settingsCharSource  the curve settings CSV character source
+   * @param seasonalityResource  the seasonality CSV character source
+   * @param curveNodeCharSources  the CSV character sources for curve nodes
+   * @return the group definitions, mapped by name
+   * @throws IllegalArgumentException if the files contain a duplicate entry
+   */
+  public static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> parseWithSeasonality(
+      CharSource groupsCharSource,
+      CharSource settingsCharSource,
+      CharSource seasonalityResource,
+      Collection<CharSource> curveNodeCharSources) {
 
-    // Add the curve definitions to the curve group definitions
-    return curveGroups.stream()
-        .map(groupDefinition -> groupDefinition.withCurveDefinitions(curveDefinitions))
-        .collect(toImmutableMap(groupDefinition -> groupDefinition.getName()));
+    Map<CurveName, SeasonalityDefinition> seasonality =
+        SeasonalityDefinitionCsvLoader.parseSeasonalityDefinitions(seasonalityResource);
+    return parse0(groupsCharSource, settingsCharSource, seasonality, curveNodeCharSources);
+  }
+
+  // parse based on pre-parsed seasonality
+  private static ImmutableMap<CurveGroupName, RatesCurveGroupDefinition> parse0(
+      CharSource groupsCharSource,
+      CharSource settingsCharSource,
+      Map<CurveName, SeasonalityDefinition> seasonality,
+      Collection<CharSource> curveNodeCharSources) {
+
+    try {
+      // load curve groups and settings
+      List<RatesCurveGroupDefinition> curveGroups = RatesCurveGroupDefinitionCsvLoader.parseCurveGroupDefinitions(groupsCharSource);
+      Map<CurveName, LoadedCurveSettings> settingsMap = RatesCurvesCsvLoader.parseCurveSettings(settingsCharSource);
+
+      // load curve definitions
+      List<CurveDefinition> curveDefinitions = curveNodeCharSources.stream()
+          .flatMap(res -> parseSingle(res, settingsMap).stream())
+          .collect(toImmutableList());
+
+      // check for any curve setting without a matching definition
+      List<CurveName> defCurveNames = curveDefinitions.stream()
+          .map(def -> def.getName())
+          .collect(toImmutableList());
+      Set<CurveName> settingCurveNames = settingsMap.keySet();
+
+      for (CurveName settingCurveName : settingCurveNames) {
+        if (!defCurveNames.contains(settingCurveName)) {
+          throw new ParseFailureException(
+              "Error parsing rates calibration CSV files: Missing nodes for curve '{value}'", settingCurveName.getName());
+        }
+      }
+
+      // Add the curve definitions to the curve group definitions
+      return curveGroups.stream()
+          .map(groupDefinition -> groupDefinition.withCurveDefinitions(curveDefinitions).withSeasonalityDefinitions(seasonality))
+          .collect(toImmutableMap(groupDefinition -> groupDefinition.getName()));
+
+    } catch (ParseFailureException ex) {
+      throw ex;
+    } catch (RuntimeException ex) {
+      throw new ParseFailureException(ex, "Error parsing rates calibration CSV files: {exceptionMessage}", ex.getMessage());
+    }
   }
 
   //-------------------------------------------------------------------------
   // loads a single curves CSV file
   // requestedDate can be null, meaning load all dates
-  private static List<NodalCurveDefinition> parseSingle(
-      CharSource resource,
+  private static List<CurveDefinition> parseSingle(
+      CharSource charSource,
       Map<CurveName, LoadedCurveSettings> settingsMap) {
 
-    CsvFile csv = CsvFile.of(resource, true);
-    Map<CurveName, List<CurveNode>> allNodes = new HashMap<>();
-    for (CsvRow row : csv.rows()) {
-      String curveNameStr = row.getField(CURVE_NAME);
-      String label = row.getField(CURVE_LABEL);
-      String symbologyQuoteStr = row.getField(CURVE_SYMBOLOGY_QUOTE);
-      String tickerQuoteStr = row.getField(CURVE_TICKER_QUOTE);
-      String fieldQuoteStr = row.getField(CURVE_FIELD_QUOTE);
-      String typeStr = row.getField(CURVE_TYPE);
-      String conventionStr = row.getField(CURVE_CONVENTION);
-      String timeStr = row.getField(CURVE_TIME);
-      String dateStr = row.findField(CURVE_DATE).orElse("");
-      String minGapStr = row.findField(CURVE_MIN_GAP).orElse("");
-      String clashActionStr = row.findField(CURVE_CLASH_ACTION).orElse("");
-      String spreadStr = row.findField(CURVE_SPREAD).orElse("");
+    try {
+      CsvFile csv = CsvFile.of(charSource, true);
+      Map<CurveName, List<CurveNode>> allNodes = new HashMap<>();
+      for (CsvRow row : csv.rows()) {
+        String curveNameStr = row.getField(CURVE_NAME);
+        String label = row.getField(CURVE_LABEL);
+        String symbologyQuoteStr = row.getField(CURVE_SYMBOLOGY_QUOTE);
+        String tickerQuoteStr = row.getField(CURVE_TICKER_QUOTE);
+        String fieldQuoteStr = row.getField(CURVE_FIELD_QUOTE);
+        String typeStr = row.getField(CURVE_TYPE);
+        String conventionStr = row.getField(CURVE_CONVENTION);
+        String timeStr = row.getField(CURVE_TIME);
+        String dateStr = row.findField(CURVE_DATE).orElse("");
+        String minGapStr = row.findField(CURVE_MIN_GAP).orElse("");
+        String clashActionStr = row.findField(CURVE_CLASH_ACTION).orElse("");
+        String spreadStr = row.findField(CURVE_SPREAD).orElse("");
 
-      CurveName curveName = CurveName.of(curveNameStr);
-      StandardId quoteStandardId = StandardId.of(symbologyQuoteStr, tickerQuoteStr);
-      FieldName quoteField = fieldQuoteStr.isEmpty() ? FieldName.MARKET_VALUE : FieldName.of(fieldQuoteStr);
-      QuoteId quoteId = QuoteId.of(quoteStandardId, quoteField);
-      double spread = spreadStr.isEmpty() ? 0d : Double.parseDouble(spreadStr);
-      CurveNodeDate date = parseDate(dateStr);
-      CurveNodeDateOrder order = parseDateOrder(minGapStr, clashActionStr);
+        CurveName curveName = CurveName.of(curveNameStr);
+        StandardId quoteStandardId = StandardId.of(symbologyQuoteStr, tickerQuoteStr);
+        FieldName quoteField = fieldQuoteStr.isEmpty() ? FieldName.MARKET_VALUE : FieldName.of(fieldQuoteStr);
+        QuoteId quoteId = QuoteId.of(quoteStandardId, quoteField);
+        double spread = spreadStr.isEmpty() ? 0d : Double.parseDouble(spreadStr);
+        CurveNodeDate date = parseDate(dateStr);
+        CurveNodeDateOrder order = parseDateOrder(minGapStr, clashActionStr);
 
-      List<CurveNode> curveNodes = allNodes.computeIfAbsent(curveName, k -> new ArrayList<>());
-      curveNodes.add(createCurveNode(typeStr, conventionStr, timeStr, label, quoteId, spread, date, order));
+        List<CurveNode> curveNodes = allNodes.computeIfAbsent(curveName, k -> new ArrayList<>());
+        curveNodes.add(createCurveNode(typeStr, conventionStr, timeStr, label, quoteId, spread, date, order));
+      }
+      return buildCurveDefinition(settingsMap, allNodes);
+
+    } catch (RuntimeException ex) {
+      throw new ParseFailureException(
+          ex,
+          "Error parsing curve definition CSV file '{fileName}': {exceptionMessage}",
+          CharSources.extractFileName(charSource),
+          ex.getMessage());
     }
-    return buildCurveDefinition(settingsMap, allNodes);
   }
 
   // parse date order
@@ -276,7 +383,7 @@ public final class RatesCalibrationCsvLoader {
       return CurveNodeDate.END;
     }
     if (dateStr.length() == 10 && dateStr.charAt(4) == '-' && dateStr.charAt(7) == '-') {
-      return CurveNodeDate.of(LocalDate.parse(dateStr));
+      return CurveNodeDate.of(LoaderUtils.parseDate(dateStr));
     }
     String dateUpper = dateStr.toUpperCase(Locale.ENGLISH);
     if (dateUpper.equals("END")) {
@@ -285,8 +392,8 @@ public final class RatesCalibrationCsvLoader {
     if (dateUpper.equals("LASTFIXING")) {
       return CurveNodeDate.LAST_FIXING;
     }
-    throw new IllegalArgumentException(Messages.format(
-        "Invalid format for node date, should be date in 'yyyy-MM-dd' format, 'End' or 'LastFixing': {}", dateUpper));
+    throw new ParseFailureException(
+        "Invalid format for node date, should be date in 'yyyy-MM-dd' format, 'End' or 'LastFixing': '{value}'", dateUpper);
   }
 
   // parse date order
@@ -298,26 +405,25 @@ public final class RatesCalibrationCsvLoader {
     }
     Matcher matcher = SIMPLE_DAYS_REGEX.matcher(minGapStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format(
-          "Invalid days format for minimum gap, should be 2D or P2D: {}", minGapStr));
+      throw new ParseFailureException("Invalid days format for minimum gap, should be 2D or P2D: '{value}'", minGapStr);
     }
     Period minGap = Period.parse("P" + matcher.group(1));
     return CurveNodeDateOrder.of(minGap.getDays(), clashAction);
   }
 
   // build the curves
-  private static List<NodalCurveDefinition> buildCurveDefinition(
+  private static List<CurveDefinition> buildCurveDefinition(
       Map<CurveName, LoadedCurveSettings> settingsMap,
       Map<CurveName, List<CurveNode>> allNodes) {
 
-    ImmutableList.Builder<NodalCurveDefinition> results = ImmutableList.builder();
+    ImmutableList.Builder<CurveDefinition> results = ImmutableList.builder();
 
     for (Map.Entry<CurveName, List<CurveNode>> entry : allNodes.entrySet()) {
       CurveName name = entry.getKey();
       LoadedCurveSettings settings = settingsMap.get(name);
 
       if (settings == null) {
-        throw new IllegalArgumentException(Messages.format("Missing settings for curve: {}", name));
+        throw new ParseFailureException("Missing settings for curve '{value}'", name);
       }
       results.add(settings.createCurveDefinition(entry.getValue()));
     }
@@ -348,6 +454,9 @@ public final class RatesCalibrationCsvLoader {
     if ("IFU".equalsIgnoreCase(typeStr) || "IborFuture".equalsIgnoreCase(typeStr)) {
       return curveIborFutureCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
     }
+    if ("ONF".equalsIgnoreCase(typeStr) || "OvernightFuture".equalsIgnoreCase(typeStr)) {
+      return curveOvernightFutureCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
+    }
     if ("OIS".equalsIgnoreCase(typeStr) || "FixedOvernightSwap".equalsIgnoreCase(typeStr)) {
       return curveFixedOvernightCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
     }
@@ -366,13 +475,16 @@ public final class RatesCalibrationCsvLoader {
     if ("XCS".equalsIgnoreCase(typeStr) || "XCcyIborIborSwap".equalsIgnoreCase(typeStr)) {
       return curveXCcyIborIborCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
     }
+    if ("XCO".equalsIgnoreCase(typeStr) || "XCcyOvernightOvernightSwap".equalsIgnoreCase(typeStr)) {
+      return curveXCcyOvernightOvernightCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
+    }
     if ("FXS".equalsIgnoreCase(typeStr) || "FxSwap".equalsIgnoreCase(typeStr)) {
       return curveFxSwapCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
     }
     if ("INF".equalsIgnoreCase(typeStr) || "FixedInflationSwap".equalsIgnoreCase(typeStr)) {
       return curveFixedInflationCurveNode(conventionStr, timeStr, label, quoteId, spread, date, order);
     }
-    throw new IllegalArgumentException(Messages.format("Invalid curve node type: {}", typeStr));
+    throw new ParseFailureException("Invalid curve node type '{type}'", typeStr);
   }
 
   private static CurveNode curveTermDepositCurveNode(
@@ -386,7 +498,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YMD_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Term Deposit: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Term Deposit: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     TermDepositConvention convention = TermDepositConvention.of(conventionStr);
@@ -433,7 +545,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = FRA_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for FRA: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for FRA: '{value}'", timeStr);
     }
     Period periodToStart = Period.parse("P" + matcher.group(1) + "M");
     Period periodToEnd = Period.parse("P" + matcher.group(2) + "M");
@@ -450,7 +562,9 @@ public final class RatesCalibrationCsvLoader {
         .build();
   }
 
-  private static CurveNode curveIborFutureCurveNode(
+  //-------------------------------------------------------------------------
+  @VisibleForTesting
+  static IborFutureCurveNode curveIborFutureCurveNode(
       String conventionStr,
       String timeStr,
       String label,
@@ -460,35 +574,72 @@ public final class RatesCalibrationCsvLoader {
       CurveNodeDateOrder order) {
 
     Matcher matcher = FUT_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    Matcher matcher2 = FUT_MONTH_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    SequenceDate seqDate = null;
     if (matcher.matches()) {
       Period periodToStart = Period.parse("P" + matcher.group(1));
       int sequenceNumber = Integer.parseInt(matcher.group(2));
-      IborFutureConvention convention = IborFutureConvention.of(conventionStr);
-      IborFutureTemplate template = IborFutureTemplate.of(periodToStart, sequenceNumber, convention);
-      return IborFutureCurveNode.builder()
-          .template(template)
-          .rateId(quoteId)
-          .additionalSpread(spread)
-          .label(label)
-          .date(date)
-          .dateOrder(order)
-          .build();
-    }
-    Matcher matcher2 = FUT_MONTH_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
-    if (matcher2.matches()) {
+      String seqType = matcher.group(3);
+      if ("F".equals(seqType)) {
+        seqDate = SequenceDate.full(periodToStart, sequenceNumber);
+      } else {
+        seqDate = SequenceDate.base(periodToStart, sequenceNumber);
+      }
+    } else if (matcher2.matches()) {
       YearMonth yearMonth = YearMonth.parse(matcher2.group(1), YM_FORMATTER);
-      IborFutureConvention convention = IborFutureConvention.of(conventionStr);
-      IborFutureTemplate template = IborFutureTemplate.of(yearMonth, convention);
-      return IborFutureCurveNode.builder()
-          .template(template)
-          .rateId(quoteId)
-          .additionalSpread(spread)
-          .label(label)
-          .date(date)
-          .dateOrder(order)
-          .build();
+      seqDate = SequenceDate.base(yearMonth);
+    } else {
+      throw new ParseFailureException("Invalid time format for Ibor Future: '{value}'", timeStr);
     }
-    throw new IllegalArgumentException(Messages.format("Invalid time format for Ibor Future: {}", timeStr));
+    IborFutureContractSpec contractSpec = IborFutureContractSpec.of(conventionStr);
+    IborFutureTemplate template = IborFutureTemplate.of(seqDate, contractSpec);
+    return IborFutureCurveNode.builder()
+        .template(template)
+        .rateId(quoteId)
+        .additionalSpread(spread)
+        .label(label)
+        .date(date)
+        .dateOrder(order)
+        .build();
+  }
+
+  private static CurveNode curveOvernightFutureCurveNode(
+      String conventionStr,
+      String timeStr,
+      String label,
+      QuoteId quoteId,
+      double spread,
+      CurveNodeDate date,
+      CurveNodeDateOrder order) {
+
+    Matcher matcher = FUT_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    Matcher matcher2 = FUT_MONTH_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    SequenceDate seqDate = null;
+    if (matcher.matches()) {
+      Period periodToStart = Period.parse("P" + matcher.group(1));
+      int sequenceNumber = Integer.parseInt(matcher.group(2));
+      String seqType = matcher.group(3);
+      if ("F".equals(seqType)) {
+        seqDate = SequenceDate.full(periodToStart, sequenceNumber);
+      } else {
+        seqDate = SequenceDate.base(periodToStart, sequenceNumber);
+      }
+    } else if (matcher2.matches()) {
+      YearMonth yearMonth = YearMonth.parse(matcher2.group(1), YM_FORMATTER);
+      seqDate = SequenceDate.base(yearMonth);
+    } else {
+      throw new ParseFailureException("Invalid time format for Overnight Future: '{value}'", timeStr);
+    }
+    OvernightFutureContractSpec contractSpec = OvernightFutureContractSpec.of(conventionStr);
+    OvernightFutureTemplate template = OvernightFutureTemplate.of(seqDate, contractSpec);
+    return OvernightFutureCurveNode.builder()
+        .template(template)
+        .rateId(quoteId)
+        .additionalSpread(spread)
+        .label(label)
+        .date(date)
+        .dateOrder(order)
+        .build();
   }
 
   //-------------------------------------------------------------------------
@@ -503,7 +654,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YMD_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Fixed-Overnight swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Fixed-Overnight swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     FixedOvernightSwapConvention convention = FixedOvernightSwapConvention.of(conventionStr);
@@ -527,9 +678,9 @@ public final class RatesCalibrationCsvLoader {
       CurveNodeDate date,
       CurveNodeDateOrder order) {
 
-    Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    Matcher matcher = SIMPLE_YMD_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Fixed-Ibor swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Fixed-Ibor swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     FixedIborSwapConvention convention = FixedIborSwapConvention.of(conventionStr);
@@ -555,7 +706,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Ibor-Ibor swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Ibor-Ibor swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     IborIborSwapConvention convention = IborIborSwapConvention.of(conventionStr);
@@ -581,7 +732,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Three legs basis swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Three legs basis swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     ThreeLegBasisSwapConvention convention = ThreeLegBasisSwapConvention.of(conventionStr);
@@ -607,7 +758,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Cross Currency Swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Cross Currency Swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     XCcyIborIborSwapConvention convention = XCcyIborIborSwapConvention.of(conventionStr);
@@ -621,7 +772,33 @@ public final class RatesCalibrationCsvLoader {
         .dateOrder(order)
         .build();
   }
-  
+
+  private static CurveNode curveXCcyOvernightOvernightCurveNode(
+      String conventionStr,
+      String timeStr,
+      String label,
+      QuoteId quoteId,
+      double spread,
+      CurveNodeDate date,
+      CurveNodeDateOrder order) {
+
+    Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
+    if (!matcher.matches()) {
+      throw new ParseFailureException("Invalid time format for Cross Currency Swap: '{value}'", timeStr);
+    }
+    Period periodToEnd = Period.parse("P" + matcher.group(1));
+    XCcyOvernightOvernightSwapConvention convention = XCcyOvernightOvernightSwapConvention.of(conventionStr);
+    XCcyOvernightOvernightSwapTemplate template = XCcyOvernightOvernightSwapTemplate.of(Tenor.of(periodToEnd), convention);
+    return XCcyOvernightOvernightSwapCurveNode.builder()
+        .template(template)
+        .spreadId(quoteId)
+        .additionalSpread(spread)
+        .label(label)
+        .date(date)
+        .dateOrder(order)
+        .build();
+  }
+
   private static CurveNode curveOvernightIborCurveNode(
       String conventionStr,
       String timeStr,
@@ -633,7 +810,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YMD_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Overnight-Ibor swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Overnight-Ibor swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     OvernightIborSwapConvention convention = OvernightIborSwapConvention.of(conventionStr);
@@ -658,11 +835,11 @@ public final class RatesCalibrationCsvLoader {
       CurveNodeDateOrder order) {
 
     if (!DoubleMath.fuzzyEquals(spread, 0d, 1e-10d)) {
-      throw new IllegalArgumentException("Additional spread must be zero for FX swaps");
+      throw new ParseFailureException("Additional spread must be zero for FX swaps");
     }
     Matcher matcher = SIMPLE_YMD_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for FX swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for FX swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     FxSwapConvention convention = FxSwapConvention.of(conventionStr);
@@ -687,7 +864,7 @@ public final class RatesCalibrationCsvLoader {
 
     Matcher matcher = SIMPLE_YM_TIME_REGEX.matcher(timeStr.toUpperCase(Locale.ENGLISH));
     if (!matcher.matches()) {
-      throw new IllegalArgumentException(Messages.format("Invalid time format for Fixed-Inflation swap: {}", timeStr));
+      throw new ParseFailureException("Invalid time format for Fixed-Inflation swap: '{value}'", timeStr);
     }
     Period periodToEnd = Period.parse("P" + matcher.group(1));
     FixedInflationSwapConvention convention = FixedInflationSwapConvention.of(conventionStr);

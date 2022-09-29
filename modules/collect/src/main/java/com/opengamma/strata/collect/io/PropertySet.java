@@ -1,22 +1,23 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.io;
 
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import com.opengamma.strata.collect.ArgChecker;
+import com.opengamma.strata.collect.MapStream;
 
 /**
  * A map of key-value properties.
@@ -94,6 +95,18 @@ public final class PropertySet {
 
   //-------------------------------------------------------------------------
   /**
+   * Returns the keys and values as a {@code MapStream}.
+   * <p>
+   * There may be multiple values for the same key.
+   * The iteration order of the stream matches that of the input data.
+   * 
+   * @return the map stream
+   */
+  public MapStream<String, String> stream() {
+    return MapStream.of(keyValueMap);
+  }
+
+  /**
    * Returns the set of keys of this property set.
    * <p>
    * The iteration order of the map matches that of the input data.
@@ -116,9 +129,11 @@ public final class PropertySet {
   }
 
   /**
-   * Returns the property set as a map, throwing an exception if any key has multiple values.
+   * Returns the property set as a map.
    * <p>
    * The iteration order of the map matches that of the input data.
+   * <p>
+   * If a key has multiple values, the values will be returned as a comma separated list.
    * 
    * @return the key-value map
    */
@@ -155,11 +170,12 @@ public final class PropertySet {
    * Gets a single value from this property set.
    * <p>
    * This returns the value associated with the specified key.
-   * If more than one value, or no value, is associated with the key an exception is thrown.
+   * <p>
+   * If a key has multiple values, the values will be returned as a comma separated list.
    * 
    * @param key  the key name
    * @return the value
-   * @throws IllegalArgumentException if the key does not exist, or if more than one value is associated
+   * @throws IllegalArgumentException if the key does not exist
    */
   public String value(String key) {
     ArgChecker.notNull(key, "key");
@@ -168,9 +184,32 @@ public final class PropertySet {
       throw new IllegalArgumentException("Unknown key: " + key);
     }
     if (values.size() > 1) {
-      throw new IllegalArgumentException("Multiple values for key: " + key);
+      return Joiner.on(',').join(values);
     }
     return values.get(0);
+  }
+
+  /**
+   * Finds a single value in this property set.
+   * <p>
+   * This returns the value associated with the specified key, empty if not present.
+   * <p>
+   * If a key has multiple values, the values will be returned as a comma separated list.
+   * 
+   * @param key  the key name
+   * @return the value, empty if not found
+   * @throws IllegalArgumentException if more than one value is associated
+   */
+  public Optional<String> findValue(String key) {
+    ArgChecker.notNull(key, "key");
+    ImmutableList<String> values = keyValueMap.get(key);
+    if (values.size() == 0) {
+      return Optional.empty();
+    }
+    if (values.size() > 1) {
+      return Optional.of(Joiner.on(',').join(values));
+    }
+    return Optional.of(values.get(0));
   }
 
   /**
@@ -193,8 +232,10 @@ public final class PropertySet {
   /**
    * Combines this property set with another.
    * <p>
-   * The specified property set takes precedence.
-   * 
+   * This property set takes precedence. Where a key exists in both sets the values in the other
+   * property set will be discarded.
+   * Any order of any additional keys will be retained, with those keys located after the base set of keys.
+   *
    * @param other  the other property set
    * @return the combined property set
    */
@@ -206,12 +247,53 @@ public final class PropertySet {
     if (isEmpty()) {
       return other;
     }
-    ListMultimap<String, String> map = ArrayListMultimap.create(keyValueMap);
-    for (String key : other.asMultimap().keySet()) {
-      map.removeAll(key);
-      map.putAll(key, other.valueList(key));
+    // cannot use ArrayListMultiMap as it does not retain the order of the keys
+    // whereas ImmutableListMultimap does retain the order of the keys
+    ImmutableListMultimap.Builder<String, String> map = ImmutableListMultimap.builder();
+    map.putAll(this.keyValueMap);
+    for (String key : other.keyValueMap.keySet()) {
+      if (!this.contains(key)) {
+        map.putAll(key, other.valueList(key));
+      }
     }
-    return new PropertySet(ImmutableListMultimap.copyOf(map));
+    return new PropertySet(map.build());
+  }
+
+  //-------------------------------------------------------------------------
+  /**
+   * Overrides this property set with another.
+   * <p>
+   * The specified property set takes precedence.
+   * The order of any existing keys will be retained, with the value replaced.
+   * Any order of any additional keys will be retained, with those keys located after the base set of keys.
+   * 
+   * @param other  the other property set
+   * @return the combined property set
+   */
+  public PropertySet overrideWith(PropertySet other) {
+    ArgChecker.notNull(other, "other");
+    if (other.isEmpty()) {
+      return this;
+    }
+    if (isEmpty()) {
+      return other;
+    }
+    // cannot use ArrayListMultiMap as it does not retain the order of the keys
+    // whereas ImmutableListMultimap does retain the order of the keys
+    ImmutableListMultimap.Builder<String, String> map = ImmutableListMultimap.builder();
+    for (String key : this.keyValueMap.keySet()) {
+      if (other.contains(key)) {
+        map.putAll(key, other.valueList(key));
+      } else {
+        map.putAll(key, this.valueList(key));
+      }
+    }
+    for (String key : other.keyValueMap.keySet()) {
+      if (!this.contains(key)) {
+        map.putAll(key, other.valueList(key));
+      }
+    }
+    return new PropertySet(map.build());
   }
 
   //-------------------------------------------------------------------------

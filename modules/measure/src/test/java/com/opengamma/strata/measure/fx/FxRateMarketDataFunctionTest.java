@@ -1,17 +1,17 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.measure.fx;
 
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.time.LocalDate;
 import java.util.Map;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableMap;
 import com.opengamma.strata.basics.ReferenceData;
@@ -28,7 +28,6 @@ import com.opengamma.strata.data.scenario.MarketDataBox;
 import com.opengamma.strata.data.scenario.ScenarioMarketData;
 import com.opengamma.strata.market.observable.QuoteId;
 
-@Test
 public class FxRateMarketDataFunctionTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
@@ -36,30 +35,36 @@ public class FxRateMarketDataFunctionTest {
   private static final CurrencyPair CURRENCY_PAIR = CurrencyPair.of(Currency.EUR, Currency.USD);
   private static final FxRateId RATE_ID = FxRateId.of(CURRENCY_PAIR);
 
+  @Test
   public void requirements() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     MarketDataRequirements requirements = function.requirements(RATE_ID, config());
     assertThat(requirements).isEqualTo(MarketDataRequirements.of(QUOTE_ID));
   }
 
+  @Test
   public void requirementsInverse() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     MarketDataRequirements requirements = function.requirements(FxRateId.of(CURRENCY_PAIR.inverse()), config());
     assertThat(requirements).isEqualTo(MarketDataRequirements.of(QUOTE_ID));
   }
 
+  @Test
   public void requirementsMissingConfig() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
-    String regex = "No configuration found .*FxRateConfig";
-    assertThrowsIllegalArg(() -> function.requirements(RATE_ID, MarketDataConfig.empty()), regex);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> function.requirements(RATE_ID, MarketDataConfig.empty()))
+        .withMessageMatching("No configuration found .*FxRateConfig");
   }
 
+  @Test
   public void requirementsNoConfigForPair() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     CurrencyPair gbpUsd = CurrencyPair.of(Currency.GBP, Currency.USD);
     assertThat(function.requirements(FxRateId.of(gbpUsd), config())).isEqualTo(MarketDataRequirements.empty());
   }
 
+  @Test
   public void build() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     MarketDataBox<Double> quoteBox = MarketDataBox.ofSingleValue(1.1d);
@@ -71,6 +76,7 @@ public class FxRateMarketDataFunctionTest {
     assertThat(rateBox.getSingleValue()).isEqualTo(FxRate.of(CURRENCY_PAIR, 1.1d));
   }
 
+  @Test
   public void buildInverse() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     MarketDataBox<Double> quoteBox = MarketDataBox.ofSingleValue(1.1d);
@@ -82,6 +88,7 @@ public class FxRateMarketDataFunctionTest {
     assertThat(rateBox.getSingleValue()).isEqualTo(FxRate.of(CURRENCY_PAIR, 1.1d));
   }
 
+  @Test
   public void buildScenario() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
     MarketDataBox<Double> quoteBox = MarketDataBox.ofScenarioValues(1.1d, 1.2d, 1.3d);
@@ -96,19 +103,21 @@ public class FxRateMarketDataFunctionTest {
     assertThat(rateBox.getValue(2)).isEqualTo(FxRate.of(CURRENCY_PAIR, 1.3d));
   }
 
+  @Test
   public void buildMissingConfig() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
-    String regex = "No configuration found .*FxRateConfig";
-    assertThrowsIllegalArg(
-        () -> function.build(RATE_ID, MarketDataConfig.empty(), ScenarioMarketData.empty(), REF_DATA), regex);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> function.build(RATE_ID, MarketDataConfig.empty(), ScenarioMarketData.empty(), REF_DATA))
+        .withMessageMatching("No configuration found .*FxRateConfig");
   }
 
+  @Test
   public void buildNoConfigForPair() {
     FxRateMarketDataFunction function = new FxRateMarketDataFunction();
-    String regex = "No FX rate configuration available for GBP/USD";
     CurrencyPair gbpUsd = CurrencyPair.of(Currency.GBP, Currency.USD);
-    assertThrowsIllegalArg(
-        () -> function.build(FxRateId.of(gbpUsd), config(), ScenarioMarketData.empty(), REF_DATA), regex);
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> function.build(FxRateId.of(gbpUsd), config(), ScenarioMarketData.empty(), REF_DATA))
+        .withMessageMatching("No FX rate configuration available for GBP/USD");
   }
 
   private static MarketDataConfig config() {

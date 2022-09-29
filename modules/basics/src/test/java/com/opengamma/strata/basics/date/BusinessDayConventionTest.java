@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.date;
@@ -14,25 +14,30 @@ import static com.opengamma.strata.basics.date.BusinessDayConventions.NO_ADJUST;
 import static com.opengamma.strata.basics.date.BusinessDayConventions.PRECEDING;
 import static com.opengamma.strata.collect.TestHelper.assertJodaConvert;
 import static com.opengamma.strata.collect.TestHelper.assertSerialization;
-import static com.opengamma.strata.collect.TestHelper.assertThrowsIllegalArg;
 import static com.opengamma.strata.collect.TestHelper.coverEnum;
 import static com.opengamma.strata.collect.TestHelper.coverPrivateConstructor;
 import static java.time.DayOfWeek.SATURDAY;
 import static java.time.DayOfWeek.SUNDAY;
-import static org.testng.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.LocalDate;
+import java.util.Locale;
+import java.util.Optional;
 
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.opengamma.strata.collect.named.ExtendedEnum;
 
 /**
  * Test {@link BusinessDayConvention}.
  */
-@Test
 public class BusinessDayConventionTest {
 
   private static final LocalDate FRI_2014_07_11 = LocalDate.of(2014, 7, 11);
@@ -57,8 +62,7 @@ public class BusinessDayConventionTest {
   private static final LocalDate MON_2014_11_17 = LocalDate.of(2014, 11, 17);
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "convention")
-  static Object[][] data_convention() {
+  public static Object[][] data_convention() {
     return new Object[][] {
         {NO_ADJUST, FRI_2014_07_11, FRI_2014_07_11},
         {NO_ADJUST, SAT_2014_07_12, SAT_2014_07_12},
@@ -152,23 +156,24 @@ public class BusinessDayConventionTest {
     };
   }
 
-  @Test(dataProvider = "convention")
+  @ParameterizedTest
+  @MethodSource("data_convention")
   public void test_convention(BusinessDayConvention convention, LocalDate input, LocalDate expected) {
-    assertEquals(convention.adjust(input, HolidayCalendars.SAT_SUN), expected);
+    assertThat(convention.adjust(input, HolidayCalendars.SAT_SUN)).isEqualTo(expected);
   }
 
+  @Test
   public void test_nearest() {
     HolidayCalendar cal = ImmutableHolidayCalendar.of(
         HolidayCalendarId.of("Test"), ImmutableList.of(MON_2014_07_14), SATURDAY, SUNDAY);
-    assertEquals(NEAREST.adjust(FRI_2014_07_11, cal), FRI_2014_07_11);
-    assertEquals(NEAREST.adjust(SAT_2014_07_12, cal), FRI_2014_07_11);
-    assertEquals(NEAREST.adjust(SUN_2014_07_13, cal), TUE_2014_07_15);
-    assertEquals(NEAREST.adjust(MON_2014_07_14, cal), TUE_2014_07_15);
+    assertThat(NEAREST.adjust(FRI_2014_07_11, cal)).isEqualTo(FRI_2014_07_11);
+    assertThat(NEAREST.adjust(SAT_2014_07_12, cal)).isEqualTo(FRI_2014_07_11);
+    assertThat(NEAREST.adjust(SUN_2014_07_13, cal)).isEqualTo(TUE_2014_07_15);
+    assertThat(NEAREST.adjust(MON_2014_07_14, cal)).isEqualTo(TUE_2014_07_15);
   }
 
   //-------------------------------------------------------------------------
-  @DataProvider(name = "name")
-  static Object[][] data_name() {
+  public static Object[][] data_name() {
     return new Object[][] {
         {NO_ADJUST, "NoAdjust"},
         {FOLLOWING, "Following"},
@@ -180,45 +185,122 @@ public class BusinessDayConventionTest {
     };
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_name(BusinessDayConvention convention, String name) {
-    assertEquals(convention.getName(), name);
+    assertThat(convention.getName()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_toString(BusinessDayConvention convention, String name) {
-    assertEquals(convention.toString(), name);
+    assertThat(convention.toString()).isEqualTo(name);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_of_lookup(BusinessDayConvention convention, String name) {
-    assertEquals(BusinessDayConvention.of(name), convention);
+    assertThat(BusinessDayConvention.of(name)).isEqualTo(convention);
   }
 
-  @Test(dataProvider = "name")
+  @ParameterizedTest
+  @MethodSource("data_name")
+  public void test_lenientLookup_standardNames(BusinessDayConvention convention, String name) {
+    assertThat(BusinessDayConvention.extendedEnum().findLenient(name.toLowerCase(Locale.ENGLISH)).get()).isEqualTo(convention);
+  }
+
+  @ParameterizedTest
+  @MethodSource("data_name")
   public void test_extendedEnum(BusinessDayConvention convention, String name) {
     ImmutableMap<String, BusinessDayConvention> map = BusinessDayConvention.extendedEnum().lookupAll();
-    assertEquals(map.get(name), convention);
+    assertThat(map.get(name)).isEqualTo(convention);
   }
 
+  @Test
   public void test_of_lookup_notFound() {
-    assertThrowsIllegalArg(() -> BusinessDayConvention.of("Rubbish"));
+    assertThatIllegalArgumentException().isThrownBy(() -> BusinessDayConvention.of("Rubbish"));
   }
 
+  @Test
   public void test_of_lookup_null() {
-    assertThrowsIllegalArg(() -> BusinessDayConvention.of(null));
+    assertThatIllegalArgumentException().isThrownBy(() -> BusinessDayConvention.of(null));
   }
 
   //-------------------------------------------------------------------------
+  public static Object[][] data_lenient() {
+    return new Object[][] {
+        {"FOLLOWING", FOLLOWING},
+        {"MODIFIED_FOLLOWING", MODIFIED_FOLLOWING},
+        {"MODIFIED_FOLLOWING_BI_MONTHLY", MODIFIED_FOLLOWING_BI_MONTHLY},
+        {"PRECEDING", PRECEDING},
+        {"MODIFIED_PRECEDING", MODIFIED_PRECEDING},
+
+        {"F", FOLLOWING},
+        {"M", MODIFIED_FOLLOWING},
+        {"MF", MODIFIED_FOLLOWING},
+        {"P", PRECEDING},
+        {"MP", MODIFIED_PRECEDING},
+
+        {"Follow", FOLLOWING},
+        {"None", NO_ADJUST},
+        {"Modified", MODIFIED_FOLLOWING},
+        {"Mod", MODIFIED_FOLLOWING},
+
+        {"Modified Following", MODIFIED_FOLLOWING},
+        {"ModifiedFollowing", MODIFIED_FOLLOWING},
+        {"Modified Follow", MODIFIED_FOLLOWING},
+        {"ModifiedFollow", MODIFIED_FOLLOWING},
+        {"Mod Following", MODIFIED_FOLLOWING},
+        {"ModFollowing", MODIFIED_FOLLOWING},
+        {"Mod Follow", MODIFIED_FOLLOWING},
+        {"ModFollow", MODIFIED_FOLLOWING},
+
+        {"Modified Preceding", MODIFIED_PRECEDING},
+        {"ModifiedPreceding", MODIFIED_PRECEDING},
+        {"Mod Preceding", MODIFIED_PRECEDING},
+        {"ModPreceding", MODIFIED_PRECEDING},
+
+        {"ModFollowingBiMonthly", MODIFIED_FOLLOWING_BI_MONTHLY},
+    };
+  }
+
+  @ParameterizedTest
+  @MethodSource("data_lenient")
+  public void test_lenientLookup_specialNames(String name, BusinessDayConvention convention) {
+    assertThat(BusinessDayConvention.extendedEnum().findLenient(name.toLowerCase(Locale.ENGLISH)))
+        .isEqualTo(Optional.of(convention));
+  }
+
+  @Test
+  public void test_lenientLookup_constants() throws IllegalAccessException {
+    Field[] fields = BusinessDayConventions.class.getDeclaredFields();
+    for (Field field : fields) {
+      if (Modifier.isPublic(field.getModifiers()) &&
+          Modifier.isStatic(field.getModifiers()) &&
+          Modifier.isFinal(field.getModifiers())) {
+
+        String name = field.getName();
+        Object value = field.get(null);
+        ExtendedEnum<BusinessDayConvention> ext = BusinessDayConvention.extendedEnum();
+        assertThat(ext.findLenient(name)).isEqualTo(Optional.of(value));
+        assertThat(ext.findLenient(name.toLowerCase(Locale.ENGLISH))).isEqualTo(Optional.of(value));
+      }
+    }
+  }
+
+  //-------------------------------------------------------------------------
+  @Test
   public void coverage() {
     coverPrivateConstructor(BusinessDayConventions.class);
     coverEnum(StandardBusinessDayConventions.class);
   }
 
+  @Test
   public void test_serialization() {
     assertSerialization(NO_ADJUST);
   }
 
+  @Test
   public void test_jodaConvert() {
     assertJodaConvert(BusinessDayConvention.class, NO_ADJUST);
     assertJodaConvert(BusinessDayConvention.class, MODIFIED_FOLLOWING);

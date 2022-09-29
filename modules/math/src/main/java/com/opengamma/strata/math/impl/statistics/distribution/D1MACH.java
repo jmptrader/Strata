@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2012 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.math.impl.statistics.distribution;
@@ -8,7 +8,8 @@ package com.opengamma.strata.math.impl.statistics.distribution;
 /**
  * Provides double precision machine constants
  */
-class D1MACH {
+// CSOFF: AbbreviationAsWordInName
+final class D1MACH {
 
   /**
    * Smallest normalised number representable by a double according to IEEE
@@ -53,6 +54,11 @@ class D1MACH {
    */
   static double five() {
     return Double.longBitsToDouble(4599094494223104511L);
+  }
+
+  //-------------------------------------------------------------------------
+  // restricted constructor
+  private D1MACH() {
   }
 
 }

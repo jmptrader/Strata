@@ -1,11 +1,11 @@
-/**
+/*
  * Copyright (C) 2016 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.pricer.swaption;
 
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Period;
 import java.util.Arrays;
@@ -144,9 +144,8 @@ public class SabrSwaptionCalibratorSmileTestUtils {
    * @param msg  the message to return in case of failure
    */
   public static void checkAcceptable(double value1, double value2, double tolerance, String msg) {
-    assertTrue((Math.abs(value1 - value2) < tolerance) ||
-        (Math.abs((value1 - value2) / value2) < tolerance),
-        msg);
+    assertThat((Math.abs(value1 - value2) < tolerance) ||
+        (Math.abs((value1 - value2) / value2) < tolerance)).as(msg).isTrue();
   }
 
 }

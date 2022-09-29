@@ -1,6 +1,6 @@
-/**
+/*
  * Copyright (C) 2014 - present by OpenGamma Inc. and the OpenGamma group of companies
- * 
+ *
  * Please see distribution for license.
  */
 package com.opengamma.strata.basics.index;
@@ -13,10 +13,7 @@ import org.joda.convert.FromString;
 import org.joda.convert.ToString;
 
 import com.opengamma.strata.basics.ReferenceData;
-import com.opengamma.strata.basics.date.DayCount;
 import com.opengamma.strata.basics.date.DaysAdjustment;
-import com.opengamma.strata.basics.date.HolidayCalendarId;
-import com.opengamma.strata.basics.date.Tenor;
 import com.opengamma.strata.basics.date.TenorAdjustment;
 import com.opengamma.strata.collect.ArgChecker;
 import com.opengamma.strata.collect.named.ExtendedEnum;
@@ -25,9 +22,13 @@ import com.opengamma.strata.collect.named.Named;
 /**
  * An inter-bank lending rate index, such as Libor or Euribor.
  * <p>
- * An index represented by this class relates to inter-bank lending for periods
+ * An index represented by this class relates to bank borrowing for periods
  * from one day to one year. They are typically calculated and published as the
- * trimmed arithmetic mean of estimated rates contributed by banks.
+ * trimmed arithmetic mean of estimated rates contributed by banks or based on 
+ * traded volumes.
+ * <p>
+ * With the Ibor transition in progress, the term rates have been incorporated
+ * in this object as they have the same features, even if based on different financial realities.
  * <p>
  * The index is defined by three dates.
  * The fixing date is the date on which the index is to be observed.
@@ -68,40 +69,6 @@ public interface IborIndex
 
   //-------------------------------------------------------------------------
   /**
-   * Gets whether the index is active.
-   * <p>
-   * Over time some indices become inactive and are no longer produced.
-   * If this occurs, this method will return false.
-   * 
-   * @return true if the index is active, false if inactive
-   */
-  public abstract boolean isActive();
-
-  /**
-   * Gets the day count convention of the index.
-   * 
-   * @return the day count convention
-   */
-  public abstract DayCount getDayCount();
-
-  /**
-   * Gets the calendar that determines which dates are fixing dates.
-   * <p>
-   * The rate will be fixed on each business day in this calendar.
-   * 
-   * @return the calendar used to determine the fixing dates of the index
-   */
-  public abstract HolidayCalendarId getFixingCalendar();
-
-  /**
-   * Gets the tenor of the index.
-   * 
-   * @return the tenor
-   */
-  public abstract Tenor getTenor();
-
-  //-------------------------------------------------------------------------
-  /**
    * Gets the adjustment applied to the effective date to obtain the fixing date.
    * <p>
    * The fixing date is the date on which the index is to be observed.
@@ -129,7 +96,7 @@ public interface IborIndex
    * The maturity date is the end date of the indexed deposit and is relative to the effective date.
    * This data structure allows the complex rules of some indices to be represented.
    * 
-   * @return the tenor date offset
+   * @return the maturity date offset
    */
   public abstract TenorAdjustment getMaturityDateOffset();
 

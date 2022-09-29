@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -31,11 +31,11 @@ import com.opengamma.strata.data.ImmutableMarketData;
 import com.opengamma.strata.data.ImmutableMarketDataBuilder;
 import com.opengamma.strata.data.MarketData;
 import com.opengamma.strata.market.ValueType;
-import com.opengamma.strata.market.curve.CurveGroupDefinition;
 import com.opengamma.strata.market.curve.CurveGroupName;
 import com.opengamma.strata.market.curve.CurveName;
 import com.opengamma.strata.market.curve.CurveNode;
 import com.opengamma.strata.market.curve.InterpolatedNodalCurveDefinition;
+import com.opengamma.strata.market.curve.RatesCurveGroupDefinition;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolator;
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolators;
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolator;
@@ -87,7 +87,7 @@ public class CalibrationEurStandard {
   private static final CurveInterpolator INTERPOLATOR_LINEAR = CurveInterpolators.LINEAR;
   private static final CurveExtrapolator EXTRAPOLATOR_FLAT = CurveExtrapolators.FLAT;
 
-  private static final CurveCalibrator CALIBRATOR = CurveCalibrator.of(1e-9, 1e-9, 100);
+  private static final RatesCurveCalibrator CALIBRATOR = RatesCurveCalibrator.of(1e-9, 1e-9, 100);
 
   public static RatesProvider calibrateEurStandard(
       LocalDate valuationDate,
@@ -115,7 +115,7 @@ public class CalibrationEurStandard {
     MarketData allQuotes =
         allQuotes(valuationDate, dscOisQuotes, dscIdValues, fwd3MarketQuotes, fwd3IdValues, fwd6MarketQuotes, fwd6IdValues);
     /* All nodes by groups. */
-    CurveGroupDefinition config = config(dscOisTenors, dscIdValues, fwd3FraTenors, fwd3IrsTenors, fwd3IdValues,
+    RatesCurveGroupDefinition config = config(dscOisTenors, dscIdValues, fwd3FraTenors, fwd3IrsTenors, fwd3IdValues,
         fwd6FraTenors, fwd6IrsTenors, fwd6IdValues);
     /* Results */
     return CALIBRATOR.calibrate(config, allQuotes, REF_DATA);
@@ -161,7 +161,7 @@ public class CalibrationEurStandard {
     return fwdMarketQuotes;
   }
 
-  public static CurveGroupDefinition config(
+  public static RatesCurveGroupDefinition config(
       Period[] dscOisTenors,
       String[] dscIdValues,
       Period[] fwd3FraTenors,
@@ -200,7 +200,7 @@ public class CalibrationEurStandard {
           FixedIborSwapTemplate.of(Period.ZERO, Tenor.of(fwd6IrsTenors[i]), EUR_FIXED_1Y_EURIBOR_6M),
           QuoteId.of(StandardId.of(SCHEME, fwd6IdValues[i + 1 + fwd6FraTenors.length])));
     }
-    InterpolatedNodalCurveDefinition DSC_CURVE_DEFN =
+    InterpolatedNodalCurveDefinition dscCurveDefn =
         InterpolatedNodalCurveDefinition.builder()
             .name(DSCON_CURVE_NAME)
             .xValueType(ValueType.YEAR_FRACTION)
@@ -210,7 +210,7 @@ public class CalibrationEurStandard {
             .extrapolatorLeft(EXTRAPOLATOR_FLAT)
             .extrapolatorRight(EXTRAPOLATOR_FLAT)
             .nodes(dscNodes).build();
-    InterpolatedNodalCurveDefinition FWD3_CURVE_DEFN =
+    InterpolatedNodalCurveDefinition fwd3CurveDefn =
         InterpolatedNodalCurveDefinition.builder()
             .name(FWD3_CURVE_NAME)
             .xValueType(ValueType.YEAR_FRACTION)
@@ -220,7 +220,7 @@ public class CalibrationEurStandard {
             .extrapolatorLeft(EXTRAPOLATOR_FLAT)
             .extrapolatorRight(EXTRAPOLATOR_FLAT)
             .nodes(fwd3Nodes).build();
-    InterpolatedNodalCurveDefinition FWD6_CURVE_DEFN =
+    InterpolatedNodalCurveDefinition fwd6CurveDefn =
         InterpolatedNodalCurveDefinition.builder()
             .name(FWD6_CURVE_NAME)
             .xValueType(ValueType.YEAR_FRACTION)
@@ -230,11 +230,11 @@ public class CalibrationEurStandard {
             .extrapolatorLeft(EXTRAPOLATOR_FLAT)
             .extrapolatorRight(EXTRAPOLATOR_FLAT)
             .nodes(fwd6Nodes).build();
-    return CurveGroupDefinition.builder()
+    return RatesCurveGroupDefinition.builder()
         .name(CURVE_GROUP_NAME)
-        .addCurve(DSC_CURVE_DEFN, EUR, EUR_EONIA)
-        .addForwardCurve(FWD3_CURVE_DEFN, EUR_EURIBOR_3M)
-        .addForwardCurve(FWD6_CURVE_DEFN, EUR_EURIBOR_6M).build();
+        .addCurve(dscCurveDefn, EUR, EUR_EONIA)
+        .addForwardCurve(fwd3CurveDefn, EUR_EURIBOR_3M)
+        .addForwardCurve(fwd6CurveDefn, EUR_EURIBOR_6M).build();
   }
 
   public static MarketData allQuotes(

@@ -1,29 +1,32 @@
-/**
+/*
  * Copyright (C) 2013 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
  */
 package com.opengamma.strata.collect.result;
 
+import static com.opengamma.strata.collect.Guavate.toImmutableSet;
+
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.joda.beans.Bean;
 import org.joda.beans.BeanBuilder;
-import org.joda.beans.BeanDefinition;
 import org.joda.beans.ImmutableBean;
 import org.joda.beans.JodaBeanUtils;
+import org.joda.beans.MetaBean;
 import org.joda.beans.MetaProperty;
-import org.joda.beans.Property;
-import org.joda.beans.PropertyDefinition;
-import org.joda.beans.impl.direct.DirectFieldsBeanBuilder;
+import org.joda.beans.gen.BeanDefinition;
+import org.joda.beans.gen.PropertyDefinition;
 import org.joda.beans.impl.direct.DirectMetaBean;
 import org.joda.beans.impl.direct.DirectMetaProperty;
 import org.joda.beans.impl.direct.DirectMetaPropertyMap;
+import org.joda.beans.impl.direct.DirectPrivateBeanBuilder;
 
 import com.google.common.collect.ImmutableSet;
 import com.opengamma.strata.collect.ArgChecker;
@@ -81,7 +84,27 @@ public final class Failure
    */
   public static Failure of(FailureReason reason, String message, Object... messageArgs) {
     String msg = Messages.format(message, messageArgs);
-    return Failure.of(FailureItem.of(reason, msg, 1));
+    return Failure.of(FailureItem.ofAutoStackTrace(reason, msg, 1));
+  }
+
+  /**
+   * Obtains a failure from a reason, message and throwable.
+   * <p>
+   * The message is produced using a template that contains zero to many "{}" placeholders.
+   * Each placeholder is replaced by the next available argument.
+   * If there are too few arguments, then the message will be left with placeholders.
+   * If there are too many arguments, then the excess arguments are appended to the
+   * end of the message. No attempt is made to format the arguments.
+   * See {@link Messages#format(String, Object...)} for more details.
+   * 
+   * @param reason  the reason
+   * @param cause  the cause
+   * @param message  the failure message, possibly containing placeholders, formatted using {@link Messages#format}
+   * @param messageArgs  arguments used to create the failure message
+   * @return the failure
+   */
+  public static Failure of(FailureReason reason, Throwable cause, String message, Object... messageArgs) {
+    return Failure.of(FailureItem.of(reason, cause, message, messageArgs));
   }
 
   /**
@@ -101,7 +124,19 @@ public final class Failure
    * @return the failure
    */
   public static Failure of(FailureReason reason, Exception cause, String message, Object... messageArgs) {
+    // this method is retained to ensure binary compatibility
     return Failure.of(FailureItem.of(reason, cause, message, messageArgs));
+  }
+
+  /**
+   * Obtains a failure from a reason and throwable.
+   * 
+   * @param reason  the reason
+   * @param cause  the cause
+   * @return the failure
+   */
+  public static Failure of(FailureReason reason, Throwable cause) {
+    return Failure.of(FailureItem.of(reason, cause));
   }
 
   /**
@@ -112,6 +147,7 @@ public final class Failure
    * @return the failure
    */
   public static Failure of(FailureReason reason, Exception cause) {
+    // this method is retained to ensure binary compatibility
     return Failure.of(FailureItem.of(reason, cause));
   }
 
@@ -154,8 +190,53 @@ public final class Failure
     return new Failure(reason, message, itemSet);
   }
 
+  /**
+   * Creates a failure from the throwable.
+   * <p>
+   * This recognizes {@link FailureException} and {@link FailureItemProvider}.
+   *
+   * @param th  the throwable to be processed
+   * @return the failure
+   */
+  public static Failure from(Throwable th) {
+    try {
+      throw th;
+    } catch (FailureException ex) {
+      return ex.getFailure();
+    } catch (Throwable ex) {
+      if (ex instanceof FailureItemProvider) {
+        return of(((FailureItemProvider) ex).getFailureItem());
+      }
+      return of(FailureReason.ERROR, ex);
+    }
+  }
+
+  //-----------------------------------------------------------------------
+  /**
+   * Gets the first failure item.
+   * <p>
+   * There will be at least one failure item, so this always succeeds.
+   * 
+   * @return the failure item
+   */
+  public FailureItem getFirstItem() {
+    return items.iterator().next();
+  }
+
+  /**
+   * Processes the failure by applying a function that alters the items.
+   * <p>
+   * This operation allows wrapping a failure item with additional information that may have not been available
+   * to the code that created the original failure.
+   *
+   * @param function  the function to transform the failure items with
+   * @return the transformed instance
+   */
+  public Failure mapItems(Function<FailureItem, FailureItem> function) {
+    return new Failure(reason, message, items.stream().map(function).collect(toImmutableSet()));
+  }
+
   //------------------------- AUTOGENERATED START -------------------------
-  ///CLOVER:OFF
   /**
    * The meta-bean for {@code Failure}.
    * @return the meta-bean, not null
@@ -165,7 +246,7 @@ public final class Failure
   }
 
   static {
-    JodaBeanUtils.registerMetaBean(Failure.Meta.INSTANCE);
+    MetaBean.register(Failure.Meta.INSTANCE);
   }
 
   /**
@@ -188,16 +269,6 @@ public final class Failure
   @Override
   public Failure.Meta metaBean() {
     return Failure.Meta.INSTANCE;
-  }
-
-  @Override
-  public <R> Property<R> property(String propertyName) {
-    return metaBean().<R>metaProperty(propertyName).createProperty(this);
-  }
-
-  @Override
-  public Set<String> propertyNames() {
-    return metaBean().metaPropertyMap().keySet();
   }
 
   //-----------------------------------------------------------------------
@@ -256,8 +327,8 @@ public final class Failure
   public String toString() {
     StringBuilder buf = new StringBuilder(128);
     buf.append("Failure{");
-    buf.append("reason").append('=').append(reason).append(',').append(' ');
-    buf.append("message").append('=').append(message).append(',').append(' ');
+    buf.append("reason").append('=').append(JodaBeanUtils.toString(reason)).append(',').append(' ');
+    buf.append("message").append('=').append(JodaBeanUtils.toString(message)).append(',').append(' ');
     buf.append("items").append('=').append(JodaBeanUtils.toString(items));
     buf.append('}');
     return buf.toString();
@@ -386,7 +457,7 @@ public final class Failure
   /**
    * The bean-builder for {@code Failure}.
    */
-  private static final class Builder extends DirectFieldsBeanBuilder<Failure> {
+  private static final class Builder extends DirectPrivateBeanBuilder<Failure> {
 
     private FailureReason reason;
     private String message;
@@ -433,30 +504,6 @@ public final class Failure
     }
 
     @Override
-    public Builder set(MetaProperty<?> property, Object value) {
-      super.set(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(String propertyName, String value) {
-      setString(meta().metaProperty(propertyName), value);
-      return this;
-    }
-
-    @Override
-    public Builder setString(MetaProperty<?> property, String value) {
-      super.setString(property, value);
-      return this;
-    }
-
-    @Override
-    public Builder setAll(Map<String, ? extends Object> propertyValueMap) {
-      super.setAll(propertyValueMap);
-      return this;
-    }
-
-    @Override
     public Failure build() {
       return new Failure(
           reason,
@@ -478,6 +525,5 @@ public final class Failure
 
   }
 
-  ///CLOVER:ON
   //-------------------------- AUTOGENERATED END --------------------------
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2015 - present by OpenGamma Inc. and the OpenGamma group of companies
  *
  * Please see distribution for license.
@@ -8,18 +8,20 @@ package com.opengamma.strata.pricer.impl.rate;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_3M;
 import static com.opengamma.strata.basics.index.IborIndices.GBP_LIBOR_6M;
 import static com.opengamma.strata.collect.TestHelper.date;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
 import com.opengamma.strata.basics.ReferenceData;
 import com.opengamma.strata.basics.index.IborIndexObservation;
+import com.opengamma.strata.collect.timeseries.LocalDateDoubleTimeSeries;
 import com.opengamma.strata.market.explain.ExplainKey;
 import com.opengamma.strata.market.explain.ExplainMap;
 import com.opengamma.strata.market.explain.ExplainMapBuilder;
@@ -33,14 +35,14 @@ import com.opengamma.strata.product.rate.IborInterpolatedRateComputation;
 /**
 * Test.
 */
-@Test
 public class ForwardIborInterpolatedRateComputationFnTest {
 
   private static final ReferenceData REF_DATA = ReferenceData.standard();
   private static final LocalDate FIXING_DATE = date(2014, 6, 30);
   private static final LocalDate ACCRUAL_START_DATE = date(2014, 7, 2);
   private static final LocalDate ACCRUAL_END_DATE = date(2014, 11, 2);
-  private static final double RATE3 = 0.0123d;
+  private static final double RATE3 = 0.0125d;
+  private static final double RATE3TS = 0.0123d;
   private static final double RATE6 = 0.0234d;
   private static final IborIndexObservation GBP_LIBOR_3M_OBS = IborIndexObservation.of(GBP_LIBOR_3M, FIXING_DATE, REF_DATA);
   private static final IborIndexObservation GBP_LIBOR_6M_OBS = IborIndexObservation.of(GBP_LIBOR_6M, FIXING_DATE, REF_DATA);
@@ -48,14 +50,16 @@ public class ForwardIborInterpolatedRateComputationFnTest {
   private static final IborRateSensitivity SENSITIVITY6 = IborRateSensitivity.of(GBP_LIBOR_6M_OBS, 1d);
   private static final double TOLERANCE_RATE = 1.0E-10;
 
+  @Test
   public void test_rate() {
     RatesProvider mockProv = mock(RatesProvider.class);
-    IborIndexRates mockRates3M = mock(IborIndexRates.class);
-    IborIndexRates mockRates6M = mock(IborIndexRates.class);
+    LocalDateDoubleTimeSeries timeSeries = LocalDateDoubleTimeSeries.of(FIXING_DATE, RATE3TS);
+    IborIndexRates mockRates3M = new TestingIborIndexRates(
+        GBP_LIBOR_3M, FIXING_DATE, LocalDateDoubleTimeSeries.empty(), timeSeries);
+    IborIndexRates mockRates6M = new TestingIborIndexRates(
+        GBP_LIBOR_6M, FIXING_DATE, LocalDateDoubleTimeSeries.of(FIXING_DATE, RATE6), LocalDateDoubleTimeSeries.empty());
     when(mockProv.iborIndexRates(GBP_LIBOR_3M)).thenReturn(mockRates3M);
     when(mockProv.iborIndexRates(GBP_LIBOR_6M)).thenReturn(mockRates6M);
-    when(mockRates3M.rate(GBP_LIBOR_3M_OBS)).thenReturn(RATE3);
-    when(mockRates6M.rate(GBP_LIBOR_6M_OBS)).thenReturn(RATE6);
 
     IborInterpolatedRateComputation ro = IborInterpolatedRateComputation.of(GBP_LIBOR_3M, GBP_LIBOR_6M, FIXING_DATE, REF_DATA);
     ForwardIborInterpolatedRateComputationFn obs = ForwardIborInterpolatedRateComputationFn.DEFAULT;
@@ -66,28 +70,31 @@ public class ForwardIborInterpolatedRateComputationFnTest {
     double daysCpn = ACCRUAL_END_DATE.toEpochDay() - FIXING_DATE.toEpochDay();
     double weight3M = (days6M - daysCpn) / (days6M - days3M);
     double weight6M = (daysCpn - days3M) / (days6M - days3M);
-    double rateExpected = (weight3M * RATE3 + weight6M * RATE6);
+    double rateExpected = (weight3M * RATE3TS + weight6M * RATE6);
     double rateComputed = obs.rate(ro, ACCRUAL_START_DATE, ACCRUAL_END_DATE, mockProv);
-    assertEquals(rateComputed, rateExpected, TOLERANCE_RATE);
+    assertThat(rateComputed).isCloseTo(rateExpected, offset(TOLERANCE_RATE));
 
     // explain
     ExplainMapBuilder builder = ExplainMap.builder();
-    assertEquals(obs.explainRate(ro, ACCRUAL_START_DATE, ACCRUAL_END_DATE, mockProv, builder), rateExpected, TOLERANCE_RATE);
+    assertThat(obs.explainRate(ro, ACCRUAL_START_DATE, ACCRUAL_END_DATE, mockProv, builder)).isCloseTo(rateExpected, offset(TOLERANCE_RATE));
 
     ExplainMap built = builder.build();
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).isPresent(), true);
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().size(), 2);
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.FIXING_DATE), Optional.of(FIXING_DATE));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.INDEX), Optional.of(GBP_LIBOR_3M));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.INDEX_VALUE), Optional.of(RATE3));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.WEIGHT), Optional.of(weight3M));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.FIXING_DATE), Optional.of(FIXING_DATE));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.INDEX), Optional.of(GBP_LIBOR_6M));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.INDEX_VALUE), Optional.of(RATE6));
-    assertEquals(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.WEIGHT), Optional.of(weight6M));
-    assertEquals(built.get(ExplainKey.COMBINED_RATE), Optional.of(rateExpected));
+    assertThat(built.get(ExplainKey.OBSERVATIONS)).isPresent();
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get()).hasSize(2);
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.FIXING_DATE)).isEqualTo(Optional.of(FIXING_DATE));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.INDEX)).isEqualTo(Optional.of(GBP_LIBOR_3M));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.INDEX_VALUE)).isEqualTo(Optional.of(RATE3TS));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.WEIGHT)).isEqualTo(Optional.of(weight3M));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(0).get(ExplainKey.FROM_FIXING_SERIES)).isEqualTo(Optional.of(Boolean.TRUE));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.FIXING_DATE)).isEqualTo(Optional.of(FIXING_DATE));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.INDEX)).isEqualTo(Optional.of(GBP_LIBOR_6M));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.INDEX_VALUE)).isEqualTo(Optional.of(RATE6));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.WEIGHT)).isEqualTo(Optional.of(weight6M));
+    assertThat(built.get(ExplainKey.OBSERVATIONS).get().get(1).get(ExplainKey.FROM_FIXING_SERIES)).isEqualTo(Optional.empty());
+    assertThat(built.get(ExplainKey.COMBINED_RATE)).isEqualTo(Optional.of(rateExpected));
   }
 
+  @Test
   public void test_rateSensitivity() {
     RatesProvider mockProv = mock(RatesProvider.class);
     IborIndexRates mockRates3M = mock(IborIndexRates.class);
@@ -110,9 +117,10 @@ public class ForwardIborInterpolatedRateComputationFnTest {
     IborRateSensitivity sens6 = IborRateSensitivity.of(GBP_LIBOR_6M_OBS, weight6M);
     PointSensitivities expected = PointSensitivities.of(ImmutableList.of(sens3, sens6));
     PointSensitivityBuilder test = obsFn.rateSensitivity(ro, ACCRUAL_START_DATE, ACCRUAL_END_DATE, mockProv);
-    assertEquals(test.build(), expected);
+    assertThat(test.build()).isEqualTo(expected);
   }
 
+  @Test
   public void test_rateSensitivity_finiteDifference() {
     double eps = 1.0e-7;
     RatesProvider mockProv = mock(RatesProvider.class);
@@ -159,8 +167,8 @@ public class ForwardIborInterpolatedRateComputationFnTest {
     double rateDw6M = obs.rate(ro, ACCRUAL_START_DATE, ACCRUAL_END_DATE, mockProvDw6M);
     double senseExpected6M = 0.5 * (rateUp6M - rateDw6M) / eps;
 
-    assertEquals(test.build().getSensitivities().get(0).getSensitivity(), senseExpected3M, eps);
-    assertEquals(test.build().getSensitivities().get(1).getSensitivity(), senseExpected6M, eps);
+    assertThat(test.build().getSensitivities().get(0).getSensitivity()).isCloseTo(senseExpected3M, offset(eps));
+    assertThat(test.build().getSensitivities().get(1).getSensitivity()).isCloseTo(senseExpected6M, offset(eps));
   }
 
 }
