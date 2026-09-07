@@ -370,7 +370,7 @@ final class GlobalHolidayCalendars {
   }
 
   // generate USGS
-  // http://www.sifma.org/services/holiday-schedule/
+  // https://www.sifma.org/resources/general/holiday-schedule/
   static ImmutableHolidayCalendar generateUsGovtSecurities() {
     List<LocalDate> holidays = new ArrayList<>(2000);
     for (int year = 1950; year <= 2099; year++) {
@@ -404,7 +404,7 @@ final class GlobalHolidayCalendars {
 
   //-------------------------------------------------------------------------
   // generate NYFD
-  // http://www.ny.frb.org/aboutthefed/holiday_schedule.html
+  // https://www.newyorkfed.org/aboutthefed/holiday_schedule.html
   static ImmutableHolidayCalendar generateNewYorkFed() {
     List<LocalDate> holidays = new ArrayList<>(2000);
     for (int year = 1950; year <= 2099; year++) {
@@ -496,6 +496,7 @@ final class GlobalHolidayCalendars {
     holidays.add(date(2007, 1, 2));  // Death of Gerald Ford
     holidays.add(date(2012, 10, 30));  // Hurricane Sandy
     holidays.add(date(2018, 12, 5));  // Death of George H.W. Bush
+    holidays.add(date(2025, 1, 9));  // Death of Jimmy Carter
     removeSatSun(holidays);
     return ImmutableHolidayCalendar.of(HolidayCalendarIds.NYSE, holidays, SATURDAY, SUNDAY);
   }
@@ -657,6 +658,10 @@ final class GlobalHolidayCalendars {
       holidays.add(bumpToMon(date(year, 7, 1)));
       // labour
       holidays.add(first(year, 9).with(dayOfWeekInMonth(1, MONDAY)));
+      // national day for truth and reconciliation
+      if (year >= 2021) {
+        holidays.add(date(year, 9, 30));
+      }
       // thanksgiving
       holidays.add(first(year, 10).with(dayOfWeekInMonth(2, MONDAY)));
       // christmas
@@ -693,6 +698,10 @@ final class GlobalHolidayCalendars {
       holidays.add(first(year, 8).with(dayOfWeekInMonth(1, MONDAY)));
       // labour (public)
       holidays.add(first(year, 9).with(dayOfWeekInMonth(1, MONDAY)));
+      // national day for truth and reconciliation
+      if (year >= 2021) {
+        holidays.add(date(year, 9, 30));
+      }
       // thanksgiving (public)
       holidays.add(first(year, 10).with(dayOfWeekInMonth(2, MONDAY)));
       // remembrance
@@ -848,6 +857,79 @@ final class GlobalHolidayCalendars {
     }
     // queen's birthday
     holidays.add(first(year, 6).with(firstInMonth(MONDAY)));
+    // matariki day
+    // https://www.legislation.govt.nz/act/public/2022/0014/latest/whole.html#LMS557893
+    if (year >= 2022 && year <= 2052) {
+      switch (year) {
+        case 2022:
+        case 2033:
+        case 2044:
+          holidays.add(date(year, 6, 24));
+          break;
+        case 2023:
+        case 2028:
+          holidays.add(date(year, 7, 14));
+          break;
+        case 2024:
+          holidays.add(date(year, 6, 28));
+          break;
+        case 2025:
+          holidays.add(date(year, 6, 20));
+          break;
+        case 2026:
+        case 2037:
+          holidays.add(date(year, 7, 10));
+          break;
+        case 2027:
+        case 2038:
+        case 2049:
+          holidays.add(date(year, 6, 25));
+          break;
+        case 2029:
+        case 2040:
+          holidays.add(date(year, 7, 6));
+          break;
+        case 2030:
+        case 2052:
+          holidays.add(date(year, 6, 21));
+          break;
+        case 2031:
+        case 2042:
+          holidays.add(date(year, 7, 11));
+          break;
+        case 2032:
+          holidays.add(date(year, 7, 2));
+          break;
+        case 2034:
+        case 2045:
+          holidays.add(date(year, 7, 7));
+          break;
+        case 2035:
+        case 2046:
+          holidays.add(date(year, 6, 29));
+          break;
+        case 2036:
+          holidays.add(date(year, 7, 18));
+          break;
+        case 2039:
+        case 2050:
+          holidays.add(date(year, 7, 15));
+          break;
+        case 2041:
+        case 2047:
+          holidays.add(date(year, 7, 19));
+          break;
+        case 2043:
+        case 2048:
+          holidays.add(date(year, 7, 3));
+          break;
+        case 2051:
+          holidays.add(date(year, 6, 30));
+          break;
+        default:
+          break;
+      }
+    }
     // queen's funeral
     if (year == 2022) {
       holidays.add(date(year, 9, 26));
@@ -975,7 +1057,11 @@ final class GlobalHolidayCalendars {
       // easter monday
       holidays.add(easter(year).plusDays(1));
       // anzac day
-      holidays.add(date(year, 4, 25));
+      if (year >= 2026) {
+        holidays.add(bumpToMon(date(year, 4, 25)));
+      } else {
+        holidays.add(date(year, 4, 25));
+      }
       // queen's birthday
       holidays.add(first(year, 6).with(dayOfWeekInMonth(2, MONDAY)));
       // bank holiday
@@ -1169,6 +1255,7 @@ final class GlobalHolidayCalendars {
   // dates of published fixings - https://twitter.com/Banxico
   // http://www.banxico.org.mx/SieInternet/consultarDirectorioInternetAction.do?accion=consultarCuadro&idCuadro=CF111&locale=en
   // http://www.gob.mx/cms/uploads/attachment/file/161094/calendario_vacaciones2016.pdf
+  // https://comunicacionsocial.diputados.gob.mx/index.php/boletines/la-camara-de-diputados-declaro-el-1-de-octubre-de-cada-seis-a-os-como-dia-de-descanso-obligatorio
   static ImmutableHolidayCalendar generateMexicoCity() {
     List<LocalDate> holidays = new ArrayList<>(2000);
     for (int year = 1950; year <= 2099; year++) {
@@ -1186,6 +1273,10 @@ final class GlobalHolidayCalendars {
       holidays.add(date(year, 5, 1));
       // independence
       holidays.add(date(year, 9, 16));
+      // inaguration day - occurring once in every 6 years (2024, 2030, etc).
+      if (year >= 2024 && (year + 4) % 6 == 0) {
+        holidays.add(date(year, 10, 1));
+      }
       // dead
       holidays.add(date(year, 11, 2));
       // revolution
@@ -1196,7 +1287,7 @@ final class GlobalHolidayCalendars {
       holidays.add(date(year, 12, 25));
     }
     removeSatSun(holidays);
-    return ImmutableHolidayCalendar.of(HolidayCalendarId.of("MXMC"), holidays, SATURDAY, SUNDAY);
+    return ImmutableHolidayCalendar.of(HolidayCalendarIds.MXMC, holidays, SATURDAY, SUNDAY);
   }
 
   // generate BRBD
@@ -1204,6 +1295,7 @@ final class GlobalHolidayCalendars {
   // http://www.planalto.gov.br/ccivil_03/leis/l0662.htm
   // http://www.planalto.gov.br/ccivil_03/Leis/L6802.htm
   // http://www.planalto.gov.br/ccivil_03/leis/2002/L10607.htm
+  // https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14759.htm
   static ImmutableHolidayCalendar generateBrazil() {
     // base law is from 1949, reworded in 2002
     List<LocalDate> holidays = new ArrayList<>(2000);
@@ -1231,6 +1323,10 @@ final class GlobalHolidayCalendars {
       holidays.add(date(year, 11, 2));
       // republic
       holidays.add(date(year, 11, 15));
+      // Dia Nacional de Zumbi e da Consciência Negra
+      if (year >= 2024) {
+        holidays.add(date(year, 11, 20));
+      }
       // christmas
       holidays.add(date(year, 12, 25));
     }
